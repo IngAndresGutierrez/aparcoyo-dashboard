@@ -1,6 +1,10 @@
 import type { Metadata } from "next";
+import ReduxProvider from "@/store/ReduxProvider";
 import { Geist, Geist_Mono } from "next/font/google";
+
 import "./globals.css";
+import { AppSidebar } from "@/features/shared/components/AppSidebar";
+import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -27,7 +31,13 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        {children}
+        <SidebarProvider>
+          <AppSidebar />
+          <main>
+            <SidebarTrigger />
+            <ReduxProvider>{children}</ReduxProvider>
+          </main>
+        </SidebarProvider>
       </body>
     </html>
   );
