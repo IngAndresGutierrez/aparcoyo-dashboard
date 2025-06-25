@@ -32,6 +32,13 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <ClientLayout>{children}</ClientLayout>
+        <SidebarProvider>
+          <AppSidebar />
+          <main className="w-full">
+            <SidebarTrigger />
+            <ReduxProvider>{children}</ReduxProvider>
+          </main>
+        </SidebarProvider>
       </body>
     </html>
   )
