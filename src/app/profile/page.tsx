@@ -1,7 +1,7 @@
-"use client";
+"use client"
 
-import Counter from "@/features/profile/components/Counter";
-import PokemonsList from "@/features/profile/components/PokemonsList";
+import Counter from "@/features/profile/components/Counter"
+import PokemonsList from "@/features/profile/components/PokemonsList"
 
 const ProfilePage = () => {
   return (
@@ -10,7 +10,7 @@ const ProfilePage = () => {
       <Counter />
       <PokemonsList />
     </>
-  );
-};
+  )
+}
 
-export default ProfilePage;
+export default ProfilePage
