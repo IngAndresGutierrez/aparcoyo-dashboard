@@ -1,4 +1,4 @@
-"use client";
+"use client"
 
 import Counter from "@/features/profile/components/Counter";
 import LineChart from "@/features/profile/components/LineChart";
@@ -15,4 +15,4 @@ export const ProfilePage = () => {
   );
 };
 
-export default ProfilePage;
+export default ProfilePage
