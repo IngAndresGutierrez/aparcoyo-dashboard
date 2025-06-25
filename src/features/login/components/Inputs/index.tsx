@@ -48,7 +48,7 @@ const InputDemo = () => {
 
       {/* Subtítulo solo en la primera vista */}
       {!hasAttemptedLogin && (
-        <p className="text-sm text-secondary text-center mb-4">
+        <p className="text-[16.7px] text-tertiary text-center mb-4 font-normal">
           Bienvenido al panel administrativo de AparcoYo
         </p>
       )}
@@ -73,7 +73,7 @@ const InputDemo = () => {
         </div>
       )}
 
-      <div className="w-88">
+      <div className="w-88 mt-7">
         {/* Label */}
         <p className="text-secondary text-sm font-medium mb-1">Email</p>
 

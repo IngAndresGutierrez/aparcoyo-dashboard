@@ -3,7 +3,7 @@ import React from "react"
 
 const Logo = () => {
   return (
-    <div className="flex items-center justify-center -mt-2">
+    <div className="flex items-center justify-center">
       <Image className="top-0"
         src="/login/logo.svg"
         alt="Logo"
