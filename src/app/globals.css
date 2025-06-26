@@ -49,6 +49,7 @@
   --color-error-primary: var(--error-primary);
   --color-placeholder: var(--placeholder);
   --color-error-utility: var(--utility);
+  --color-blue-brand: var(--blue-brand)
 }
 
 :root {
@@ -93,6 +94,7 @@
   --error-primary: #d92d20;
   --color-placeholder: #717680;
   --color-utility: #fef3f2;
+  --color-blue-brand: #EBF3FE;
 }
 
 .dark {

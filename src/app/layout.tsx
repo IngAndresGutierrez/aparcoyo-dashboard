@@ -1,10 +1,10 @@
+// app/layout.tsx
 import type { Metadata } from "next"
-
 import { Geist, Geist_Mono } from "next/font/google"
-
 import "./globals.css"
-
 import ClientLayout from "@/features/shared/components/Hidden"
+
+// ✅ renombrado aquí
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -23,22 +23,15 @@ export const metadata: Metadata = {
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode
-}>) {
+}) {
   return (
     <html lang="en">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <ClientLayout>{children}</ClientLayout>
-        <SidebarProvider>
-          <AppSidebar />
-          <main className="w-full">
-            <SidebarTrigger />
-            <ReduxProvider>{children}</ReduxProvider>
-          </main>
-        </SidebarProvider>
       </body>
     </html>
   )
