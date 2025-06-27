@@ -84,7 +84,7 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
           <div className="flex flex-row justify-center items-center">
-            <Card className="mt-44 w-64 h-16 flex flex-row items-center">
+            <Card className="mt-44 w-64 h-16 flex flex-row items-center border border-secondary-border">
               <div className="flex items-center">
                 <Image
                   className="ml-3"
