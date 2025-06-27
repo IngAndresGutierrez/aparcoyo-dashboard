@@ -1,3 +1,7 @@
+"use client"
+
+import { Button } from "@/components/ui/button"
+import { Card } from "@/components/ui/card"
 import {
   Sidebar,
   SidebarContent,
@@ -31,7 +35,7 @@ export function AppSidebar() {
   const pathname = usePathname()
 
   return (
-    <Sidebar>
+    <Sidebar className="w-72">
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupLabel>
@@ -56,8 +60,8 @@ export function AppSidebar() {
                         className={`flex items-center gap-3 rounded-md px-3 py-2 transition-colors
     ${
       isActive
-        ? "bg-[#EBF3FE] text-[#0E47E1] font-semibold"
-        : "text-[#344054] hover:bg-blue-brand hover:text-[#0E47E1]"
+        ? "bg-utility-brand text-brand-solid font-semibold"
+        : "text-secondary hover:bg-blue-brand hover:text-brand-solid"
     }`}
                       >
                         <Image
@@ -65,7 +69,11 @@ export function AppSidebar() {
                           alt={item.title}
                           width={20}
                           height={20}
-                          className="w-5 h-5"
+                          className={`w-5 h-5 ${
+                            isActive
+                              ? "invert-[26%] sepia-[80%] saturate-[750%] hue-rotate-[210deg] brightness-[90%] contrast-[120%]"
+                              : ""
+                          }`}
                         />
                         <span>{item.title}</span>
                       </Link>
@@ -75,6 +83,38 @@ export function AppSidebar() {
               })}
             </SidebarMenu>
           </SidebarGroupContent>
+          <div className="flex flex-row justify-center items-center">
+            <Card className="mt-44 w-64 h-16 flex flex-row items-center">
+              <div className="flex items-center">
+                <Image
+                  className="ml-3"
+                  src="/home/avatar.svg"
+                  alt="avatar"
+                  width={40}
+                  height={40}
+                />
+              </div>
+              <div className="-ml-4">
+                <p className="text-sm font-semibold">Kate Morrison</p>
+                <p className="text-sm font-normal text-tertiary">
+                  kate@aparcoyo.com
+                </p>
+              </div>
+              <div>
+                <Button
+                  variant="ghost"
+                  className="p-0 -mt-4 ml-2"
+                >
+                  <Image
+                    src="/home/button-utility.svg"
+                    alt="button"
+                    width={32}
+                    height={32}
+                  />
+                </Button>
+              </div>
+            </Card>
+          </div>
         </SidebarGroup>
       </SidebarContent>
     </Sidebar>
