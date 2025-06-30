@@ -3,14 +3,18 @@
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import Image from "next/image"
+import { useEmailLogin } from "../../hooks/useEmailLogin"
 
 const FormLogin = () => {
   const [showPassword, setShowPassword] = useState(false)
   const [email, setEmail] = useState("")
   const [isInvalid, setIsInvalid] = useState(false)
-  const [showLoginError, setShowLoginError] = useState(false)
   const [hasAttemptedLogin, setHasAttemptedLogin] = useState(false)
   const [password, setPassword] = useState("")
+  const { onClickEmailButtonLogin, isLoading, error } = useEmailLogin(
+    email,
+    password
+  )
 
   const validateEmail = (value: string) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -27,13 +31,10 @@ const FormLogin = () => {
     setHasAttemptedLogin(true)
 
     const isEmailValid = validateEmail(email)
-    const isPasswordValid = password.length >= 6 // o tu propia regla
+    const isPasswordValid = password.length >= 6
 
-    if (!isEmailValid || !isPasswordValid) {
-      setShowLoginError(true)
-    } else {
-      setShowLoginError(false)
-      // Aquí iría el submit real si todo está bien
+    if (isEmailValid && isPasswordValid) {
+      onClickEmailButtonLogin()
     }
   }
 
@@ -53,7 +54,7 @@ const FormLogin = () => {
         </p>
       )}
 
-      {showLoginError && (
+      {error && (
         <div className="flex items-start mt-6  bg-[#FEF3F2] border border-[#FDA29B] p-4 w-88 h-24 rounded-xl">
           <Image
             src="/login/alert-circle.svg"
@@ -133,10 +134,11 @@ const FormLogin = () => {
       <div>
         <div className="flex justify-center  items-center gap-2 md:flex-row ">
           <Button
-            className="bg-brand-solid rounded-full w-88 h-11 text-white font-bold text-base"
+            className="bg-brand-solid rounded-full w-88 h-11 text-white font-bold text-base cursor-pointer"
             onClick={handleLogin}
+            disabled={isLoading || !email || password.length < 6}
           >
-            Iniciar sesión
+            {isLoading ? "Iniciando sesión..." : "Iniciar sesión"}
           </Button>
         </div>
       </div>
