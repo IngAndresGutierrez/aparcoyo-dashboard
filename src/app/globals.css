@@ -44,11 +44,13 @@
   --color-brand-solid: var(--brand-solid);
   --color-tertiary: var(--tertiary);
   --color-secondary: var(--secondary);
-  --color-border-primary: var(--border-primary);
+  --color-border-primary: var(--color-primary);
   --color-error-subtle: var(--border-error);
   --color-error-primary: var(--error-primary);
   --color-placeholder: var(--placeholder);
   --color-error-utility: var(--utility);
+  --color-utility-brand: var(--color-utility-brand);
+  --color-border-secondary: var(--secondary-border);
 }
 
 :root {
@@ -88,11 +90,13 @@
   --primary: #181d27;
   --tertiary: #535862;
   --secondary: #414651;
-  --border-primary: #d5d7da;
+  --border-color: var(--color-primary);
   --error-subtle: #fda29b;
   --error-primary: #d92d20;
   --color-placeholder: #717680;
   --color-utility: #fef3f2;
+  --color-utility-brand: #ebf3fe;
+  --color-secundary-border: #e9eaeb;
 }
 
 .dark {
