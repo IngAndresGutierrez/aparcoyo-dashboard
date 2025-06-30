@@ -4,7 +4,7 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import Image from "next/image"
 
-const InputDemo = () => {
+const FormLogin = () => {
   const [showPassword, setShowPassword] = useState(false)
   const [email, setEmail] = useState("")
   const [isInvalid, setIsInvalid] = useState(false)
@@ -144,4 +144,4 @@ const InputDemo = () => {
   )
 }
 
-export default InputDemo
+export default FormLogin
