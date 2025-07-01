@@ -35,7 +35,7 @@ export function AppSidebar() {
   const pathname = usePathname()
 
   return (
-    <Sidebar className="w-72">
+    <Sidebar className="w-69">
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupLabel>
