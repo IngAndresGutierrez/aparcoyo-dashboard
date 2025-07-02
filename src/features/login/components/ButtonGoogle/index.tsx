@@ -15,6 +15,7 @@ const ButtonGoogleLogin = () => {
       <Button
         onClick={handleGoogleLoginFunction}
         className="mt-6"
+        
       >
         Iniciar con Google
       </Button>

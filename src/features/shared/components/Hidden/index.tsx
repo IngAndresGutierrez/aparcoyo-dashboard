@@ -11,12 +11,12 @@ export default function ClientLayout({
   children: React.ReactNode
 }) {
   const pathname = usePathname()
-  const isLogin = pathname === "/login"
+  const isAuthPage = pathname === "/login" || pathname === "/register"
 
   return (
     <ReduxProvider>
-      {isLogin ? (
-        // Layout para página de login
+      {isAuthPage ? (
+        // Layout para login y register sin sidebar
         <main className="flex items-center justify-center min-h-screen w-full bg-white">
           {children}
         </main>

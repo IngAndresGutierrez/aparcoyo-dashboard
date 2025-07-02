@@ -49,7 +49,7 @@ const FormLogin = () => {
 
       {/* Subtítulo solo en la primera vista */}
       {!hasAttemptedLogin && (
-        <p className="text-[16.7px] text-tertiary text-center mb-4 font-normal">
+        <p className="text-base text-tertiary text-center mb-4 font-normal">
           Bienvenido al panel administrativo de AparcoYo
         </p>
       )}
