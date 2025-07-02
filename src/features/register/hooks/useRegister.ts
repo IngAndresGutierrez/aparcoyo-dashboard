@@ -22,7 +22,7 @@ export const useEmailRegister = () => {
       setIsLoading(true)
       const response = await registerService(data)
       console.log("✅ Registrado:", response)
-      router.push("/login") // o donde quieras redirigir
+      router.push("/login")
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       console.log("❌ Error del backend:", error?.response?.data)

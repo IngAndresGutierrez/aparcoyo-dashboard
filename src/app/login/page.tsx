@@ -1,3 +1,4 @@
+
 import ButtonGoogleLogin from "@/features/login/components/ButtonGoogle"
 import FormLogin from "@/features/login/components/Inputs"
 
@@ -8,7 +9,7 @@ const LoginPage = () => {
     <div className="flex justify-center items-center flex-col  lg:-mt-8 md:-mt-2 -mt-20">
       <Logo />
       <FormLogin />
-      <ButtonGoogleLogin />
+      <ButtonGoogleLogin/>
     </div>
   )
 }
