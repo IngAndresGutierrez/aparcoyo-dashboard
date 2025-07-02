@@ -86,7 +86,7 @@ const FormLogin = () => {
             value={email}
             onChange={handleChange}
             placeholder="Email"
-            className={`w-full rounded-md px-4 pr-10 py-2 h-11 focus:outline-none focus:ring-0 text-base
+            className={`w-full rounded-md px-4 shadow-xs pr-10 py-2 h-11 focus:outline-none focus:ring-0 text-base
             ${isInvalid ? "border border-[#FDA29B]" : "border border-[#D5D7DA]"}
           `}
           />
@@ -118,7 +118,7 @@ const FormLogin = () => {
         <input
           type={showPassword ? "text" : "password"}
           placeholder="Contraseña"
-          className="flex-1 px-3 py-2 text-base bg-transparent outline-none h-11 text-placeholder"
+          className="flex-1 px-3 py-2 shadow-xs text-base bg-transparent outline-none h-11 text-placeholder"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
         />
