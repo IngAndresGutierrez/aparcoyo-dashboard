@@ -37,7 +37,7 @@ const UsersTotalsCards = () => {
   ]
 
   return (
-    <div className="flex gap-5 mt-8 ml-8">
+    <div className="flex gap-5 mt-8 ml-10">
       {cards.map((card) => (
         <div
           key={card.id}
