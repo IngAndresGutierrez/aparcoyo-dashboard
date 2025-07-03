@@ -5,7 +5,7 @@ import React from "react"
 
 const Welcome = () => {
   return (
-    <div className="flex flex-col justify-start ml-11 mt-3">
+    <div className="flex flex-col justify-start ml-9 mt-3">
       <p className="font-semibold text-2xl">Bienvenido, Alejo</p>
       <div className="flex flex-row mt-3.5">
         <div className="flex flex-row">
