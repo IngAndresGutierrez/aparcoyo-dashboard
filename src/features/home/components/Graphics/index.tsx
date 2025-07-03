@@ -11,6 +11,7 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart"
+import Image from "next/image"
 
 // Datos con MUCHOS más "caminitos" ondulados como en Figma
 const chartData = [
@@ -51,19 +52,27 @@ export function ChartAreaInteractive() {
     <Card className="pt-0 w-178 h-100 ml-9 mt-7 shadow-xs">
       <CardHeader className="flex items-start justify-between py-5 border-b">
         <div>
-          <CardTitle className="text-base text-muted-foreground mb-1">
+          <CardTitle className="text-base text-tertiary font-semibold mb-1">
             Reservas totales
           </CardTitle>
-          <div className="text-3xl font-bold">
-            36{" "}
-            <span className="text-green-600 text-sm font-medium">↑ 100%</span>
+          <div className="text-3xl font-bold flex items-center gap-1">
+            36
+            <span className="text-[#61AA12] text-sm font-medium flex items-center gap-1 ml-3 mt-1">
+              <Image
+                src="/home/arrow-up.svg"
+                alt="arrow"
+                width={16}
+                height={16}
+              />
+              100%
+            </span>
           </div>
         </div>
       </CardHeader>
 
       <CardContent className="px-4 pt-6">
         <ChartContainer
-          className="h-[260px] w-full"
+          className="h-65 w-full "
           config={{
             inmediatas: {
               label: "Plazas Inmediatas",
@@ -79,7 +88,7 @@ export function ChartAreaInteractive() {
             data={chartData}
             margin={{ top: 20, right: 0, left: 0, bottom: 20 }}
           >
-            <CartesianGrid
+            <CartesianGrid className=""
               vertical={false}
               horizontal={true}
               strokeDasharray="2 2"
@@ -102,7 +111,7 @@ export function ChartAreaInteractive() {
               }
             />
 
-            <ChartTooltip
+            <ChartTooltip 
               cursor={{
                 stroke: "#e2e8f0",
                 strokeWidth: 1,
@@ -118,6 +127,7 @@ export function ChartAreaInteractive() {
                     })
                   }
                   indicator="dot"
+                  className="w-48 h-19 border border-secondary-border shadow-md text-primary font-semibold text-xs"
                 />
               }
             />
