@@ -52,6 +52,7 @@
   --color-utility-brand: var(--color-utility-brand);
   --color-border-secondary: var(--secondary-border);
   --success-primary: var(--color-success-primary);
+  --color-quaternary: var(--quaternary);
 }
 
 :root {
@@ -99,6 +100,7 @@
   --color-utility-brand: #ebf3fe;
   --color-secundary-border: #e9eaeb;
   --color-success-primary: #61aa12;
+  --quaternary: #717680;
 }
 
 .dark {

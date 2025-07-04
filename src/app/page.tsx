@@ -13,7 +13,7 @@ const Homepage = () => {
       <div className="flex -mt-100 ml-192">
         <TotalIncome />
       </div>
-      <div className="flex justify-center items-center w-240 border rounded-xl ml-9 mt-8 p-4">
+      <div className="">
         <TableReports />
       </div>
     </div>

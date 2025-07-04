@@ -1,88 +1,228 @@
 import {
   Table,
   TableBody,
-  TableCaption,
   TableCell,
-  TableFooter,
   TableHead,
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { Button } from "@/components/ui/button"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { MoreVertical } from "lucide-react"
+import Image from "next/image"
 
-const invoices = [
+const reports = [
   {
-    invoice: "INV001",
-    paymentStatus: "Paid",
-    totalAmount: "$250.00",
-    paymentMethod: "Credit Card",
+    report:
+      "“Me habló con groserías y me insultó cuando le pedí que se moviera un poco.”",
+    date: "Jan 16, 2025",
+    status: "Pendiente",
+    category: "Contenido falso o engañoso",
+    user: {
+      name: "Sienna Hewitt",
+      email: "hi@siennahewitt.com",
+      avatar: "/avatars/avatar1.jpg",
+    },
   },
   {
-    invoice: "INV002",
-    paymentStatus: "Pending",
-    totalAmount: "$150.00",
-    paymentMethod: "PayPal",
+    report:
+      "“El usuario no era el mismo que aparecía en la reserva, parecía alguien diferente.”",
+    date: "Jan 16, 2025",
+    status: "Pendiente",
+    category: "Ubicación incorrecta o inexistente",
+    user: {
+      name: "Pippa Wilkinson",
+      email: "pippa@pippaw.com",
+      avatar: "/avatars/avatar2.jpg",
+    },
   },
   {
-    invoice: "INV003",
-    paymentStatus: "Unpaid",
-    totalAmount: "$350.00",
-    paymentMethod: "Bank Transfer",
+    report: "“Me dijo que si no le pagaba por fuera, no me dejaba aparcar.”",
+    date: "Jan 15, 2025",
+    status: "Pendiente",
+    category: "Lenguaje ofensivo o inapropiado",
+    user: {
+      name: "Olly Schroeder",
+      email: "olly_s@icloud.com",
+      avatar: "/avatars/avatar3.jpg",
+    },
   },
   {
-    invoice: "INV004",
-    paymentStatus: "Paid",
-    totalAmount: "$450.00",
-    paymentMethod: "Credit Card",
+    report: "“Me mandó muchos mensajes sin sentido, parecía spam.”",
+    date: "Jan 14, 2025",
+    status: "Pendiente",
+    category: "Contenido falso o engañoso",
+    user: {
+      name: "Mathilde Lewis",
+      email: "mathilde@hey.com",
+      avatar: "/avatars/avatar4.jpg",
+    },
   },
   {
-    invoice: "INV005",
-    paymentStatus: "Paid",
-    totalAmount: "$550.00",
-    paymentMethod: "PayPal",
+    report: "“Intentó coquetearme y me hizo sentir incómoda.”",
+    date: "Jan 14, 2025",
+    status: "Pendiente",
+    category: "Contenido inapropiado o explícito",
+    user: {
+      name: "Julius Vaughan",
+      email: "juliusvaughan@gmail.com",
+      avatar: "/avatars/avatar5.jpg",
+    },
   },
   {
-    invoice: "INV006",
-    paymentStatus: "Pending",
-    totalAmount: "$200.00",
-    paymentMethod: "Bank Transfer",
-  },
-  {
-    invoice: "INV007",
-    paymentStatus: "Unpaid",
-    totalAmount: "$300.00",
-    paymentMethod: "Credit Card",
+    report:
+      "“Me insistió varias veces para cancelar la reserva y pagarle en efectivo.”",
+    date: "Jan 14, 2025",
+    status: "Pendiente",
+    category: "Spam o mensajes irrelevantes",
+    user: {
+      name: "Zaid Schwartz",
+      email: "zaid@zaidstudio.com",
+      avatar: "/avatars/avatar6.jpg",
+    },
   },
 ]
 
 const TableReports = () => {
   return (
-    <Table>
-      <TableCaption>A list of your recent invoices.</TableCaption>
-      <TableHeader>
-        <TableRow>
-          <TableHead className="w-[100px]">Invoice</TableHead>
-          <TableHead>Status</TableHead>
-          <TableHead>Method</TableHead>
-          <TableHead className="text-right">Amount</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {invoices.map((invoice) => (
-          <TableRow key={invoice.invoice}>
-            <TableCell className="font-medium">{invoice.invoice}</TableCell>
-            <TableCell>{invoice.paymentStatus}</TableCell>
-            <TableCell>{invoice.paymentMethod}</TableCell>
-            <TableCell className="text-right">{invoice.totalAmount}</TableCell>
+    <div className="w-239 shadow-xs border rounded-xl  ml-9 mt-8 flex flex-col">
+      {/* Header */}
+      <div className="p-6">
+        <h2 className="text-base font-semibold">18 Reportes recibidos</h2>
+      </div>
+
+      {/* Tabla sin scroll */}
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead className="w-[30%] text-quaternary text-xs">
+              Reporte
+            </TableHead>
+            <TableHead className="w-[12%] text-quaternary text-xs">
+              <div className="flex items-center gap-1">
+                <span>Fecha</span>
+                <Image
+                  src="/home/selector-vertical.svg"
+                  alt="selector"
+                  width={12}
+                  height={12}
+                />
+              </div>
+            </TableHead>
+
+            <TableHead className="w-[10%] text-quaternary text-xs">
+              <div className="flex items-center gap-1">
+                <span>Estado</span>
+                <Image
+                  src="/home/selector-vertical.svg"
+                  alt="selector"
+                  width={12}
+                  height={12}
+                />
+              </div>
+            </TableHead>
+
+            <TableHead className="w-[20%] text-quaternary text-xs">
+              <div className="flex items-center gap-1">
+                <span>Categoría</span>
+                <Image
+                  src="/home/selector-vertical.svg"
+                  alt="selector"
+                  width={12}
+                  height={12}
+                />
+              </div>
+            </TableHead>
+
+            <TableHead className="w-[23%] text-quaternary text-xs">
+              <div className="flex items-center gap-1">
+                <span>Reservado por</span>
+                <Image
+                  src="/home/selector-vertical.svg"
+                  alt="selector"
+                  width={12}
+                  height={12}
+                />
+              </div>
+            </TableHead>
+
+            <TableHead className="w-[5%] text-quaternar text-xs"></TableHead>
           </TableRow>
-        ))}
-      </TableBody>
-      <TableFooter>
-        <TableRow>
-          <TableCell colSpan={3}>Total</TableCell>
-          <TableCell className="text-right">$2,500.00</TableCell>
-        </TableRow>
-      </TableFooter>
-    </Table>
+        </TableHeader>
+        <TableBody>
+          {reports.map((item, index) => (
+            <TableRow key={index}>
+              <TableCell className="text-sm whitespace-normal leading-5 p-2">
+                {item.report}
+              </TableCell>
+              <TableCell className="text-sm">{item.date}</TableCell>
+              <TableCell>
+                <Button
+                  variant="ghost"
+                  className="bg-orange-50 text-orange-500 hover:bg-orange-100 text-sm font-medium rounded-full border border-orange-100"
+                >
+                  {item.status}
+                </Button>
+              </TableCell>
+              <TableCell className="text-sm whitespace-normal leading-5">
+                {item.category}
+              </TableCell>
+              <TableCell>
+                <div className="flex items-center gap-3">
+                  <Image
+                    src={item.user.avatar}
+                    alt={item.user.name}
+                    width={32}
+                    height={32}
+                    className="rounded-full object-cover"
+                  />
+                  <div className="min-w-0">
+                    <p className="font-medium text-sm truncate">
+                      {item.user.name}
+                    </p>
+                    <p className="text-sm text-muted-foreground truncate">
+                      {item.user.email}
+                    </p>
+                  </div>
+                </div>
+              </TableCell>
+              <TableCell>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                    >
+                      <MoreVertical className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem className="text-red-500">
+                      Eliminar reporte
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+
+      {/* Botón inferior */}
+      <div className="px-4 pb-4 pt-3">
+        <Button
+          variant="outline"
+          className="h-9 px-4 py-2 text-sm font-medium rounded-full border border-[#D0D5DD] shadow-sm"
+        >
+          Ver todos los reportes
+        </Button>
+      </div>
+    </div>
   )
 }
 
