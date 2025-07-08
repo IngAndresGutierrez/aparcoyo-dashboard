@@ -26,7 +26,7 @@ const reports = [
     user: {
       name: "Sienna Hewitt",
       email: "hi@siennahewitt.com",
-      avatar: "/avatars/avatar1.jpg",
+      avatar: "/home/avatar-report.svg",
     },
   },
   {
@@ -38,7 +38,7 @@ const reports = [
     user: {
       name: "Pippa Wilkinson",
       email: "pippa@pippaw.com",
-      avatar: "/avatars/avatar2.jpg",
+      avatar: "/home/avatar-report.svg",
     },
   },
   {
@@ -49,7 +49,7 @@ const reports = [
     user: {
       name: "Olly Schroeder",
       email: "olly_s@icloud.com",
-      avatar: "/avatars/avatar3.jpg",
+      avatar: "/home/avatar-report.svg",
     },
   },
   {
@@ -60,7 +60,7 @@ const reports = [
     user: {
       name: "Mathilde Lewis",
       email: "mathilde@hey.com",
-      avatar: "/avatars/avatar4.jpg",
+      avatar: "/home/avatar-report.svg",
     },
   },
   {
@@ -71,7 +71,7 @@ const reports = [
     user: {
       name: "Julius Vaughan",
       email: "juliusvaughan@gmail.com",
-      avatar: "/avatars/avatar5.jpg",
+      avatar: "/home/avatar-report.svg",
     },
   },
   {
@@ -83,7 +83,7 @@ const reports = [
     user: {
       name: "Zaid Schwartz",
       email: "zaid@zaidstudio.com",
-      avatar: "/avatars/avatar6.jpg",
+      avatar: "/home/avatar-report.svg",
     },
   },
 ]
@@ -92,15 +92,17 @@ const TableReports = () => {
   return (
     <div className="w-239 shadow-xs border rounded-xl  ml-9 mt-8 flex flex-col">
       {/* Header */}
-      <div className="p-6">
+      <div className="p-6 h-15">
         <h2 className="text-base font-semibold">18 Reportes recibidos</h2>
       </div>
+      {/* Línea divisoria debajo del título */}
+      <div className="border-t border-[#E4E7EC] w-full" />
 
       {/* Tabla sin scroll */}
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="w-[30%] text-quaternary text-xs">
+            <TableHead className="w-[30%] text-quaternary text-xs h-11">
               Reporte
             </TableHead>
             <TableHead className="w-[12%] text-quaternary text-xs">
@@ -128,7 +130,7 @@ const TableReports = () => {
             </TableHead>
 
             <TableHead className="w-[20%] text-quaternary text-xs">
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1 ml-6">
                 <span>Categoría</span>
                 <Image
                   src="/home/selector-vertical.svg"
@@ -154,22 +156,32 @@ const TableReports = () => {
             <TableHead className="w-[5%] text-quaternar text-xs"></TableHead>
           </TableRow>
         </TableHeader>
-        <TableBody>
+        <TableBody className="h-1">
           {reports.map((item, index) => (
             <TableRow key={index}>
-              <TableCell className="text-sm whitespace-normal leading-5 p-2">
+              <TableCell className="text-sm whitespace-normal leading-5 p-2 h-18 font-normal">
                 {item.report}
               </TableCell>
-              <TableCell className="text-sm">{item.date}</TableCell>
+
+              <TableCell className="text-sm text-tertiary">
+                {item.date}
+              </TableCell>
               <TableCell>
                 <Button
                   variant="ghost"
-                  className="bg-orange-50 text-orange-500 hover:bg-orange-100 text-sm font-medium rounded-full border border-orange-100"
+                  className="flex items-center justify-between gap-1 bg-orange-50 text-[#B54708] hover:bg-[#FFFAEB] text-xs font-semibold rounded-full border border-orange-100 "
                 >
                   {item.status}
+                  <Image
+                    src="/home/chevron-down.svg"
+                    alt="chevron"
+                    width={10}
+                    height={10}
+                  />
                 </Button>
               </TableCell>
-              <TableCell className="text-sm whitespace-normal leading-5">
+
+              <TableCell className="text-sm whitespace-normal leading-5 text-tertiary pl-7">
                 {item.category}
               </TableCell>
               <TableCell>
@@ -177,8 +189,8 @@ const TableReports = () => {
                   <Image
                     src={item.user.avatar}
                     alt={item.user.name}
-                    width={32}
-                    height={32}
+                    width={40}
+                    height={40}
                     className="rounded-full object-cover"
                   />
                   <div className="min-w-0">
@@ -211,10 +223,12 @@ const TableReports = () => {
             </TableRow>
           ))}
         </TableBody>
+        {/* ✅ Línea divisoria final, fuera del <Table> */}
       </Table>
+      <div className="border-t border-[#E9EAEB] self-center w-full" />
 
       {/* Botón inferior */}
-      <div className="px-4 pb-4 pt-3">
+      <div className="px-4 pb-4 pt-3 flex items-center justify-items-center mt-1">
         <Button
           variant="outline"
           className="h-9 px-4 py-2 text-sm font-medium rounded-full border border-[#D0D5DD] shadow-sm"
