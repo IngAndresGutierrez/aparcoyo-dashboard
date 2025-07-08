@@ -1,23 +1,16 @@
-import { ChartAreaInteractive } from "@/features/home/components/Graphics"
-import TableReports from "@/features/home/components/Reports"
-import TotalIncome from "@/features/home/components/TotalIncome"
-import UsersTotalsCards from "@/features/home/components/Totals"
-import Welcome from "@/features/home/components/Welcome"
+import ButtonGoogleLogin from "@/features/login/components/ButtonGoogle"
+import FormLogin from "@/features/login/components/Inputs"
 
-const Homepage = () => {
+import Logo from "@/features/login/components/Logo"
+
+const LoginPage = () => {
   return (
-    <div className="">
-      <Welcome />
-      <UsersTotalsCards />
-      <ChartAreaInteractive />
-      <div className="flex -mt-100 ml-192">
-        <TotalIncome />
-      </div>
-      <div className="">
-        <TableReports />
-      </div>
+    <div className="flex justify-center items-center flex-col  lg:-mt-8 md:-mt-2 -mt-20">
+      <Logo />
+      <FormLogin />
+      <ButtonGoogleLogin />
     </div>
   )
 }
 
-export default Homepage
+export default LoginPage
