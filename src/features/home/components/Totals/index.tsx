@@ -37,11 +37,11 @@ const UsersTotalsCards = () => {
   ]
 
   return (
-    <div className="flex gap-5 mt-8 ml-10">
+    <div className="flex gap-5 mt-8 ml-9">
       {cards.map((card) => (
         <div
           key={card.id}
-          className="bg-white border border-secondary-border rounded-xl p-4 w-57 h-26 flex flex-col gap-2 shadow-sm"
+          className="bg-white border border-secondary-border rounded-xl p-4 w-56 h-26 flex flex-col gap-2 shadow-sm"
         >
           <p className="text-tertiary text-sm font-semibold">{card.tittle}</p>
           <p className="text-2xl font-bold text-gray-900">{card.number}</p>

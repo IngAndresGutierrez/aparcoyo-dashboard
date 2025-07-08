@@ -5,8 +5,8 @@ import React from "react"
 
 const Welcome = () => {
   return (
-    <div className="flex flex-col justify-start ml-11 mt-3">
-      <p className="font-semibold text-2xl">Bienvenido, Alejo</p>
+    <div className="flex flex-col justify-start ml-9 mt-7">
+      <p className="font-semibold text-2xl">Bienvenida, Kate</p>
       <div className="flex flex-row mt-3.5">
         <div className="flex flex-row">
           <Card className="!w-44 !h-10 !p-0 border border-color-primary flex justify-start flex-row rounded-full">
