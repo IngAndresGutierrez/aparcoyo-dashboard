@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button"
+import Image from "next/image"
 import React from "react"
 
 const Welcome = () => {
@@ -11,13 +12,31 @@ const Welcome = () => {
           variant="outline"
           className="w-46 h-9 rounded-full"
         >
-          Button1
+          <Image
+            src="/home/calendar.svg"
+            alt="calendar"
+            width={20}
+            height={20}
+          />
+          Últimos 30 días
+          <Image
+            src="/home/arrow.svg"
+            alt="arrow"
+            width={20}
+            height={20}
+          />
         </Button>
         <Button
           variant="outline"
           className="w-46 h-9 rounded-full"
         >
-           Button2
+          <Image
+            src="/home/file-download-02.svg"
+            alt="calendar"
+            width={20}
+            height={20}
+          />
+          Descargar reporte
         </Button>
       </div>
     </div>

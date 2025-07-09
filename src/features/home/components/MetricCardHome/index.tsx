@@ -2,30 +2,29 @@ import MetricCard from "@/features/shared/components/MetricCard"
 
 const cardsItems = [
   {
-    title: "Total Users",
-    value: "100",
-    icon: "",
-    percentage: "10%",
+    title: "Usuarios totales",
+    value: "150",
+    icon: "/home/arrow-up.svg",
+    percentage: "+100%",
   },
   {
-    title: "Total Users",
-    value: "100",
-    icon: "",
-    percentage: "10%",
+    title: "Plazas totales",
+    value: "200",
+    icon: "/home/arrow-up.svg",
+    percentage: "+25%",
   },
   {
-    title: "Total Users",
-    value: "100",
-    icon: "",
-    percentage: "10%",
+    title: "Plazas con reserva activa",
+    value: "20",
+    icon: "/home/arrow-down.svg",
+    percentage: "-10%",
   },
-    {
-    title: "Total Users",
-    value: "100",
-    icon: "",
-    percentage: "10%",
+  {
+    title: "Reservas totales",
+    value: "50",
+    icon: "/home/arrow-down.svg",
+    percentage: "-8%",
   },
- 
 ]
 
 const MetricsCardsListHome = () => {
@@ -35,7 +34,6 @@ const MetricsCardsListHome = () => {
         key={index}
         title={item.title}
         value={item.value}
-        icon={item.icon}
         percentage={item.percentage}
       />
     )
