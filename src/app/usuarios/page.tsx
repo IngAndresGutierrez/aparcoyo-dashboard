@@ -8,7 +8,9 @@ const UsersPage = () => {
     <AppSidebarDashboard>
       <h1>Users</h1>
       <MetricsCardsList />
-      <TotalUsersGraph />
+      <div className="mt-7 flex-1/3">
+        <TotalUsersGraph />
+      </div>
       <UsersTable />
     </AppSidebarDashboard>
   )

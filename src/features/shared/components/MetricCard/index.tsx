@@ -18,7 +18,7 @@ const MetricCard = ({
   percentage: string
 }) => {
   return (
-    <Card className="w-full max-w-sm">
+    <Card className="w-full max-w-sm rounded-xl">
       <CardHeader>
         <CardTitle>{title}</CardTitle>
         <CardDescription></CardDescription>
