@@ -32,7 +32,7 @@ const Homepage = () => {
         </div>
 
         {/* Table Reports Section */}
-        <div className="w-full mt-5">
+        <div className=" mt-5">
           <TableReports />
         </div>
       </div>

@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { MoreHorizontal, Trash2, UserMinus } from "lucide-react"
+import { MoreHorizontal, Trash2 } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -30,7 +30,7 @@ const reports = [
     reportedBy: {
       name: "Sienna Hewitt",
       email: "hi@siennahewitt...",
-      avatar: "SH",
+      avatar: "/home/avatar-report.svg",
     },
   },
   {
@@ -43,7 +43,7 @@ const reports = [
     reportedBy: {
       name: "Piper Williamson",
       email: "pippa@pippawc...",
-      avatar: "PW",
+      avatar: "/home/avatar-report.svg",
     },
   },
   {
@@ -55,7 +55,7 @@ const reports = [
     reportedBy: {
       name: "Olly Schroeder",
       email: "olly_s@icloud.co...",
-      avatar: "OS",
+      avatar: "/home/avatar-report.svg",
     },
   },
   {
@@ -67,7 +67,7 @@ const reports = [
     reportedBy: {
       name: "Mathilde Lewis",
       email: "mathilde@hey.c...",
-      avatar: "ML",
+      avatar: "/home/avatar-report.svg",
     },
   },
   {
@@ -79,7 +79,7 @@ const reports = [
     reportedBy: {
       name: "Julius Vaughan",
       email: "juliusvaughan@...",
-      avatar: "JV",
+      avatar: "/home/avatar-report.svg",
     },
   },
   {
@@ -92,28 +92,31 @@ const reports = [
     reportedBy: {
       name: "Zaid Schwartz",
       email: "zaid@zaidstudio...",
-      avatar: "ZS",
+      avatar: "/home/avatar-report.svg",
     },
   },
 ]
 
 const TableReport = () => {
   return (
-    <Card>
+    <Card className="">
       <CardHeader>
         <CardTitle className="text-lg font-semibold">
           18 Reportes recibidos
         </CardTitle>
       </CardHeader>
-      <CardContent>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="font-medium text-quaternary">Reporte</TableHead>
-              <TableHead className="font-medium">
+      <CardContent className="">
+        <Table className="w-full">
+          <TableHeader className="">
+            <TableRow className="border-b border-gray-200">
+              <TableHead className="font-medium text-quaternary">
+                Reporte
+              </TableHead>
+              <TableHead className="font-medium hidden md:table-cell">
                 <div className="flex items-center justify-center gap-1 text-quaternary">
                   Fecha
-                  <Image className="mt-1"
+                  <Image
+                    className="mt-1"
                     src="/home/button-utility.svg"
                     alt="icon"
                     width={20}
@@ -125,7 +128,8 @@ const TableReport = () => {
               <TableHead className="font-medium">
                 <div className="flex items-center justify-center gap-1 text-quaternary">
                   Estado
-                  <Image className="mt-1"
+                  <Image
+                    className="mt-1"
                     src="/home/button-utility.svg"
                     alt="icon"
                     width={20}
@@ -134,10 +138,11 @@ const TableReport = () => {
                 </div>
               </TableHead>
 
-              <TableHead className="font-medium">
+              <TableHead className="font-medium hidden md:table-cell">
                 <div className="flex items-center justify-center gap-1 text-quaternary">
                   Categoría
-                  <Image className="mt-1"
+                  <Image
+                    className="mt-1"
                     src="/home/button-utility.svg"
                     alt="icon"
                     width={20}
@@ -146,10 +151,11 @@ const TableReport = () => {
                 </div>
               </TableHead>
 
-              <TableHead className="font-medium">
+              <TableHead className="font-medium hidden md:table-cell">
                 <div className="flex items-center justify-center gap-1 text-quaternary">
                   Reservado por
-                  <Image className="mt-1"
+                  <Image
+                    className="mt-1"
                     src="/home/button-utility.svg"
                     alt="icon"
                     width={20}
@@ -158,17 +164,20 @@ const TableReport = () => {
                 </div>
               </TableHead>
 
-              <TableHead className="w-[50px]"></TableHead>
+              <TableHead className="w-[70px]"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {reports.map((report) => (
-              <TableRow key={report.id}>
+              <TableRow
+                key={report.id}
+                className="border-b border-gray-200"
+              >
                 <TableCell className="max-w-75 whitespace-normal break-words leading-5 py-2">
                   <p className="text-sm">&ldquo;{report.content}&rdquo;</p>
                 </TableCell>
-                <TableCell>
-                  <span className="text-sm text-muted-foreground">
+                <TableCell className="hidden md:table-cell">
+                  <span className="text-sm text-muted-foreg round">
                     {report.date}
                   </span>
                 </TableCell>
@@ -180,17 +189,28 @@ const TableReport = () => {
                     {report.status}
                   </Badge>
                 </TableCell>
-                <TableCell>
-                  <span className="text-sm text-muted-foreground ">
+                <TableCell className="whitespace-normal break-words leading-5 max-w-36 hidden md:table-cell">
+                  <span className="text-sm text-muted-foreground whitespace-normal break-words leading-5">
                     {report.category}
                   </span>
                 </TableCell>
-                <TableCell>
+                <TableCell className="hidden md:table-cell">
                   <div className="flex items-center gap-3">
                     <Avatar className="h-8 w-8">
-                      <AvatarImage src="" />
+                      <AvatarImage
+                        src={
+                          report.reportedBy.avatar.startsWith("/")
+                            ? report.reportedBy.avatar
+                            : ""
+                        }
+                      />
                       <AvatarFallback className="text-xs bg-blue-500 text-white">
-                        {report.reportedBy.avatar}
+                        {report.reportedBy.avatar.startsWith("/")
+                          ? report.reportedBy.name
+                              .split(" ")
+                              .map((n) => n[0])
+                              .join("")
+                          : report.reportedBy.avatar}
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex flex-col">
@@ -203,7 +223,7 @@ const TableReport = () => {
                     </div>
                   </div>
                 </TableCell>
-                <TableCell>
+                <TableCell className="">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button
@@ -215,13 +235,9 @@ const TableReport = () => {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem className="text-red-600">
-                        <Trash2 className="mr-2 h-4 w-4" />
+                      <DropdownMenuItem className="text-error-primary font-semibold">
+                        <Trash2 className="mr-2 h-4 w-4 text-error-primary" />
                         Eliminar reporte
-                      </DropdownMenuItem>
-                      <DropdownMenuItem className="text-blue-600">
-                        <UserMinus className="mr-2 h-4 w-4" />
-                        Suspender usuario
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
@@ -230,8 +246,14 @@ const TableReport = () => {
             ))}
           </TableBody>
         </Table>
+        <div className="border border-b mt-3"></div>
         <div className="flex justify-center pt-4">
-          <Button variant="outline">Ver todos los reportes</Button>
+          <Button
+            className="mx-auto ml-1 lg:ml-10 rounded-full text-secondary text-sm"
+            variant="outline"
+          >
+            Ver todos los reportes
+          </Button>
         </div>
       </CardContent>
     </Card>
