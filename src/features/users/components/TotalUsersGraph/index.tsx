@@ -1,12 +1,11 @@
 "use client"
 
-import { TrendingUp } from "lucide-react"
+import { ArrowUp, TrendingUp } from "lucide-react"
 import { Area, AreaChart, CartesianGrid, XAxis } from "recharts"
 
 import {
   Card,
   CardContent,
-  CardDescription,
   CardFooter,
   CardHeader,
   CardTitle,
@@ -34,23 +33,34 @@ const chartData = [
 const chartConfig = {
   desktop: {
     label: "Desktop",
-    color: "var(--chart-1)",
+    color: "#0E47E1", // azul nuevo
   },
   mobile: {
     label: "Mobile",
-    color: "var(--chart-2)",
+    color: "#9A75E5", // azul nuevo
   },
 } satisfies ChartConfig
 
 export function TotalUsersGraph() {
   return (
     <Card className="">
-      <CardHeader>
-        <CardTitle>Area Chart - Legend</CardTitle>
-        <CardDescription>
-          Showing total visitors for the last 6 months
-        </CardDescription>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-sm text-muted-foreground font-medium">
+          Usuarios totales
+        </CardTitle>
+
+        <div className="flex items-center gap-2 pt-1">
+          {/* Número */}
+          <span className="text-2xl font-bold text-primary">2,332</span>
+
+          {/* Porcentaje */}
+          <div className="flex items-center text-sm text-[#61AA12] font-medium">
+            <ArrowUp className="w-4 h-4 mr-1 -ml text-[#61AA12]" />
+            100%
+          </div>
+        </div>
       </CardHeader>
+
       <CardContent>
         <ChartContainer config={chartConfig}>
           <AreaChart
@@ -108,6 +118,5 @@ export function TotalUsersGraph() {
     </Card>
   )
 }
-
 
 export default TotalUsersGraph
