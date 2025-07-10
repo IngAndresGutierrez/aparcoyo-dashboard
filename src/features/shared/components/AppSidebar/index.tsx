@@ -3,21 +3,15 @@
 import * as React from "react"
 import {
   AudioWaveform,
-  BookOpen,
-  Bot,
   Command,
-  Frame,
+  
   GalleryVerticalEnd,
-  Map,
-  PieChart,
-  Settings2,
-  SquareTerminal,
+
 } from "lucide-react"
 
-import { NavMain } from "../NavMain"
 import { NavProjects } from "../NavProjects"
 import { NavUser } from "../NavUser"
-import { TeamSwitcher } from "../TeamSwitcher"
+
 import {
   Sidebar,
   SidebarContent,
@@ -25,13 +19,14 @@ import {
   SidebarHeader,
   SidebarRail,
 } from "@/components/ui/sidebar"
+import Image from "next/image"
 
 // This is sample data.
 const data = {
   user: {
     name: "shadcn",
     email: "m@example.com",
-    avatar: "/avatars/shadcn.jpg",
+    avatar: "/home/avatar.svg",
   },
   teams: [
     {
@@ -50,120 +45,57 @@ const data = {
       plan: "Free",
     },
   ],
-  navMain: [
-    {
-      title: "Playground",
-      url: "#",
-      icon: SquareTerminal,
-      isActive: true,
-      items: [
-        {
-          title: "History",
-          url: "#",
-        },
-        {
-          title: "Starred",
-          url: "#",
-        },
-        {
-          title: "Settings",
-          url: "#",
-        },
-      ],
-    },
-    {
-      title: "Models",
-      url: "#",
-      icon: Bot,
-      items: [
-        {
-          title: "Genesis",
-          url: "#",
-        },
-        {
-          title: "Explorer",
-          url: "#",
-        },
-        {
-          title: "Quantum",
-          url: "#",
-        },
-      ],
-    },
-    {
-      title: "Documentation",
-      url: "#",
-      icon: BookOpen,
-      items: [
-        {
-          title: "Introduction",
-          url: "#",
-        },
-        {
-          title: "Get Started",
-          url: "#",
-        },
-        {
-          title: "Tutorials",
-          url: "#",
-        },
-        {
-          title: "Changelog",
-          url: "#",
-        },
-      ],
-    },
-    {
-      title: "Settings",
-      url: "#",
-      icon: Settings2,
-      items: [
-        {
-          title: "General",
-          url: "#",
-        },
-        {
-          title: "Team",
-          url: "#",
-        },
-        {
-          title: "Billing",
-          url: "#",
-        },
-        {
-          title: "Limits",
-          url: "#",
-        },
-      ],
-    },
-  ],
+
   projects: [
     {
-      name: "Design Engineering",
+      name: "Inicio",
       url: "#",
-      icon: Frame,
+      icon: "/home/home-03.svg",
     },
     {
-      name: "Sales & Marketing",
+      name: "Usuarios",
       url: "#",
-      icon: PieChart,
+      icon: "/home/users-01.svg",
     },
     {
-      name: "Travel",
+      name: "Plazas",
       url: "#",
-      icon: Map,
+      icon: "/home/home-line.svg",
+    },
+    {
+      name: "Reservas",
+      url: "#",
+      icon: "/home/ticket-02.svg",
+    },
+    {
+      name: "Transacciones",
+      url: "#",
+      icon: "/home/switch-vertical-02.svg",
+    },
+    {
+      name: "Reportes",
+      url: "#",
+      icon: "/home/alert-triangle.svg",
     },
   ],
 }
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   return (
-    <Sidebar collapsible="icon" {...props}>
+    <Sidebar
+      collapsible="icon"
+      {...props}
+    >
       <SidebarHeader>
-        <TeamSwitcher teams={data.teams} />
+        <Image
+          className="ml-1 mt-4"
+          src="/login/logo.svg"
+          alt="logo"
+          width={128}
+          height={32}
+        />
       </SidebarHeader>
       <SidebarContent>
-        <NavMain items={data.navMain} />
         <NavProjects projects={data.projects} />
       </SidebarContent>
       <SidebarFooter>

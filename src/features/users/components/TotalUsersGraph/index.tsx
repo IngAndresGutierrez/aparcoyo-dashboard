@@ -1,7 +1,7 @@
 "use client"
 
 import { TrendingUp } from "lucide-react"
-import { CartesianGrid, Line, LineChart, XAxis } from "recharts"
+import { Area, AreaChart, CartesianGrid, XAxis } from "recharts"
 
 import {
   Card,
@@ -14,11 +14,13 @@ import {
 import {
   ChartConfig,
   ChartContainer,
+  ChartLegend,
+  ChartLegendContent,
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart"
 
-export const description = "A multiple line chart"
+export const description = "An area chart with a legend"
 
 const chartData = [
   { month: "January", desktop: 186, mobile: 80 },
@@ -40,16 +42,18 @@ const chartConfig = {
   },
 } satisfies ChartConfig
 
-const TotalUsersGraph = () => {
+export function TotalUsersGraph() {
   return (
-    <Card className="mt-4">
+    <Card className="">
       <CardHeader>
-        <CardTitle>Line Chart - Multiple</CardTitle>
-        <CardDescription>January - June 2024</CardDescription>
+        <CardTitle>Area Chart - Legend</CardTitle>
+        <CardDescription>
+          Showing total visitors for the last 6 months
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <ChartContainer config={chartConfig}>
-          <LineChart
+          <AreaChart
             accessibilityLayer
             data={chartData}
             margin={{
@@ -65,22 +69,28 @@ const TotalUsersGraph = () => {
               tickMargin={8}
               tickFormatter={(value) => value.slice(0, 3)}
             />
-            <ChartTooltip cursor={false} content={<ChartTooltipContent />} />
-            <Line
-              dataKey="desktop"
-              type="monotone"
-              stroke="var(--color-desktop)"
-              strokeWidth={2}
-              dot={false}
+            <ChartTooltip
+              cursor={false}
+              content={<ChartTooltipContent indicator="line" />}
             />
-            <Line
+            <Area
               dataKey="mobile"
-              type="monotone"
+              type="natural"
+              fill="var(--color-mobile)"
+              fillOpacity={0.4}
               stroke="var(--color-mobile)"
-              strokeWidth={2}
-              dot={false}
+              stackId="a"
             />
-          </LineChart>
+            <Area
+              dataKey="desktop"
+              type="natural"
+              fill="var(--color-desktop)"
+              fillOpacity={0.4}
+              stroke="var(--color-desktop)"
+              stackId="a"
+            />
+            <ChartLegend content={<ChartLegendContent />} />
+          </AreaChart>
         </ChartContainer>
       </CardContent>
       <CardFooter>
@@ -90,7 +100,7 @@ const TotalUsersGraph = () => {
               Trending up by 5.2% this month <TrendingUp className="h-4 w-4" />
             </div>
             <div className="text-muted-foreground flex items-center gap-2 leading-none">
-              Showing total visitors for the last 6 months
+              January - June 2024
             </div>
           </div>
         </div>
@@ -98,5 +108,6 @@ const TotalUsersGraph = () => {
     </Card>
   )
 }
+
 
 export default TotalUsersGraph

@@ -114,11 +114,11 @@ const FormLogin = () => {
       </label>
 
       {/* Input + Button juntos */}
-      <div className="flex items-center w-88 border border-input rounded-md overflow-hidden">
-        <input
+      <div className="flex items-center w-88 border border-[#D5D7DA]  focus:outline-none focus:ring-0 rounded-md overflow-hidden">
+        <input  
           type={showPassword ? "text" : "password"}
           placeholder="Contraseña"
-          className="flex-1 px-3 py-2 shadow-xs text-base bg-transparent outline-none h-11 text-placeholder"
+          className="flex-1 px-3 py-2 shadow-xs text-base bg-transparent outline-none  h-11 text-placeholder  focus:outline-none focus:ring-0"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
         />

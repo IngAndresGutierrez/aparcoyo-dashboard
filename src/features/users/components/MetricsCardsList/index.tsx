@@ -19,6 +19,7 @@ const cardsItems = [
     icon: "",
     percentage: "10%",
   },
+ 
 ]
 
 const MetricsCardsList = () => {
