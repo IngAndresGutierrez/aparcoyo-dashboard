@@ -27,7 +27,7 @@ const MetricCard = ({
       <CardHeader className="relative">
         <CardTitle className="text-tertiary font-semibold">{title}</CardTitle>
         <CardDescription
-          className={`absolute mt-14 ml-38 left-0 flex items-center  text-sm ${percentageColor}`}
+          className={`absolute mt-17 ml-22 lg:mt-14 lg:ml-38 left-0 flex items-center  text-sm ${percentageColor}`}
         >
           <Icon className={`w-4 h-4 mr-1 ${percentageColor}`} />
           {percentageValue}

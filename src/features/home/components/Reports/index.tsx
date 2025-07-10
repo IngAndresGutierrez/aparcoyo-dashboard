@@ -17,31 +17,34 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import Image from "next/image"
 
 const reports = [
   {
     id: 1,
-    content: "Me habló con groserías y me insultó cuando le pedí que se moviera un poco.",
+    content:
+      "Me habló con groserías y me insultó cuando le pedí que se moviera un poco.",
     date: "Jan 16, 2025",
     status: "Pendiente",
     category: "Contenido falso o engañoso",
     reportedBy: {
       name: "Sienna Hewitt",
       email: "hi@siennahewitt...",
-      avatar: "SH"
-    }
+      avatar: "SH",
+    },
   },
   {
     id: 2,
-    content: "El usuario no era el mismo que aparecía en la reserva, parecía alguien diferente.",
+    content:
+      "El usuario no era el mismo que aparecía en la reserva, parecía alguien diferente.",
     date: "Jan 16, 2025",
     status: "Pendiente",
     category: "Ubicación incorrecta o inexistente",
     reportedBy: {
       name: "Piper Williamson",
       email: "pippa@pippawc...",
-      avatar: "PW"
-    }
+      avatar: "PW",
+    },
   },
   {
     id: 3,
@@ -52,8 +55,8 @@ const reports = [
     reportedBy: {
       name: "Olly Schroeder",
       email: "olly_s@icloud.co...",
-      avatar: "OS"
-    }
+      avatar: "OS",
+    },
   },
   {
     id: 4,
@@ -64,8 +67,8 @@ const reports = [
     reportedBy: {
       name: "Mathilde Lewis",
       email: "mathilde@hey.c...",
-      avatar: "ML"
-    }
+      avatar: "ML",
+    },
   },
   {
     id: 5,
@@ -76,57 +79,111 @@ const reports = [
     reportedBy: {
       name: "Julius Vaughan",
       email: "juliusvaughan@...",
-      avatar: "JV"
-    }
+      avatar: "JV",
+    },
   },
   {
     id: 6,
-    content: "Me insistió varias veces para cancelar la reserva y no pagarle en efectivo.",
+    content:
+      "Me insistió varias veces para cancelar la reserva y no pagarle en efectivo.",
     date: "Jan 14, 2025",
     status: "Pendiente",
     category: "Spam o mensajes irrelevantes",
     reportedBy: {
       name: "Zaid Schwartz",
       email: "zaid@zaidstudio...",
-      avatar: "ZS"
-    }
-  }
+      avatar: "ZS",
+    },
+  },
 ]
 
 const TableReport = () => {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-lg font-semibold">18 Reportes recibidos</CardTitle>
+        <CardTitle className="text-lg font-semibold">
+          18 Reportes recibidos
+        </CardTitle>
       </CardHeader>
       <CardContent>
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="font-medium">Reporte</TableHead>
-              <TableHead className="font-medium">Fecha</TableHead>
-              <TableHead className="font-medium">Estado</TableHead>
-              <TableHead className="font-medium">Categoría</TableHead>
-              <TableHead className="font-medium">Reservado por</TableHead>
+              <TableHead className="font-medium text-quaternary">Reporte</TableHead>
+              <TableHead className="font-medium">
+                <div className="flex items-center justify-center gap-1 text-quaternary">
+                  Fecha
+                  <Image className="mt-1"
+                    src="/home/button-utility.svg"
+                    alt="icon"
+                    width={20}
+                    height={20}
+                  />
+                </div>
+              </TableHead>
+
+              <TableHead className="font-medium">
+                <div className="flex items-center justify-center gap-1 text-quaternary">
+                  Estado
+                  <Image className="mt-1"
+                    src="/home/button-utility.svg"
+                    alt="icon"
+                    width={20}
+                    height={20}
+                  />
+                </div>
+              </TableHead>
+
+              <TableHead className="font-medium">
+                <div className="flex items-center justify-center gap-1 text-quaternary">
+                  Categoría
+                  <Image className="mt-1"
+                    src="/home/button-utility.svg"
+                    alt="icon"
+                    width={20}
+                    height={20}
+                  />
+                </div>
+              </TableHead>
+
+              <TableHead className="font-medium">
+                <div className="flex items-center justify-center gap-1 text-quaternary">
+                  Reservado por
+                  <Image className="mt-1"
+                    src="/home/button-utility.svg"
+                    alt="icon"
+                    width={20}
+                    height={20}
+                  />
+                </div>
+              </TableHead>
+
               <TableHead className="w-[50px]"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {reports.map((report) => (
               <TableRow key={report.id}>
-                <TableCell className="max-w-[300px]">
+                <TableCell className="max-w-75 whitespace-normal break-words leading-5 py-2">
                   <p className="text-sm">&ldquo;{report.content}&rdquo;</p>
                 </TableCell>
                 <TableCell>
-                  <span className="text-sm text-muted-foreground">{report.date}</span>
+                  <span className="text-sm text-muted-foreground">
+                    {report.date}
+                  </span>
                 </TableCell>
                 <TableCell>
-                  <Badge variant="secondary" className="bg-orange-100 text-orange-800 hover:bg-orange-100">
+                  <Badge
+                    variant="secondary"
+                    className="bg-orange-100 text-orange-800 hover:bg-orange-100"
+                  >
                     {report.status}
                   </Badge>
                 </TableCell>
                 <TableCell>
-                  <span className="text-sm text-muted-foreground">{report.category}</span>
+                  <span className="text-sm text-muted-foreground ">
+                    {report.category}
+                  </span>
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-3">
@@ -137,15 +194,23 @@ const TableReport = () => {
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex flex-col">
-                      <span className="text-sm font-medium">{report.reportedBy.name}</span>
-                      <span className="text-xs text-muted-foreground">{report.reportedBy.email}</span>
+                      <span className="text-sm font-medium">
+                        {report.reportedBy.name}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {report.reportedBy.email}
+                      </span>
                     </div>
                   </div>
                 </TableCell>
                 <TableCell>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0"
+                      >
                         <MoreHorizontal className="h-4 w-4" />
                       </Button>
                     </DropdownMenuTrigger>
@@ -166,9 +231,7 @@ const TableReport = () => {
           </TableBody>
         </Table>
         <div className="flex justify-center pt-4">
-          <Button variant="outline">
-            Ver todos los reportes
-          </Button>
+          <Button variant="outline">Ver todos los reportes</Button>
         </div>
       </CardContent>
     </Card>
