@@ -23,7 +23,7 @@ const MetricCard = ({
   const Icon = isPositive ? ArrowUp : ArrowDown
 
   return (
-    <Card className="w-full max-w-sm rounded-xl">
+    <Card className="lg:w-full md:w-60 max-w-sm rounded-xl">
       <CardHeader className="relative">
         <CardTitle className="text-tertiary font-semibold">{title}</CardTitle>
         <CardDescription

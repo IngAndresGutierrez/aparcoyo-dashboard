@@ -123,7 +123,11 @@ export const columns: ColumnDef<Report>[] = [
   {
     accessorKey: "email",
     header: "Email",
-    cell: ({ row }) => <span className="text-sm truncate block max-w-[150px]">{row.original.email}</span>,
+    cell: ({ row }) => (
+      <span className="text-sm truncate block max-w-[150px]">
+        {row.original.email}
+      </span>
+    ),
     // Sin meta.responsive para que siempre sea visible
   },
   {
@@ -168,7 +172,7 @@ export const columns: ColumnDef<Report>[] = [
   },
 ]
 
-const UsersTable = () => {
+const UsersTablePlazas = () => {
   const table = useReactTable({
     data,
     columns,
@@ -243,4 +247,4 @@ const UsersTable = () => {
   )
 }
 
-export default UsersTable
+export default UsersTablePlazas
