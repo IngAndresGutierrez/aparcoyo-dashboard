@@ -2,22 +2,22 @@ import MetricCard from "@/features/shared/components/MetricCard"
 
 const cardsItems = [
   {
-    title: "Total Users",
+    title: "Usuarios nuevos este periodo",
     value: "100",
     icon: "",
-    percentage: "10%",
+    percentage: "+10%",
   },
   {
-    title: "Total Users",
+    title: "Publicado al menos una plaza",
     value: "100",
     icon: "",
-    percentage: "10%",
+    percentage: "+10%",
   },
   {
-    title: "Total Users",
+    title: "Usuarios con reservas completadas",
     value: "100",
     icon: "",
-    percentage: "10%",
+    percentage: "-10%",
   },
  
 ]
@@ -29,7 +29,6 @@ const MetricsCardsList = () => {
         key={index}
         title={item.title}
         value={item.value}
-        icon={item.icon}
         percentage={item.percentage}
       />
     )
