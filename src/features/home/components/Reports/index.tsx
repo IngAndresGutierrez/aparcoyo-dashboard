@@ -106,146 +106,148 @@ const TableReport = () => {
         </CardTitle>
       </CardHeader>
       <CardContent className="">
-        <Table className="w-full">
-          <TableHeader className="">
-            <TableRow className="border-b border-gray-200">
-              <TableHead className="font-medium text-quaternary">
-                Reporte
-              </TableHead>
-              <TableHead className="font-medium hidden md:table-cell">
-                <div className="flex items-center justify-center gap-1 text-quaternary">
-                  Fecha
-                  <Image
-                    className="mt-1"
-                    src="/home/button-utility.svg"
-                    alt="icon"
-                    width={20}
-                    height={20}
-                  />
-                </div>
-              </TableHead>
-
-              <TableHead className="font-medium">
-                <div className="flex items-center justify-center gap-1 text-quaternary">
-                  Estado
-                  <Image
-                    className="mt-1"
-                    src="/home/button-utility.svg"
-                    alt="icon"
-                    width={20}
-                    height={20}
-                  />
-                </div>
-              </TableHead>
-
-              <TableHead className="font-medium hidden md:table-cell">
-                <div className="flex items-center justify-center gap-1 text-quaternary">
-                  Categoría
-                  <Image
-                    className="mt-1"
-                    src="/home/button-utility.svg"
-                    alt="icon"
-                    width={20}
-                    height={20}
-                  />
-                </div>
-              </TableHead>
-
-              <TableHead className="font-medium hidden md:table-cell">
-                <div className="flex items-center justify-center gap-1 text-quaternary">
-                  Reservado por
-                  <Image
-                    className="mt-1"
-                    src="/home/button-utility.svg"
-                    alt="icon"
-                    width={20}
-                    height={20}
-                  />
-                </div>
-              </TableHead>
-
-              <TableHead className="w-[70px]"></TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {reports.map((report) => (
-              <TableRow
-                key={report.id}
-                className="border-b border-gray-200"
-              >
-                <TableCell className="max-w-75 whitespace-normal break-words leading-5 py-2">
-                  <p className="text-sm">&ldquo;{report.content}&rdquo;</p>
-                </TableCell>
-                <TableCell className="hidden md:table-cell">
-                  <span className="text-sm text-muted-foreg round">
-                    {report.date}
-                  </span>
-                </TableCell>
-                <TableCell>
-                  <Badge
-                    variant="secondary"
-                    className="bg-orange-100 text-orange-800 hover:bg-orange-100"
-                  >
-                    {report.status}
-                  </Badge>
-                </TableCell>
-                <TableCell className="whitespace-normal break-words leading-5 max-w-36 hidden md:table-cell">
-                  <span className="text-sm text-muted-foreground whitespace-normal break-words leading-5">
-                    {report.category}
-                  </span>
-                </TableCell>
-                <TableCell className="hidden md:table-cell">
-                  <div className="flex items-center gap-3">
-                    <Avatar className="h-8 w-8">
-                      <AvatarImage
-                        src={
-                          report.reportedBy.avatar.startsWith("/")
-                            ? report.reportedBy.avatar
-                            : ""
-                        }
-                      />
-                      <AvatarFallback className="text-xs bg-blue-500 text-white">
-                        {report.reportedBy.avatar.startsWith("/")
-                          ? report.reportedBy.name
-                              .split(" ")
-                              .map((n) => n[0])
-                              .join("")
-                          : report.reportedBy.avatar}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex flex-col">
-                      <span className="text-sm font-medium">
-                        {report.reportedBy.name}
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        {report.reportedBy.email}
-                      </span>
-                    </div>
+        <div className="overflow-x-auto">
+          <Table className="w-full">
+            <TableHeader className="">
+              <TableRow className="border-b border-gray-200">
+                <TableHead className="font-medium text-quaternary">
+                  Reporte
+                </TableHead>
+                <TableHead className="font-medium hidden md:table-cell lg:hidden xl:table-cell">
+                  <div className="flex items-center justify-center gap-1 text-quaternary">
+                    Fecha
+                    <Image
+                      className="mt-1"
+                      src="/home/button-utility.svg"
+                      alt="icon"
+                      width={20}
+                      height={20}
+                    />
                   </div>
-                </TableCell>
-                <TableCell className="">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 w-8 p-0"
-                      >
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem className="text-error-primary font-semibold">
-                        <Trash2 className="mr-2 h-4 w-4 text-error-primary" />
-                        Eliminar reporte
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </TableCell>
+                </TableHead>
+
+                <TableHead className="font-medium">
+                  <div className="flex items-center justify-center gap-1 text-quaternary">
+                    Estado
+                    <Image
+                      className="mt-1"
+                      src="/home/button-utility.svg"
+                      alt="icon"
+                      width={20}
+                      height={20}
+                    />
+                  </div>
+                </TableHead>
+
+                <TableHead className="font-medium hidden md:table-cell lg:hidden xl:table-cell">
+                  <div className="flex items-center justify-center gap-1 text-quaternary">
+                    Categoría
+                    <Image
+                      className="mt-1"
+                      src="/home/button-utility.svg"
+                      alt="icon"
+                      width={20}
+                      height={20}
+                    />
+                  </div>
+                </TableHead>
+
+                <TableHead className="font-medium hidden lg:table-cell">
+                  <div className="flex items-center justify-center gap-1 text-quaternary">
+                    Reservado por
+                    <Image
+                      className="mt-1"
+                      src="/home/button-utility.svg"
+                      alt="icon"
+                      width={20}
+                      height={20}
+                    />
+                  </div>
+                </TableHead>
+
+                <TableHead className="w-[70px]"></TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {reports.map((report) => (
+                <TableRow
+                  key={report.id}
+                  className="border-b border-gray-200"
+                >
+                  <TableCell className="max-w-75 whitespace-normal break-words leading-5 py-2">
+                    <p className="text-sm">&ldquo;{report.content}&rdquo;</p>
+                  </TableCell>
+                  <TableCell className="hidden md:table-cell lg:hidden xl:table-cell">
+                    <span className="text-sm text-muted-foreg round">
+                      {report.date}
+                    </span>
+                  </TableCell>
+                  <TableCell>
+                    <Badge
+                      variant="secondary"
+                      className="bg-orange-100 text-orange-800 hover:bg-orange-100"
+                    >
+                      {report.status}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="whitespace-normal break-words leading-5 max-w-36 hidden md:table-cell lg:hidden xl:table-cell">
+                    <span className="text-sm text-muted-foreground whitespace-normal break-words leading-5">
+                      {report.category}
+                    </span>
+                  </TableCell>
+                  <TableCell className="hidden lg:table-cell">
+                    <div className="flex items-center gap-3">
+                      <Avatar className="h-8 w-8">
+                        <AvatarImage
+                          src={
+                            report.reportedBy.avatar.startsWith("/")
+                              ? report.reportedBy.avatar
+                              : ""
+                          }
+                        />
+                        <AvatarFallback className="text-xs bg-blue-500 text-white">
+                          {report.reportedBy.avatar.startsWith("/")
+                            ? report.reportedBy.name
+                                .split(" ")
+                                .map((n) => n[0])
+                                .join("")
+                            : report.reportedBy.avatar}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex flex-col">
+                        <span className="text-sm font-medium">
+                          {report.reportedBy.name}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          {report.reportedBy.email}
+                        </span>
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell className="">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0"
+                        >
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem className="text-error-primary font-semibold">
+                          <Trash2 className="mr-2 h-4 w-4 text-error-primary" />
+                          Eliminar reporte
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
         <div className="border border-b mt-3"></div>
         <div className="flex justify-center pt-4">
           <Button
