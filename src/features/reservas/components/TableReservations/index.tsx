@@ -105,7 +105,7 @@ export const columns: ColumnDef<Report>[] = [
   },
   {
     accessorKey: "name",
-    header: "Plaza",
+    header: "plazas reservadas",
     cell: ({ row }) => (
       <div className="flex items-center gap-2">
         <Image
@@ -122,7 +122,7 @@ export const columns: ColumnDef<Report>[] = [
   },
   {
     accessorKey: "email",
-    header: "Reservas",
+    header: "Reservado por",
     cell: ({ row }) => (
       <span className="text-sm truncate block max-w-[150px]">
         {row.original.email}
@@ -132,19 +132,19 @@ export const columns: ColumnDef<Report>[] = [
   },
   {
     accessorKey: "date",
-    header: "Precio",
+    header: "Fecha de confirmacion",
     cell: ({ row }) => <span>{row.original.date}</span>,
     meta: { responsive: true }, // Ocultar en responsive
   },
   {
     accessorKey: "reservations",
-    header: "Fecha de publicación",
+    header: "Estado",
     cell: ({ row }) => <span>{row.original.reservations}</span>,
     meta: { responsive: true }, // Ocultar en responsive
   },
   {
     accessorKey: "listings",
-    header: "Propietario",
+    header: "Precio",
     cell: ({ row }) => <span>{row.original.listings}</span>,
     meta: { responsive: true }, // Ocultar en responsive
   },
@@ -172,7 +172,7 @@ export const columns: ColumnDef<Report>[] = [
   },
 ]
 
-const UsersTablePlazas = () => {
+const ReservationsTable = () => {
   const table = useReactTable({
     data,
     columns,
@@ -247,4 +247,4 @@ const UsersTablePlazas = () => {
   )
 }
 
-export default UsersTablePlazas
+export default ReservationsTable

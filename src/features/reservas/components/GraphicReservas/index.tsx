@@ -1,8 +1,15 @@
 "use client"
 
+import { ArrowUp, TrendingUp } from "lucide-react"
 import { Area, AreaChart, CartesianGrid, XAxis } from "recharts"
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
 import {
   ChartConfig,
   ChartContainer,
@@ -11,7 +18,6 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart"
-import { ArrowUp } from "lucide-react"
 
 export const description = "An area chart with a legend"
 
@@ -27,17 +33,17 @@ const chartData = [
 const chartConfig = {
   desktop: {
     label: "Desktop",
-    color: "#0E47E1", // azul (línea de arriba)
+    color: "#0E47E1", // azul nuevo
   },
   mobile: {
     label: "Mobile",
-    color: "#9A75E5", // violeta (línea de abajo)
+    color: "#9A75E5", // azul nuevo
   },
 } satisfies ChartConfig
 
-export function GraphicsHome() {
+export function TotalUsersGraphReservas() {
   return (
-    <Card>
+    <Card className="">
       <CardHeader className="pb-2">
         <CardTitle className="text-sm text-muted-foreground font-medium">
           Usuarios totales
@@ -54,7 +60,8 @@ export function GraphicsHome() {
           </div>
         </div>
       </CardHeader>
-      <CardContent className="">
+
+      <CardContent>
         <ChartContainer config={chartConfig}>
           <AreaChart
             accessibilityLayer
@@ -96,8 +103,20 @@ export function GraphicsHome() {
           </AreaChart>
         </ChartContainer>
       </CardContent>
+      <CardFooter>
+        <div className="flex w-full items-start gap-2 text-sm">
+          <div className="grid gap-2">
+            <div className="flex items-center gap-2 leading-none font-medium">
+              Trending up by 5.2% this month <TrendingUp className="h-4 w-4" />
+            </div>
+            <div className="text-muted-foreground flex items-center gap-2 leading-none">
+              January - June 2024
+            </div>
+          </div>
+        </div>
+      </CardFooter>
     </Card>
   )
 }
 
-export default GraphicsHome
+export default TotalUsersGraphReservas
