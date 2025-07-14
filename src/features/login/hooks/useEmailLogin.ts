@@ -15,7 +15,7 @@ export const useEmailLogin = (email: string, password: string) => {
       setIsLoading(true)
       const response = await emailLoginService(email, password)
       console.log(response)
-      router.push("/")
+      router.push("/home")
     } catch (error: any) {
       console.log(error?.response?.data?.ok)
       setError(true)

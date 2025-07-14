@@ -3,8 +3,8 @@ import { ArrowUp } from "lucide-react"
 
 const UsersTotalsCards = () => {
   return (
-    <Card className="w-full max-w-sm lg:h-114 flex justify-center items-center">
-      <div className="flex lg:flex-col lg:p-4 lg:gap-y-18 flex-row gap-x-12">
+    <Card className="w-full max-w-sm lg:h-130 flex justify-center items-center">
+      <div className="flex lg:flex-col lg:p-4 lg:gap-y-24 flex-row gap-x-12">
         {/* Primer bloque */}
         <div className="flex flex-col items-center">
           <h1 className="text-lg font-semibold text-tertiary mb-3">

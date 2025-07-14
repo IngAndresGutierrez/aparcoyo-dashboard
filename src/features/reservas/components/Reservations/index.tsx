@@ -36,11 +36,11 @@ const chartConfig = {
   },
 } satisfies ChartConfig
 
-const ChartBarHorizontalCity = () => {
+const ReservationsChart = () => {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Precio promedio por ciudad</CardTitle>
+        <CardTitle>Plazas más reservadas</CardTitle>
         <CardDescription>January - June 2024</CardDescription>
       </CardHeader>
       <CardContent>
@@ -98,4 +98,4 @@ const ChartBarHorizontalCity = () => {
   )
 }
 
-export default ChartBarHorizontalCity
+export default ReservationsChart
