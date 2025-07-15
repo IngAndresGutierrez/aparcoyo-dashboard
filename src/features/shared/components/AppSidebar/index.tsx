@@ -49,27 +49,27 @@ const data = {
   projects: [
     {
       name: "Inicio",
-      url: "#",
+      url: "/home",
       icon: "/home/home-03.svg",
     },
     {
       name: "Usuarios",
-      url: "#",
+      url: "/usuarios",
       icon: "/home/users-01.svg",
     },
     {
       name: "Plazas",
-      url: "#",
+      url: "/plazas",
       icon: "/home/home-line.svg",
     },
     {
       name: "Reservas",
-      url: "#",
+      url: "/reservas",
       icon: "/home/ticket-02.svg",
     },
     {
       name: "Transacciones",
-      url: "#",
+      url: "/transacciones",
       icon: "/home/switch-vertical-02.svg",
     },
     {
