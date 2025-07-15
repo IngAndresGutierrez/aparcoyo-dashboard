@@ -74,7 +74,7 @@ const data = {
     },
     {
       name: "Reportes",
-      url: "#",
+      url: "/reportes",
       icon: "/home/alert-triangle.svg",
     },
   ],
