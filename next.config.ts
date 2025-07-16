@@ -1,9 +1,9 @@
-import type { NextConfig } from "next";
+import type { NextConfig } from "next"
 
 const nextConfig: NextConfig = {
-  images: {
-    remotePatterns: [new URL("https://pokeapi.co/**")],
-  },
-};
+  output: "export",
+  basePath: "",
+  assetPrefix: "",
+}
 
-export default nextConfig;
+export default nextConfig
