@@ -24,8 +24,8 @@ import Image from "next/image"
 // This is sample data.
 const data = {
   user: {
-    name: "shadcn",
-    email: "m@example.com",
+    name: "karen",
+    email: "karen@gmail.com",
     avatar: "/home/avatar.svg",
   },
   teams: [
