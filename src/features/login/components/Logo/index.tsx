@@ -7,7 +7,7 @@ const Logo = () => {
       <Image
         className="top-0"
         src="/login/logo.svg"
-        alt="Logo"
+        alt="logo"
         width={148}
         height={36}
       />
