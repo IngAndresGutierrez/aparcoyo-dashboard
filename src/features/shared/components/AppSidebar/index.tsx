@@ -1,13 +1,7 @@
 "use client"
 
 import * as React from "react"
-import {
-  AudioWaveform,
-  Command,
-  
-  GalleryVerticalEnd,
-
-} from "lucide-react"
+import { AudioWaveform, Command, GalleryVerticalEnd } from "lucide-react"
 
 import { NavProjects } from "../NavProjects"
 import { NavUser } from "../NavUser"
@@ -82,14 +76,11 @@ const data = {
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   return (
-    <Sidebar
-      collapsible="icon"
-      {...props}
-    >
+    <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
         <Image
           className="ml-1 mt-4"
-          src="/login/logo.svg"
+          src="/login/logo-new.svg"
           alt="logo"
           width={128}
           height={32}
