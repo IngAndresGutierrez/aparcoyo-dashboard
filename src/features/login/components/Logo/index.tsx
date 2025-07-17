@@ -6,7 +6,7 @@ const Logo = () => {
     <div className="flex items-center justify-center">
       <Image
         className="top-0"
-        src="/login/logo.svg"
+        src="/login/logo2.svg"
         alt="Logo"
         width={148}
         height={36}
