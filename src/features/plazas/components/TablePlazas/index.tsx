@@ -1,23 +1,14 @@
-"use client"
+"use client";
 
-import * as React from "react"
+import * as React from "react";
 import {
-  ColumnDef,
   flexRender,
   getCoreRowModel,
   useReactTable,
   getPaginationRowModel,
-  RowData,
-} from "@tanstack/react-table"
-import { MoreHorizontal } from "lucide-react"
+} from "@tanstack/react-table";
 
-import { Button } from "@/components/ui/button"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -25,160 +16,34 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
-import Image from "next/image"
+} from "@/components/ui/table";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useEffect } from "react";
 
-// Extender la interfaz ColumnMeta para incluir la propiedad responsive
-declare module "@tanstack/react-table" {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  interface ColumnMeta<TData extends RowData, TValue> {
-    responsive?: boolean
-  }
-}
-
-const data: Report[] = [
-  {
-    name: "Lily-Rose Chedjou",
-    email: "lilyrose@gmail.com",
-    date: "Jan 16, 2025",
-    reservations: 12,
-    listings: 1,
-  },
-  {
-    name: "Caitlyn King",
-    email: "hi@caitlynking.com",
-    date: "Jan 16, 2025",
-    reservations: 3,
-    listings: 0,
-  },
-  {
-    name: "Fleur Cook",
-    email: "fleurcook@icloud.com",
-    date: "Jan 15, 2025",
-    reservations: 7,
-    listings: 0,
-  },
-  {
-    name: "Marco Kelly",
-    email: "marco@marcokelly.co",
-    date: "Jan 14, 2025",
-    reservations: 2,
-    listings: 0,
-  },
-  {
-    name: "Lulu Meyers",
-    email: "lulu@lulumeyers.com",
-    date: "Jan 14, 2025",
-    reservations: 1,
-    listings: 0,
-  },
-  {
-    name: "Mikey Lawrence",
-    email: "m.lawrence@gmail.com",
-    date: "Jan 14, 2025",
-    reservations: 0,
-    listings: 3,
-  },
-  {
-    name: "Freya Browning",
-    email: "hey@freyabrowning.com",
-    date: "Jan 14, 2025",
-    reservations: 0,
-    listings: 0,
-  },
-]
-
-export type Report = {
-  name: string
-  email: string
-  date: string
-  reservations: number
-  listings: number
-}
-
-export const columns: ColumnDef<Report>[] = [
-  {
-    id: "select",
-    header: () => <input type="checkbox" />,
-    cell: () => <input type="checkbox" />,
-    // Sin meta.responsive para que siempre sea visible
-  },
-  {
-    accessorKey: "name",
-    header: "Plaza",
-    cell: ({ row }) => (
-      <div className="flex items-center gap-2">
-        <Image
-          src="/home/avatar-report.svg"
-          alt="avatar"
-          width={10}
-          height={10}
-          className="w-6 h-6 rounded-full flex-shrink-0"
-        />
-        <span className="truncate text-sm">{row.original.name}</span>
-      </div>
-    ),
-    // Sin meta.responsive para que siempre sea visible
-  },
-  {
-    accessorKey: "email",
-    header: "Reservas",
-    cell: ({ row }) => (
-      <span className="text-sm truncate block max-w-[150px]">
-        {row.original.email}
-      </span>
-    ),
-    // Sin meta.responsive para que siempre sea visible
-  },
-  {
-    accessorKey: "date",
-    header: "Precio",
-    cell: ({ row }) => <span>{row.original.date}</span>,
-    meta: { responsive: true }, // Ocultar en responsive
-  },
-  {
-    accessorKey: "reservations",
-    header: "Fecha de publicación",
-    cell: ({ row }) => <span>{row.original.reservations}</span>,
-    meta: { responsive: true }, // Ocultar en responsive
-  },
-  {
-    accessorKey: "listings",
-    header: "Propietario",
-    cell: ({ row }) => <span>{row.original.listings}</span>,
-    meta: { responsive: true }, // Ocultar en responsive
-  },
-  {
-    id: "actions",
-    cell: () => (
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            variant="ghost"
-            className="h-8 w-8 p-0"
-          >
-            <MoreHorizontal />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuItem>Editar usuario</DropdownMenuItem>
-          <DropdownMenuItem className="text-red-600">
-            Eliminar usuario
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    ),
-    meta: { responsive: true }, // Ocultar en responsive
-  },
-]
+import { useGetAllPlazas } from "../../hooks/useGetAllPlazas";
+import { columns } from "./columns";
 
 const UsersTablePlazas = () => {
+  const { getAllPlazas, plazas, isLoading } = useGetAllPlazas();
+
   const table = useReactTable({
-    data,
+    data: plazas,
     columns,
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
-  })
+  });
+
+  useEffect(() => {
+    getAllPlazas();
+  }, []);
+
+  if (isLoading) {
+    return (
+      <div className="h-6">
+        <Skeleton className="h-full" />
+      </div>
+    );
+  }
 
   return (
     <div className="w-full">
@@ -244,7 +109,7 @@ const UsersTablePlazas = () => {
         </Button>
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default UsersTablePlazas
+export default UsersTablePlazas;
