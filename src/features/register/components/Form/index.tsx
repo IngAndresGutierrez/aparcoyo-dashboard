@@ -40,7 +40,7 @@ const RegisterForm = () => {
     }
 
     const camposVacios = Object.values(data).some((v) => v === "")
-    if (camposVacios) {
+    if (camposVacios) { 
       setErrors({ general: "Todos los campos son obligatorios." })
       return
     }
