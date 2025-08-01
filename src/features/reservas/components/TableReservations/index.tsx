@@ -37,16 +37,20 @@ const ReservationsTable = () => {
     getAllReservas()
   }, [])
 
+  // Función para refrescar manualmente las reservas
+
   if (isLoading) {
     return (
-      <div className="h-6">
-        <Skeleton className="h-full" />
+      <div className="space-y-4">
+        <Skeleton className="h-8 w-full" />
+        <Skeleton className="h-64 w-full" />
       </div>
     )
   }
 
   return (
     <div className="w-full">
+      {/* Tabla de reservas */}
       <div className="rounded-md border overflow-x-auto">
         <Table className="min-w-full">
           <TableHeader>
@@ -55,7 +59,7 @@ const ReservationsTable = () => {
                 {headerGroup.headers.map((header) => (
                   <TableHead
                     key={header.id}
-                    className={`text-muted-foreground px-2 py-3 ${
+                    className={`text-muted-foreground px-4 py-3 ${
                       header.column.columnDef.meta?.responsive
                         ? "hidden lg:table-cell"
                         : ""
@@ -71,25 +75,41 @@ const ReservationsTable = () => {
             ))}
           </TableHeader>
           <TableBody>
-            {table.getRowModel().rows.map((row) => (
-              <TableRow key={row.id}>
-                {row.getVisibleCells().map((cell) => (
-                  <TableCell
-                    key={cell.id}
-                    className={`py-3 px-2 ${
-                      cell.column.columnDef.meta?.responsive
-                        ? "hidden lg:table-cell"
-                        : ""
-                    }`}
-                  >
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                  </TableCell>
-                ))}
+            {table.getRowModel().rows?.length ? (
+              table.getRowModel().rows.map((row) => (
+                <TableRow key={row.id}>
+                  {row.getVisibleCells().map((cell) => (
+                    <TableCell
+                      key={cell.id}
+                      className={`py-3 px-2 ${
+                        cell.column.columnDef.meta?.responsive
+                          ? "hidden lg:table-cell"
+                          : ""
+                      }`}
+                    >
+                      {flexRender(
+                        cell.column.columnDef.cell,
+                        cell.getContext()
+                      )}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell
+                  colSpan={table.getAllColumns().length}
+                  className="h-24 text-center"
+                >
+                  No hay reservas disponibles.
+                </TableCell>
               </TableRow>
-            ))}
+            )}
           </TableBody>
         </Table>
       </div>
+
+      {/* Paginación */}
       <div className="flex items-center justify-end space-x-2 py-4">
         <Button
           variant="outline"

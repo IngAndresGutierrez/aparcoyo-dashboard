@@ -33,7 +33,7 @@ export const reservasColumns: ColumnDef<Reserva>[] = [
     accessorKey: "plaza.direccion",
     header: "Plaza reservada",
     cell: ({ row }) => (
-      <span className="text-sm truncate block max-w-[200px]">
+      <span className="text-sm truncate block ">
         {row.original.plaza.direccion}
       </span>
     ),
