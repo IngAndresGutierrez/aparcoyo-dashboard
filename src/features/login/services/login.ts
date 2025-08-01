@@ -18,9 +18,6 @@ export const handleEmailLogin = async (email: string, password: string) => {
   try {
     const response = await emailLoginService(email, password)
 
-    // Debugging
-    console.log("Respuesta del login:", response.data)
-
     // Guardar token
     const token =
       response.data.token ||
@@ -29,7 +26,7 @@ export const handleEmailLogin = async (email: string, password: string) => {
 
     if (token) {
       localStorage.setItem("token", token)
-      console.log("✅ Token guardado correctamente")
+
       return { success: true, data: response.data }
     } else {
       console.error("❌ No se encontró token en la respuesta")

@@ -1,71 +1,47 @@
-// Tipos para estadísticas de plazas por rango
+// types/range.ts
 
-// Estadística individual (un punto en el tiempo)
-export interface EstadisticaPunto {
-  periodo: string; // "2024-01-15", "Semana 1", "Enero", etc.
-  fecha: string; // fecha ISO para ordenamiento
-  plazasOcupadas: number;
-  plazasDisponibles: number;
-  plazasTotal: number;
-  ingresos: number;
-  reservasNuevas: number;
+// Cada objeto en "plazasPorRango"
+export interface PlazaPorRango {
+  periodo: string; // fecha ISO: "2025-07-24T00:00:00.000Z"
+  cantidad: string; // string, aunque parece número
 }
 
-// Datos de estadísticas agrupadas por rango
-export interface EstadisticasPlazas {
-  rango: "dia" | "semana" | "mes";
-  fechaInicio: string;
-  fechaFin: string; 
-  datos: EstadisticaPunto[];
-  resumen: {
-    totalPlazas: number;
-    promedioOcupacion: number;
-    ingresosTotal: number;
-    reservasTotales: number;
-    tendencia: {
-      porcentaje: number; // +5.2 o -2.1
-      direccion: "up" | "down" | "stable";
-    };
-  };
+// Cada objeto en "precioPromedioPorTipo"
+export interface PrecioPromedioPorTipo {
+  tipo: string; // ej: "Publica"
+  precio_promedio: string; // string que representa un número decimal
 }
 
-// Respuesta completa del backend
-export interface EstadisticasPlazasResponse {
+// Cada objeto en "precioPromedioPorCiudad"
+export interface PrecioPromedioPorCiudad {
+  ciudad: string;
+  precio_promedio: string;
+}
+
+// Estructura completa de la data (CORREGIDA)
+export interface EstadisticasBackendData {
+  plazasPorRango: PlazaPorRango[];
+  precioPromedioPorTipo: PrecioPromedioPorTipo[];
+  precioPromedioPorCiudad: PrecioPromedioPorCiudad[];
+}
+
+// Respuesta completa del backend (con éxito o error)
+export interface EstadisticasBackendResponse {
   ok: boolean;
-  data: EstadisticasPlazas;
+  data: EstadisticasBackendData;
   msg: string | null;
 }
 
-// Tipos auxiliares para el chart
+// Tipos adicionales para el componente de gráfico
 export interface ChartDataPoint {
-  periodo: string; // Para el eje X
-  ocupadas: number; // Para el área 1
-  disponibles: number; // Para el área 2
-  ingresos?: number; // Opcional para tooltips
+  month: string;
+  desktop: number;
+  mobile: number;
+  date: string;
+  fullMonth: string;
 }
 
-// Configuración del rango seleccionado
-export type RangoEstadisticas = "dia" | "semana" | "mes";
-
-// Posibles variaciones que podrías recibir del backend
-export interface EstadisticasSimplificadas {
-  rango: RangoEstadisticas;
-  datos: {
-    labels: string[]; // ["Lun", "Mar", "Mie"] o ["Ene", "Feb", "Mar"]
-    ocupadas: number[];
-    disponibles: number[];
-    ingresos: number[];
-  };
-  total: {
-    plazas: number;
-    reservas: number;
-    ingresos: number;
-  };
-}
-
-// Response alternativa si el backend devuelve formato simplificado
-export interface EstadisticasSimplificadasResponse {
-  ok: boolean;
-  data: EstadisticasSimplificadas;
-  msg: string | null;
+export interface GrowthData {
+  percentage: string;
+  isPositive: boolean;
 }
