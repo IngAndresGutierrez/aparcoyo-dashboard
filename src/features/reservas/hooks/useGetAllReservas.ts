@@ -11,6 +11,7 @@ export const useGetAllReservas = () => {
     try {
       setIsLoading(true)
       const response = await getAllReservasService()
+      console.log("Datos recibidos:", response.data.data)
       setReservas(response.data.data)
     } catch (error) {
       console.log(error)

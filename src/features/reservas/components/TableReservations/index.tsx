@@ -1,24 +1,14 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 "use client"
 
 import * as React from "react"
 import {
-  ColumnDef,
   flexRender,
   getCoreRowModel,
   useReactTable,
   getPaginationRowModel,
-  RowData,
 } from "@tanstack/react-table"
-import { MoreHorizontal } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 import {
   Table,
   TableBody,
@@ -27,102 +17,33 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import Image from "next/image"
-import { Reserva } from "../../types"
+import { Skeleton } from "@/components/ui/skeleton"
+import { useEffect } from "react"
+
 import { useGetAllReservas } from "../../hooks/useGetAllReservas"
-
-declare module "@tanstack/react-table" {
-  interface ColumnMeta<TData extends RowData, TValue> {
-    responsive?: boolean
-  }
-}
-
-export const columns: ColumnDef<Reserva>[] = [
-  {
-    id: "select",
-    header: () => <input type="checkbox" />,
-    cell: () => <input type="checkbox" />,
-  },
-  {
-    accessorKey: "plaza.direccion",
-    header: "Plaza reservada",
-    cell: ({ row }) => (
-      <span className="text-sm truncate block max-w-[200px]">
-        {row.original.plaza.direccion}
-      </span>
-    ),
-  },
-  {
-    accessorKey: "usuario.nombre",
-    header: "Reservado por",
-    cell: ({ row }) => (
-      <div className="flex items-center gap-2">
-        <Image
-          src="/home/avatar-report.svg"
-          alt="avatar"
-          width={24}
-          height={24}
-          className="rounded-full"
-        />
-        <span className="truncate text-sm">{row.original.usuario.nombre}</span>
-      </div>
-    ),
-  },
-  {
-    accessorKey: "fechaInicio",
-    header: "Fecha de confirmacion",
-    cell: ({ row }) => (
-      <span>{new Date(row.original.fechaInicio).toLocaleString()}</span>
-    ),
-    meta: { responsive: true },
-  },
-  {
-    accessorKey: "fechaFin",
-    header: "Estado",
-    cell: ({ row }) => (
-      <span>{new Date(row.original.fechaFin).toLocaleString()}</span>
-    ),
-    meta: { responsive: true },
-  },
-  {
-    accessorKey: "plaza.precio",
-    header: "Precio",
-    cell: ({ row }) => <span>${row.original.plaza.precio}</span>,
-    meta: { responsive: true },
-  },
-  {
-    id: "actions",
-    cell: () => (
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            variant="ghost"
-            className="h-8 w-8 p-0"
-          >
-            <MoreHorizontal />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuItem>Ver detalle</DropdownMenuItem>
-          <DropdownMenuItem className="text-red-600">
-            Cancelar reserva
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    ),
-    meta: { responsive: true },
-  },
-]
+import { reservasColumns } from "./columns"
 
 const ReservationsTable = () => {
-  const { reservas, isLoading } = useGetAllReservas()
+  const { getAllReservas, reservas, isLoading } = useGetAllReservas()
 
-  const table = useReactTable<Reserva>({
+  const table = useReactTable({
     data: reservas,
-    columns,
+    columns: reservasColumns,
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
   })
+
+  useEffect(() => {
+    getAllReservas()
+  }, [])
+
+  if (isLoading) {
+    return (
+      <div className="h-6">
+        <Skeleton className="h-full" />
+      </div>
+    )
+  }
 
   return (
     <div className="w-full">
