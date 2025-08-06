@@ -20,10 +20,8 @@ import {
 } from "@/components/ui/chart"
 import { Button } from "@/components/ui/button"
 
-
-
 import { usePlazasStats } from "../../hooks/useGetRangePlazas"
-import { ChartDataPoint, GrowthData, PlazaPorRango } from "../../types/range"
+import { ChartDataPoint, GrowthData } from "../../types/range"
 
 export const description = "An area chart with a legend"
 
@@ -42,79 +40,181 @@ interface TotalUsersGraphPlazasProps {
   rango?: "dia" | "semana" | "mes"
 }
 
-// Función para transformar datos del backend al formato del gráfico
-const transformDataForChart = (plazasPorRango: PlazaPorRango[]): ChartDataPoint[] => {
-  if (!plazasPorRango || !Array.isArray(plazasPorRango)) {
+// ✅ NUEVA función para transformar PlazaDetalle[] al formato del gráfico
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const transformDataForChart = (plazasDetalle: any[], rango: "dia" | "semana" | "mes"): ChartDataPoint[] => {
+  if (!plazasDetalle || !Array.isArray(plazasDetalle)) {
     return []
   }
+
+  console.log("🔍 Estructura de PlazaDetalle:", plazasDetalle[0])
+
+  // Agrupar por período basado en el rango seleccionado
+  const groupedByPeriod = plazasDetalle.reduce((acc, plaza) => {
+    // 🔍 Ajusta estos campos según la estructura real de PlazaDetalle
+    // Campos posibles: fechaCreacion, createdAt, fecha, fechaPublicacion, etc.
+    const dateField = plaza.fechaCreacion || plaza.createdAt || plaza.fecha || plaza.fechaPublicacion
+    
+    if (!dateField) {
+      console.warn("⚠️ No se encontró campo de fecha en:", plaza)
+      return acc
+    }
+
+    const date = new Date(dateField)
+    let periodKey: string
+
+    // Generar clave del período según el rango
+    switch (rango) {
+      case "dia":
+        periodKey = date.toISOString().split('T')[0] // YYYY-MM-DD
+        break
+      case "semana":
+        const startOfWeek = new Date(date)
+        startOfWeek.setDate(date.getDate() - date.getDay())
+        periodKey = startOfWeek.toISOString().split('T')[0]
+        break
+      case "mes":
+      default:
+        periodKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}` // YYYY-MM
+        break
+    }
+    
+    if (!acc[periodKey]) {
+      acc[periodKey] = { 
+        count: 0, 
+        date,
+        period: periodKey
+      }
+    }
+    acc[periodKey].count++
+    
+    return acc
+  }, {} as Record<string, { count: number, date: Date, period: string }>)
 
   const monthNames = [
     'January', 'February', 'March', 'April', 'May', 'June',
     'July', 'August', 'September', 'October', 'November', 'December'
   ]
 
-  return plazasPorRango.map((item, index) => {
-    const date = new Date(item.periodo)
-    const cantidad = parseInt(item.cantidad) || 0
-    
-    return {
-      month: monthNames[date.getMonth()] || `Periodo ${index + 1}`,
-      desktop: cantidad,
-      mobile: Math.floor(cantidad * 0.6), // Simulamos datos mobile como 60% del desktop
-      date: item.periodo,
-      fullMonth: date.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })
-    }
-  })
+  const dayNames = ['Dom', 'Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab']
+
+  // Convertir a formato del gráfico
+  return Object.entries(groupedByPeriod)
+    .sort(([a], [b]) => a.localeCompare(b)) // Ordenar por período
+    .map(([key, data]) => {
+      const typedData = data as { count: number, date: Date, period: string }
+      let displayName: string
+
+      switch (rango) {
+        case "dia":
+          displayName = `${dayNames[typedData.date.getDay()]} ${typedData.date.getDate()}`
+          break
+        case "semana":
+          displayName = `S${Math.ceil(typedData.date.getDate() / 7)}`
+          break
+        case "mes":
+        default:
+          displayName = monthNames[typedData.date.getMonth()]?.slice(0, 3) || key
+          break
+      }
+
+      return {
+        month: displayName,
+        desktop: typedData.count,
+        mobile: Math.floor(typedData.count * 0.6), // Simulamos datos mobile como 60% del desktop
+        date: key,
+        fullMonth: typedData.date.toLocaleDateString('es-ES', { 
+          ...(rango === "dia" && { weekday: 'long', day: 'numeric', month: 'long' }),
+          ...(rango === "semana" && { day: 'numeric', month: 'long', year: 'numeric' }),
+          ...(rango === "mes" && { month: 'long', year: 'numeric' })
+        })
+      }
+    })
 }
 
-// Función para calcular total de usuarios
-const calculateTotalUsers = (plazasPorRango: PlazaPorRango[]): number => {
-  if (!plazasPorRango || !Array.isArray(plazasPorRango)) {
-    return 0
-  }
-
-  return plazasPorRango.reduce((total, item) => {
-    return total + (parseInt(item.cantidad) || 0)
-  }, 0)
+// ✅ NUEVA función para calcular total de usuarios
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const calculateTotalUsers = (plazasDetalle: any[]): number => {
+  return plazasDetalle?.length || 0
 }
 
-// Función para calcular porcentaje de crecimiento
-const calculateGrowthPercentage = (plazasPorRango: PlazaPorRango[]): GrowthData => {
-  if (!plazasPorRango || plazasPorRango.length < 2) {
+// ✅ NUEVA función para calcular porcentaje de crecimiento
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const calculateGrowthPercentage = (plazasDetalle: any[], rango: "dia" | "semana" | "mes"): GrowthData => {
+  if (!plazasDetalle || plazasDetalle.length < 2) {
     return { percentage: "0", isPositive: true }
   }
 
-  // Ordenar por fecha
-  const sortedData = [...plazasPorRango].sort((a, b) => 
-    new Date(a.periodo).getTime() - new Date(b.periodo).getTime()
-  )
-  
-  const firstValue = parseInt(sortedData[0].cantidad) || 0
-  const lastValue = parseInt(sortedData[sortedData.length - 1].cantidad) || 0
-  
-  if (firstValue === 0) {
-    return { percentage: "100", isPositive: lastValue > 0 }
+  // Agrupar por período para calcular tendencia
+  const groupedData = plazasDetalle.reduce((acc, plaza) => {
+    const dateField = plaza.fechaCreacion || plaza.createdAt || plaza.fecha || plaza.fechaPublicacion
+    if (!dateField) return acc
+
+    const date = new Date(dateField)
+    let periodKey: string
+
+    switch (rango) {
+      case "dia":
+        periodKey = date.toISOString().split('T')[0]
+        break
+      case "semana":
+        const startOfWeek = new Date(date)
+        startOfWeek.setDate(date.getDate() - date.getDay())
+        periodKey = startOfWeek.toISOString().split('T')[0]
+        break
+      case "mes":
+      default:
+        periodKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+        break
+    }
+    
+    acc[periodKey] = (acc[periodKey] || 0) + 1
+    return acc
+  }, {} as Record<string, number>)
+
+  const periods = Object.keys(groupedData).sort()
+  if (periods.length < 2) {
+    return { percentage: "0", isPositive: true }
   }
 
-  const percentage = ((lastValue - firstValue) / firstValue) * 100
+  const firstPeriod = groupedData[periods[0]]
+  const lastPeriod = groupedData[periods[periods.length - 1]]
+  
+  if (firstPeriod === 0) {
+    return { percentage: "100", isPositive: lastPeriod > 0 }
+  }
+
+  const percentage = ((lastPeriod - firstPeriod) / firstPeriod) * 100
   return {
     percentage: Math.abs(percentage).toFixed(1),
     isPositive: percentage >= 0
   }
 }
 
-// Función para obtener rango de fechas
-const getDateRange = (plazasPorRango: PlazaPorRango[]): string => {
-  if (!plazasPorRango || plazasPorRango.length === 0) {
+// ✅ NUEVA función para obtener rango de fechas
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const getDateRange = (plazasDetalle: any[]): string => {
+  if (!plazasDetalle || plazasDetalle.length === 0) {
     return "Sin datos"
   }
 
-  const dates = plazasPorRango.map(item => new Date(item.periodo))
+  const dates = plazasDetalle
+    .map(plaza => {
+      const dateField = plaza.fechaCreacion || plaza.createdAt || plaza.fecha || plaza.fechaPublicacion
+      return dateField ? new Date(dateField) : null
+    })
+    .filter(date => date !== null) as Date[]
+
+  if (dates.length === 0) {
+    return "Sin fechas válidas"
+  }
+
   const minDate = new Date(Math.min(...dates.map(d => d.getTime())))
   const maxDate = new Date(Math.max(...dates.map(d => d.getTime())))
   
   const formatDate = (date: Date) => {
     return date.toLocaleDateString('es-ES', { 
+      day: 'numeric',
       month: 'long', 
       year: 'numeric' 
     })
@@ -130,11 +230,20 @@ const getDateRange = (plazasPorRango: PlazaPorRango[]): string => {
 export function TotalUsersGraphPlazas({ rango = "mes" }: TotalUsersGraphPlazasProps) {
   const { data, loading, error, refetch } = usePlazasStats(rango)
 
-  // Transformar datos para el gráfico
-  const chartData = data ? transformDataForChart(data.plazasPorRango) : []
-  const totalUsers = data ? calculateTotalUsers(data.plazasPorRango) : 0
-  const growth = data ? calculateGrowthPercentage(data.plazasPorRango) : { percentage: "0", isPositive: true }
-  const dateRange = data ? getDateRange(data.plazasPorRango) : "Sin datos"
+  // ✅ Transformar datos para el gráfico usando PlazaDetalle
+  const chartData = data ? transformDataForChart(data.plazasDetalle, rango) : []
+  const totalUsers = data ? calculateTotalUsers(data.plazasDetalle) : 0
+  const growth = data ? calculateGrowthPercentage(data.plazasDetalle, rango) : { percentage: "0", isPositive: true }
+  const dateRange = data ? getDateRange(data.plazasDetalle) : "Sin datos"
+
+  // 🔍 DEBUG temporal - quita esto cuando funcione
+  console.log("🚀 Datos transformados:", {
+    chartDataLength: chartData.length,
+    totalUsers,
+    growth,
+    dateRange,
+    firstChartItem: chartData[0]
+  })
 
   // Estado de carga
   if (loading) {
