@@ -34,11 +34,11 @@ const chartConfig = {
   },
   pendiente: {
     label: "Pendientes", 
-    color: "#F59E0B", // Amarillo/Naranja
+    color: "#0E47E1", // Amarillo/Naranja
   },
   cancelado: {
     label: "Canceladas",
-    color: "#EF4444", // Rojo
+    color: "#9A75E5", // Rojo
   },
 } satisfies ChartConfig
 
