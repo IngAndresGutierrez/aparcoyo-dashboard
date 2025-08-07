@@ -1,47 +1,40 @@
 // types/reservas-range.ts
+
 export interface ReservaDetalle {
   id: string
-  fechaReserva: string
-  estado: string
+  plaza: string
   precio: number
-  usuario?: {
-    nombre: string
-    email: string
-  }
-  plaza?: {
-    nombre: string
-    ciudad: string
-    tipo: string
-  }
+  ciudad: string
+  usuario: string
+  email: string
+  fechaInicio: string
+  fechaFin: string
+  estado: string
 }
 
-export interface ReservasPorEstado {
-  estado: string
-  cantidad: number
+export interface PlazaMasReservada {
+  nombre: string
+  totalReservas: number
 }
 
 export interface ReservasPorCiudad {
   ciudad: string
-  cantidad: number
-}
-
-export interface ReservasPorTipo {
-  tipo: string
-  cantidad: number
-}
-
-export interface EstadisticasReservasResponse {
   totalReservas: number
-  reservasConfirmadas: number
-  reservasPendientes: number
+}
+
+// NUEVA estructura que coincide con la respuesta real
+export interface EstadisticasReservasResponse {
+  reservasTotal: number
+  plazasInmediatas: number
+  plazasPrivadas: number
+  plazasConReservaActiva: number
   reservasCanceladas: number
-  reservasPorEstado: ReservasPorEstado[]
+  plazasMasReservadas: PlazaMasReservada[]
   reservasPorCiudad: ReservasPorCiudad[]
-  reservasPorTipo: ReservasPorTipo[]
   reservasDetalle: ReservaDetalle[]
 }
 
-// Types para las gráficas
+// Types para las gráficas (actualizados)
 export interface ReservasChartDataPoint {
   estado: string
   cantidad: number
