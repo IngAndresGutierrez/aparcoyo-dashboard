@@ -1,28 +1,16 @@
-export interface Reserva {
-  id: string;
-  usuario: {
-    uid: string;
-    nombre: string;
-    email: string;
-    // agrega más campos si vienen desde el backend
-  };
-  plaza: {
-    id: string;
-    direccion: string;
-    tipo: string;
-    precio: number;
-    // puedes extender con más info si el backend lo devuelve
-  };
-  matricula: string;
-  fechaInicio: string;
-  fechaFin: string;
-  createAt: string;
-  updateAt: string;
-  isActive: boolean;
+// types/reservas-table.ts
+export interface ReservaTable {
+  usuario: string
+  plaza: string
+  matricula: string
+  fechaInicio: string // ISO string
+  fechaFin: string // ISO string
 }
 
-export interface ReservasResponse {
-  ok: boolean;
-  data: Reserva[];
-  msg: string | null;
+export interface ReservasTableResponse {
+  data: ReservaTable[]
+  // Si el backend devuelve metadata adicional:
+  total?: number
+  page?: number
+  limit?: number
 }

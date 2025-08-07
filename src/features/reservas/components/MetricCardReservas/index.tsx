@@ -1,19 +1,99 @@
-import { Card } from "@/components/ui/card"
-import React from "react"
+"use client"
 
-const MetricCardReservas = () => {
+import { Card } from "@/components/ui/card"
+import { Skeleton } from "@/components/ui/skeleton"
+import { TrendingUp, TrendingDown, Users, MapPin } from "lucide-react"
+import React from "react"
+import { useReservasCityStats } from "../../hooks/useReservasCity"
+
+interface MetricCardReservasProps {
+  rango?: "dia" | "semana" | "mes"
+}
+
+const MetricCardReservas = ({ rango = "mes" }: MetricCardReservasProps) => {
+  const { data, loading, error } = useReservasCityStats(rango)
+
+  // Si está cargando, mostrar skeletons
+  if (loading) {
+    return (
+      <div className="gap-4 grid grid-cols-2 lg:grid-cols-2 md:grid-cols-2">
+        {[1, 2].map((index) => (
+          <Card
+            key={index}
+            className="p-4 w-full h-29"
+          >
+            <Skeleton className="h-4 w-3/4 mb-2" />
+            <Skeleton className="h-8 w-1/2" />
+            <Skeleton className="h-4 w-16 ml-auto" />
+          </Card>
+        ))}
+      </div>
+    )
+  }
+
+  // Si hay error, mostrar métricas en 0
+  if (error) {
+    const errorCards = [
+      {
+        title: "Plazas con reservas activas",
+        value: "0",
+        icon: <MapPin className="h-4 w-4" />,
+        percentage: "0%",
+        isPositive: true,
+      },
+      {
+        title: "Total reservas",
+        value: "0",
+        icon: <Users className="h-4 w-4" />,
+        percentage: "0%",
+        isPositive: true,
+      },
+    ]
+
+    return (
+      <div className="gap-4 grid grid-cols-2 lg:grid-cols-2 md:grid-cols-2">
+        {errorCards.map((card, index) => (
+          <Card
+            key={index}
+            className="p-4 w-full h-29 relative"
+          >
+            <p className="absolute top-2 right-2 text-sm text-gray-400">
+              Error
+            </p>
+            <div className="flex items-center gap-2 mb-1">
+              {card.icon}
+              <h2 className="text-base font-semibold text-tertiary">
+                {card.title}
+              </h2>
+            </div>
+            <p className="text-2xl font-bold">{card.value}</p>
+          </Card>
+        ))}
+      </div>
+    )
+  }
+
+  // Calcular métricas basadas en los datos reales
+  const totalReservas = data?.reservasTotal || 0
+  const plazasConReservas = data?.plazasConReservaActiva || 0
+
+  // Simular crecimiento (en un caso real vendría de comparación temporal)
+  const reservasGrowth = totalReservas > 0 ? 15.5 : 0
+  const plazasGrowth = plazasConReservas > 0 ? 8.2 : 0
+
   const cards = [
     {
-      title: "Publicado al menos una plaza",
-      value: "100",
-      icon: "", // podrías poner un componente si tienes uno
-      percentage: "+100%",
+      title: "Plazas con reservas activas",
+      value: plazasConReservas.toString(),
+      icon: <MapPin className="h-4 w-4 text-blue-600" />,
+      percentage: `+${plazasGrowth}%`,
+      isPositive: true,
     },
     {
-      title: "Usuarios con reservas completadas",
-      value: "100",
-      icon: "",
-      percentage: "-100%",
+      title: "Total reservas",
+      value: totalReservas.toString(),
+      icon: <Users className="h-4 w-4 text-green-600" />,
+      percentage: `+${reservasGrowth}%`,
     },
   ]
 
@@ -22,23 +102,37 @@ const MetricCardReservas = () => {
       {cards.map((card, index) => (
         <Card
           key={index}
-          className="p-4 w-full h-29 relative"
+          className="p-4 w-full h-29 relative hover:shadow-md transition-shadow"
         >
           {/* Porcentaje en esquina superior derecha */}
-          <p
-            className={`absolute top-2 right-2 text-sm mt-16 ${
-              card.percentage.startsWith("-")
-                ? "text-red-500"
-                : "text-green-500"
-            }`}
-          >
-            {card.percentage}
-          </p>
+          <div className="absolute top-2 right-2 flex items-center gap-1">
+            {card.isPositive ? (
+              <TrendingUp className="h-3 w-3 text-green-500" />
+            ) : (
+              <TrendingDown className="h-3 w-3 text-red-500" />
+            )}
+            <p
+              className={`text-sm font-medium ${
+                card.isPositive ? "text-green-500" : "text-red-500"
+              }`}
+            >
+              {card.percentage}
+            </p>
+          </div>
 
-          <h2 className="text-base font-semibold text-tertiary">
-            {card.title}
-          </h2>
-          <p className="text-2xl font-bold -mt-3">{card.value}</p>
+          {/* Título con icono */}
+          <div className="flex items-center gap-2 mb-1">
+            {card.icon}
+            <h2 className="text-base font-semibold text-tertiary">
+              {card.title}
+            </h2>
+          </div>
+
+          {/* Valor principal */}
+          <p className="text-2xl font-bold mb-1">{card.value}</p>
+
+          {/* Descripción adicional */}
+          <p className="text-xs text-muted-foreground"></p>
         </Card>
       ))}
     </div>
