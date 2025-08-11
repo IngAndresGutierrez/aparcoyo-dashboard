@@ -16,8 +16,6 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { ReservaTable } from "../../types"
 
-
-
 // Extender la interfaz ColumnMeta para incluir la propiedad responsive
 declare module "@tanstack/react-table" {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -30,15 +28,15 @@ declare module "@tanstack/react-table" {
 const formatDate = (dateString: string) => {
   const date = new Date(dateString)
   return {
-    date: date.toLocaleDateString('es-ES', { 
-      day: '2-digit', 
-      month: '2-digit', 
-      year: 'numeric' 
+    date: date.toLocaleDateString("es-ES", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
     }),
-    time: date.toLocaleTimeString('es-ES', { 
-      hour: '2-digit', 
-      minute: '2-digit' 
-    })
+    time: date.toLocaleTimeString("es-ES", {
+      hour: "2-digit",
+      minute: "2-digit",
+    }),
   }
 }
 
@@ -47,7 +45,7 @@ const getReservaStatus = (fechaInicio: string, fechaFin: string) => {
   const now = new Date()
   const inicio = new Date(fechaInicio)
   const fin = new Date(fechaFin)
-  
+
   if (now < inicio) {
     return { status: "Programada", color: "bg-blue-100 text-blue-800" }
   } else if (now >= inicio && now <= fin) {
@@ -70,8 +68,8 @@ export const reservasColumns: ColumnDef<ReservaTable>[] = [
     cell: ({ row }) => {
       // El usuario es un objeto, acceder a .nombre
       const usuario = row.original.usuario as any
-      const nombreUsuario = usuario?.nombre || 'Sin nombre'
-      
+      const nombreUsuario = usuario?.nombre || "Sin nombre"
+
       return (
         <div className="flex items-center gap-2">
           <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center">
@@ -89,12 +87,14 @@ export const reservasColumns: ColumnDef<ReservaTable>[] = [
     cell: ({ row }) => {
       // La plaza es un objeto, acceder a .nombre
       const plaza = row.original.plaza as any
-      const nombrePlaza = plaza?.nombre || plaza?.direccion || 'Sin plaza'
-      
+      const nombrePlaza = plaza?.nombre || plaza?.direccion || "Sin plaza"
+
       return (
-        <div className="flex items-center gap-2">
-          <MapPin className="h-4 w-4 text-gray-500" />
-          <span className="text-sm truncate block">{nombrePlaza}</span>
+        <div className="flex items-start gap-2 max-w-[120px]">
+          <MapPin className="h-4 w-4 text-gray-500 mt-0.5 flex-shrink-0" />
+          <span className="text-sm leading-tight break-words whitespace-normal">
+            {nombrePlaza}
+          </span>
         </div>
       )
     },
@@ -106,12 +106,13 @@ export const reservasColumns: ColumnDef<ReservaTable>[] = [
     cell: ({ row }) => {
       // La matrícula SÍ es un string (pero con valor "string" de prueba)
       const matricula = row.original.matricula
-      
+
       return (
-        <div className="flex items-center gap-2">
-          <Car className="h-4 w-4 text-gray-500" />
-          <span className="text-sm font-mono font-medium bg-gray-100 px-2 py-1 rounded">
-            {matricula === 'string' ? 'ABC-123' : matricula} {/* Mostrar valor más legible si es "string" */}
+        <div className="flex items-start gap-2 max-w-[100px]">
+          <Car className="h-4 w-4 text-gray-500 mt-0.5 flex-shrink-0" />
+          <span className="text-sm font-mono font-medium bg-gray-100 px-2 py-1 rounded leading-tight break-words whitespace-normal">
+            {matricula === "string" ? "ABC-123" : matricula}{" "}
+            {/* Mostrar valor más legible si es "string" */}
           </span>
         </div>
       )
@@ -151,7 +152,7 @@ export const reservasColumns: ColumnDef<ReservaTable>[] = [
     header: "Estado",
     cell: ({ row }) => {
       const { status, color } = getReservaStatus(
-        row.original.fechaInicio, 
+        row.original.fechaInicio,
         row.original.fechaFin
       )
       return (
