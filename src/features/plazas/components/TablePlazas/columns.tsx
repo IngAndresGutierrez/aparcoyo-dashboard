@@ -1,34 +1,38 @@
-"use client";
+"use client"
 
-import { ColumnDef, RowData } from "@tanstack/react-table";
-import { MoreHorizontal } from "lucide-react";
-import Image from "next/image";
+import { ColumnDef, RowData } from "@tanstack/react-table"
+import { MoreHorizontal, Loader2 } from "lucide-react"
+import Image from "next/image"
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "@/components/ui/dropdown-menu"
 
-import { Plaza } from "../../types";
-import {
-  formatPublicationDate,
-  formatPrice,
-  getInitial,
-  formatPlazaType,
-} from "../../utils";
+import { Plaza } from "../../types"
+import { formatPrice, getInitial, formatPlazaType } from "../../utils"
 
 // Extender la interfaz ColumnMeta para incluir la propiedad responsive
 declare module "@tanstack/react-table" {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   interface ColumnMeta<TData extends RowData, TValue> {
-    responsive?: boolean;
+    responsive?: boolean
   }
 }
 
-export const columns: ColumnDef<Plaza>[] = [
+// PROPS NECESARIAS PARA LAS COLUMNAS
+interface ColumnProps {
+  onEliminarPlaza: (id: string, nombre: string) => Promise<void>
+  deletingId: string | null
+}
+
+export const createColumns = ({
+  onEliminarPlaza,
+  deletingId,
+}: ColumnProps): ColumnDef<Plaza>[] => [
   {
     id: "select",
     header: () => <input type="checkbox" />,
@@ -78,17 +82,48 @@ export const columns: ColumnDef<Plaza>[] = [
       </span>
     ),
     meta: { responsive: true }, // Ocultar en responsive
-  },
+  }, // ← COMA AGREGADA
   {
-    accessorKey: "createAt",
+    accessorKey: "disponibilidadDesde",
     header: "Fecha de publicación",
-    cell: ({ row }) => (
-      <span className="text-sm text-gray-600">
-        {formatPublicationDate(row.original.createAt)}
-      </span>
-    ),
+    cell: ({ row }) => {
+      const fecha = row.original.disponibilidadDesde
+      console.log("🔍 Debug fecha:", {
+        fechaRaw: fecha,
+        fechaParsed: new Date(fecha),
+        fechaFormateada: new Date(fecha).toLocaleDateString("es-ES", {
+          day: "2-digit",
+          month: "short",
+          year: "numeric",
+        }),
+        zonaHoraria: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      })
+      if (!fecha) {
+        return <span className="text-sm text-gray-400">Sin fecha</span>
+      }
+
+      try {
+        const date = new Date(fecha)
+
+        if (isNaN(date.getTime())) {
+          return <span className="text-sm text-red-400">Fecha inválida</span>
+        }
+
+        return (
+          <span className="text-sm text-gray-600">
+            {date.toLocaleDateString("es-ES", {
+              day: "2-digit",
+              month: "short",
+              year: "numeric",
+            })}
+          </span>
+        )
+      } catch {
+        return <span className="text-sm text-red-400">Error en fecha</span>
+      }
+    },
     meta: { responsive: true }, // Ocultar en responsive
-  },
+  }, // ← COMA AGREGADA
   {
     accessorKey: "propietario",
     header: "Propietario",
@@ -113,23 +148,61 @@ export const columns: ColumnDef<Plaza>[] = [
   },
   {
     id: "actions",
-    cell: () => (
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" className="h-8 w-8 p-0">
-            <MoreHorizontal className="h-4 w-4" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuItem>
-            <span className="text-gray-700">Editar plaza</span>
-          </DropdownMenuItem>
-          <DropdownMenuItem className="text-red-600">
-            Eliminar plaza
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    ),
+    cell: ({ row }) => {
+      const plaza = row.original
+      const isDeleting = deletingId === plaza.id
+
+      return (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              className="h-8 w-8 p-0"
+              disabled={isDeleting}
+            >
+              {isDeleting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <MoreHorizontal className="h-4 w-4" />
+              )}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem disabled={isDeleting}>
+              <span className="text-gray-700">Editar plaza</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              className="text-red-600 focus:text-red-600"
+              onClick={() => onEliminarPlaza(plaza.id, plaza.direccion)}
+              disabled={isDeleting}
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="h-3 w-3 mr-2 animate-spin" />
+                  Eliminando...
+                </>
+              ) : (
+                "Eliminar plaza"
+              )}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )
+    },
     meta: { responsive: true }, // Ocultar en responsive
   },
-];
+]
+
+// VERSIÓN DE COMPATIBILIDAD (si no quieres cambiar mucho código)
+// Exporta las columnas por defecto sin funcionalidad de eliminar
+export const columns: ColumnDef<Plaza>[] = createColumns({
+  onEliminarPlaza: async (id: string, nombre: string) => {
+    console.log(
+      `Función de eliminar no configurada para plaza ${id}: ${nombre}`
+    )
+  },
+  deletingId: null,
+})
+
+// EXPORTAR TAMBIÉN LA FUNCIÓN PARA BACKWARD COMPATIBILITY
+export default createColumns
