@@ -30,8 +30,7 @@ import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { UsuarioTabla } from "../../types/table"
 import { useUsuariosTabla } from "../../hooks/useTable"
-
-// IMPORTAR EL HOOK Y TYPES
+import { useUserActions } from "../../hooks/useChange"
 
 // Extender la interfaz ColumnMeta para incluir la propiedad responsive
 declare module "@tanstack/react-table" {
@@ -51,124 +50,6 @@ const formatDate = (dateString: string) => {
   })
 }
 
-// Función para obtener color del estado
-const getEstadoColor = (estado: string) => {
-  switch (estado) {
-    case "activo":
-      return "bg-green-100 text-green-800"
-    case "inactivo":
-      return "bg-gray-100 text-gray-800"
-    case "suspendido":
-      return "bg-red-100 text-red-800"
-    default:
-      return "bg-blue-100 text-blue-800"
-  }
-}
-
-// COLUMNAS ACTUALIZADAS CON DATOS REALES
-export const columns: ColumnDef<UsuarioTabla>[] = [
-  {
-    id: "select",
-    header: () => <input type="checkbox" />,
-    cell: () => <input type="checkbox" />,
-    // Sin meta.responsive para que siempre sea visible
-  },
-  {
-    accessorKey: "nombre",
-    header: "Usuario",
-    cell: ({ row }) => (
-      <div className="flex items-center gap-2">
-        <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
-          <User className="w-3 h-3 text-blue-600" />
-        </div>
-        <div className="min-w-0">
-          <span className="text-sm font-medium truncate block">
-            {row.original.nombre || "Sin nombre"}
-          </span>
-          <span className="text-xs text-muted-foreground truncate block">
-            {row.original.email}
-          </span>
-        </div>
-      </div>
-    ),
-    // Sin meta.responsive para que siempre sea visible
-  },
-  {
-    accessorKey: "email",
-    header: "Email",
-    cell: ({ row }) => (
-      <span className="text-sm truncate block max-w-[150px]">
-        {row.original.email}
-      </span>
-    ),
-    // Sin meta.responsive para que siempre sea visible
-  },
-  {
-    accessorKey: "fechaRegistro",
-    header: "Fecha de registro",
-    cell: ({ row }) => (
-      <span className="text-sm">{formatDate(row.original.fechaRegistro)}</span>
-    ),
-    meta: { responsive: true }, // Ocultar en responsive
-  },
-  {
-    accessorKey: "totalReservas",
-    header: "Reservas hechas",
-    cell: ({ row }) => (
-      <span className="text-sm font-medium">
-        {row.original.totalReservas || 0}
-      </span>
-    ),
-    meta: { responsive: true }, // Ocultar en responsive
-  },
-  {
-    accessorKey: "totalPlazas",
-    header: "Plazas publicadas",
-    cell: ({ row }) => (
-      <span className="text-sm font-medium">
-        {row.original.totalPlazas || 0}
-      </span>
-    ),
-    meta: { responsive: true }, // Ocultar en responsive
-  },
-  {
-    accessorKey: "estado",
-    header: "Estado",
-    cell: ({ row }) => (
-      <Badge className={`text-xs ${getEstadoColor(row.original.estado)}`}>
-        {row.original.estado || "activo"}
-      </Badge>
-    ),
-    meta: { responsive: true }, // Ocultar en responsive
-  },
-  {
-    id: "actions",
-    cell: ({ row }) => (
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            variant="ghost"
-            className="h-8 w-8 p-0"
-          >
-            <MoreHorizontal className="h-4 w-4" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuItem>Ver perfil</DropdownMenuItem>
-          <DropdownMenuItem>Editar usuario</DropdownMenuItem>
-          <DropdownMenuItem>
-            {row.original.estado === "activo" ? "Suspender" : "Activar"}
-          </DropdownMenuItem>
-          <DropdownMenuItem className="text-red-600">
-            Eliminar usuario
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    ),
-    meta: { responsive: true }, // Ocultar en responsive
-  },
-]
-
 interface UsersTableProps {
   searchTerm?: string
   estadoFilter?: "activo" | "inactivo" | "suspendido"
@@ -186,12 +67,183 @@ const UsersTable = ({ searchTerm, estadoFilter }: UsersTableProps) => {
       sortOrder: "desc",
     })
 
+  // HOOK PARA ACTIVAR/DESACTIVAR USUARIO
+  const {
+    changeUserStatus,
+    isLoading: isProcessing,
+    error: actionError,
+    success,
+  } = useUserActions()
+
+  // Función para manejar activar/desactivar usuario
+  const handleToggleUserStatus = async (
+    userId: string | number,
+    isCurrentlyActive: boolean
+  ) => {
+    console.log(
+      "🔍 Cambiando estado - UID:",
+      userId,
+      "Activo:",
+      isCurrentlyActive
+    )
+
+    try {
+      await changeUserStatus(userId, isCurrentlyActive)
+
+      // Si fue exitoso, recargar la tabla
+      if (success) {
+        fetchUsuarios({
+          page,
+          limit,
+          search: searchTerm,
+          estado: estadoFilter,
+        })
+      }
+    } catch (error) {
+      console.error("Error al cambiar estado del usuario:", error)
+    }
+  }
+
+  // COLUMNAS ACTUALIZADAS CON FUNCIONALIDAD
+  const columns: ColumnDef<UsuarioTabla>[] = [
+    {
+      id: "select",
+      header: () => <input type="checkbox" />,
+      cell: () => <input type="checkbox" />,
+    },
+    {
+      accessorKey: "nombre",
+      header: "Usuario",
+      cell: ({ row }) => (
+        <div className="flex items-center gap-2">
+          <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+            <User className="w-3 h-3 text-blue-600" />
+          </div>
+          <div className="min-w-0">
+            <span className="text-sm font-medium truncate block">
+              {row.original.nombre || "Sin nombre"}
+            </span>
+            <span className="text-xs text-muted-foreground truncate block">
+              {row.original.email}
+            </span>
+          </div>
+        </div>
+      ),
+    },
+    {
+      accessorKey: "email",
+      header: "Email",
+      cell: ({ row }) => (
+        <span className="text-sm truncate block max-w-[150px]">
+          {row.original.email}
+        </span>
+      ),
+    },
+    {
+      accessorKey: "fechaRegistro",
+      header: "Fecha de registro",
+      cell: ({ row }) => (
+        <span className="text-sm">
+          {formatDate(row.original.fechaRegistro)}
+        </span>
+      ),
+      meta: { responsive: true },
+    },
+    {
+      accessorKey: "totalReservas",
+      header: "Reservas hechas",
+      cell: ({ row }) => (
+        <span className="text-sm font-medium">
+          {row.original.totalReservas || 0}
+        </span>
+      ),
+      meta: { responsive: true },
+    },
+    {
+      accessorKey: "totalPlazas",
+      header: "Plazas publicadas",
+      cell: ({ row }) => (
+        <span className="text-sm font-medium">
+          {row.original.totalPlazas || 0}
+        </span>
+      ),
+      meta: { responsive: true },
+    },
+    {
+      accessorKey: "isActive",
+      header: "Estado",
+      cell: ({ row }) => (
+        <Badge
+          className={`text-xs ${
+            row.original.isActive
+              ? "bg-green-100 text-green-800"
+              : "bg-gray-100 text-gray-800"
+          }`}
+        >
+          {row.original.isActive ? "Activo" : "Inactivo"}
+        </Badge>
+      ),
+      meta: { responsive: true },
+    },
+    {
+      id: "actions",
+      cell: ({ row }) => (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              className="h-8 w-8 p-0"
+              disabled={isProcessing}
+            >
+              {isProcessing ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <MoreHorizontal className="h-4 w-4" />
+              )}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem>Ver perfil</DropdownMenuItem>
+            <DropdownMenuItem>Editar usuario</DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => {
+                console.log(
+                  "🔍 Usando UID:",
+                  row.original.uid,
+                  "isActive:",
+                  row.original.isActive
+                )
+                handleToggleUserStatus(row.original.uid, row.original.isActive)
+              }}
+              disabled={isProcessing}
+            >
+              {isProcessing ? (
+                <span className="flex items-center gap-2">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  Procesando...
+                </span>
+              ) : row.original.isActive ? (
+                "Desactivar"
+              ) : (
+                "Activar"
+              )}
+            </DropdownMenuItem>
+            <DropdownMenuItem className="text-red-600">
+              Eliminar usuario
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      ),
+      meta: { responsive: true },
+    },
+  ]
+
   const table = useReactTable({
-    data: usuarios, // ← USAR DATOS REALES DEL BACKEND
+    data: usuarios,
     columns,
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
-    manualPagination: true, // Paginación manejada por el backend
+    manualPagination: true,
     pageCount: Math.ceil(total / limit),
   })
 
@@ -285,6 +337,21 @@ const UsersTable = ({ searchTerm, estadoFilter }: UsersTableProps) => {
 
   return (
     <div className="w-full">
+      {/* Mostrar mensajes de error o éxito */}
+      {actionError && (
+        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
+          <p className="text-sm text-red-600">Error: {actionError}</p>
+        </div>
+      )}
+
+      {success && (
+        <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-md">
+          <p className="text-sm text-green-600">
+            ¡Usuario actualizado correctamente!
+          </p>
+        </div>
+      )}
+
       {/* Información de resultados */}
       <div className="mb-4 text-sm text-muted-foreground">
         Mostrando {usuarios.length} de {total} usuarios

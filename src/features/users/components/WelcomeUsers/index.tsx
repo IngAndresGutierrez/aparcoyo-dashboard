@@ -20,9 +20,9 @@ interface WelcomeUsersProps {
 
 // Opciones del select con sus labels
 const rangoOptions = [
-  { value: "dia" as const, label: "Último día", icon: "📅" },
-  { value: "semana" as const, label: "Últimos 7 días", icon: "📅" },
-  { value: "mes" as const, label: "Últimos 30 días", icon: "📅" },
+  { value: "dia" as const, label: "Último día", icon: "" },
+  { value: "semana" as const, label: "Últimos 7 días", icon: "" },
+  { value: "mes" as const, label: "Últimos 30 días", icon: "" },
 ] as const
 
 const WelcomeUsers = ({ rango, onRangoChange }: WelcomeUsersProps) => {

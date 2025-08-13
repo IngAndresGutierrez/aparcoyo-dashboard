@@ -3,7 +3,7 @@
 // ============================================
 
 export interface UsuarioTabla {
-  id: string
+  uid: string
   nombre: string
   email: string
   telefono?: string
@@ -14,6 +14,7 @@ export interface UsuarioTabla {
   ultimaActividad?: string
   verificado: boolean
   rol?: "usuario" | "admin" | "moderador"
+  isActive: boolean
 }
 
 export interface UsuariosTablaResponse {
