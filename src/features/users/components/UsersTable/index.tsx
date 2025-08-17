@@ -9,9 +9,10 @@ import {
   getPaginationRowModel,
   RowData,
 } from "@tanstack/react-table"
-import { MoreHorizontal, User, Loader2 } from "lucide-react"
+import { MoreHorizontal, User, Loader2, Search, X } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -31,6 +32,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { UsuarioTabla } from "../../types/table"
 import { useUsuariosTabla } from "../../hooks/useTable"
 import { useUserActions } from "../../hooks/useChange"
+import { useRouter } from "next/navigation"
 
 // Extender la interfaz ColumnMeta para incluir la propiedad responsive
 declare module "@tanstack/react-table" {
@@ -55,17 +57,63 @@ interface UsersTableProps {
   estadoFilter?: "activo" | "inactivo" | "suspendido"
 }
 
-const UsersTable = ({ searchTerm, estadoFilter }: UsersTableProps) => {
-  // USAR EL HOOK CON PARÁMETROS
+const UsersTable = ({
+  searchTerm: initialSearchTerm,
+  estadoFilter,
+}: UsersTableProps) => {
+  // 🔍 ESTADOS PARA EL BUSCADOR
+  const [searchValue, setSearchValue] = React.useState(initialSearchTerm || "")
+  const [debouncedSearch, setDebouncedSearch] = React.useState(
+    initialSearchTerm || ""
+  )
+  const router = useRouter()
+
+  // 🔍 DEBOUNCE PARA EL BUSCADOR (esperar 500ms después de que el usuario deje de escribir)
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchValue)
+    }, 500)
+
+    return () => clearTimeout(timer)
+  }, [searchValue])
+
+  // USAR EL HOOK CON PARÁMETROS (ahora usa debouncedSearch)
   const { usuarios, loading, error, total, page, limit, fetchUsuarios } =
     useUsuariosTabla({
       page: 1,
       limit: 10,
-      search: searchTerm,
+      search: debouncedSearch, // ← Usar la búsqueda con debounce
       estado: estadoFilter,
       sortBy: "fechaRegistro",
       sortOrder: "desc",
     })
+
+  // ✅ AGREGAR ESTE USEEFFECT PARA QUE REACCIONE A CAMBIOS DE BÚSQUEDA
+  React.useEffect(() => {
+    console.log("🔍 Búsqueda cambió, haciendo nueva petición:", {
+      debouncedSearch,
+      estadoFilter,
+      timestamp: new Date().toLocaleTimeString(),
+    })
+
+    fetchUsuarios({
+      page: 1, // Resetear a página 1 cuando se busca
+      limit: 10,
+      search: debouncedSearch,
+      estado: estadoFilter,
+      sortBy: "fechaRegistro",
+      sortOrder: "desc",
+    })
+  }, [debouncedSearch, estadoFilter, fetchUsuarios])
+
+  // 🔍 DEBUG: Log para ver cambios en el debounce
+  React.useEffect(() => {
+    console.log("📝 Estados de búsqueda:", {
+      searchValue,
+      debouncedSearch,
+      timestamp: new Date().toLocaleTimeString(),
+    })
+  }, [searchValue, debouncedSearch])
 
   // HOOK PARA ACTIVAR/DESACTIVAR USUARIO
   const {
@@ -75,32 +123,64 @@ const UsersTable = ({ searchTerm, estadoFilter }: UsersTableProps) => {
     success,
   } = useUserActions()
 
+  // 🔍 FILTRO TEMPORAL EN FRONTEND (mientras se arregla el backend)
+  const filteredUsuarios = React.useMemo(() => {
+    if (!debouncedSearch.trim()) {
+      console.log(
+        "🔍 Sin búsqueda, mostrando todos los usuarios:",
+        usuarios.length
+      )
+      return usuarios
+    }
+
+    const searchTerm = debouncedSearch.toLowerCase().trim()
+    const filtered = usuarios.filter((usuario) => {
+      const matchNombre = usuario.nombre?.toLowerCase().includes(searchTerm)
+      const matchEmail = usuario.email?.toLowerCase().includes(searchTerm)
+      return matchNombre || matchEmail
+    })
+
+    console.log(`🔍 Búsqueda "${debouncedSearch}":`, {
+      totalUsuarios: usuarios.length,
+      usuariosFiltrados: filtered.length,
+      usuariosEncontrados: filtered.map((u) => ({
+        nombre: u.nombre,
+        email: u.email,
+      })),
+    })
+
+    return filtered
+  }, [usuarios, debouncedSearch])
+
+  // 🔍 FUNCIÓN PARA LIMPIAR BÚSQUEDA
+  const clearSearch = () => {
+    setSearchValue("")
+    setDebouncedSearch("")
+  }
+
   // Función para manejar activar/desactivar usuario
   const handleToggleUserStatus = async (
     userId: string | number,
     isCurrentlyActive: boolean
   ) => {
-    console.log(
-      "🔍 Cambiando estado - UID:",
-      userId,
-      "Activo:",
-      isCurrentlyActive
-    )
+    console.log(`🔄 Cambiando estado del usuario ${userId}...`)
 
     try {
       await changeUserStatus(userId, isCurrentlyActive)
-
-      // Si fue exitoso, recargar la tabla
-      if (success) {
-        fetchUsuarios({
-          page,
-          limit,
-          search: searchTerm,
-          estado: estadoFilter,
-        })
-      }
+      console.log("✅ Operación completada")
     } catch (error) {
-      console.error("Error al cambiar estado del usuario:", error)
+      console.error("❌ Error:", error)
+    } finally {
+      console.log("🔄 Recargando tabla...")
+      await fetchUsuarios({
+        page,
+        limit,
+        search: debouncedSearch, // ← Usar debouncedSearch en lugar de searchTerm
+        estado: undefined,
+        sortBy: "fechaRegistro",
+        sortOrder: "desc",
+      })
+      console.log("✅ Tabla recargada")
     }
   }
 
@@ -203,8 +283,13 @@ const UsersTable = ({ searchTerm, estadoFilter }: UsersTableProps) => {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem>Ver perfil</DropdownMenuItem>
-            <DropdownMenuItem>Editar usuario</DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => {
+                router.push(`/usuarios/${row.original.uid}`)
+              }}
+            >
+              Editar usuario
+            </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => {
                 console.log(
@@ -228,9 +313,6 @@ const UsersTable = ({ searchTerm, estadoFilter }: UsersTableProps) => {
                 "Activar"
               )}
             </DropdownMenuItem>
-            <DropdownMenuItem className="text-red-600">
-              Eliminar usuario
-            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       ),
@@ -239,7 +321,7 @@ const UsersTable = ({ searchTerm, estadoFilter }: UsersTableProps) => {
   ]
 
   const table = useReactTable({
-    data: usuarios,
+    data: filteredUsuarios, // ← Cambiar de 'usuarios' a 'filteredUsuarios'
     columns,
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
@@ -247,14 +329,16 @@ const UsersTable = ({ searchTerm, estadoFilter }: UsersTableProps) => {
     pageCount: Math.ceil(total / limit),
   })
 
-  // Funciones de paginación
+  // Funciones de paginación actualizadas
   const handlePreviousPage = () => {
     if (page > 1) {
       fetchUsuarios({
         page: page - 1,
         limit,
-        search: searchTerm,
+        search: debouncedSearch,
         estado: estadoFilter,
+        sortBy: "fechaRegistro",
+        sortOrder: "desc",
       })
     }
   }
@@ -264,8 +348,10 @@ const UsersTable = ({ searchTerm, estadoFilter }: UsersTableProps) => {
       fetchUsuarios({
         page: page + 1,
         limit,
-        search: searchTerm,
+        search: debouncedSearch,
         estado: estadoFilter,
+        sortBy: "fechaRegistro",
+        sortOrder: "desc",
       })
     }
   }
@@ -274,6 +360,16 @@ const UsersTable = ({ searchTerm, estadoFilter }: UsersTableProps) => {
   if (loading) {
     return (
       <div className="w-full">
+        {/* 🔍 BUSCADOR TAMBIÉN EN LOADING */}
+        <div className="flex items-center justify-between mb-4">
+          <div className="text-sm text-muted-foreground">
+            <Skeleton className="h-4 w-48" />
+          </div>
+          <div className="relative w-72">
+            <Skeleton className="h-10 w-full" />
+          </div>
+        </div>
+
         <div className="rounded-md border overflow-x-auto">
           <Table className="min-w-full">
             <TableHeader>
@@ -352,11 +448,34 @@ const UsersTable = ({ searchTerm, estadoFilter }: UsersTableProps) => {
         </div>
       )}
 
-      {/* Información de resultados */}
-      <div className="mb-4 text-sm text-muted-foreground">
-        Mostrando {usuarios.length} de {total} usuarios
-        {searchTerm && ` para "${searchTerm}"`}
-        {estadoFilter && ` (${estadoFilter})`}
+      {/* 🔍 HEADER CON INFORMACIÓN Y BUSCADOR */}
+      <div className="flex items-center justify-between mb-4">
+        <div className="text-sm text-muted-foreground">
+          Mostrando {filteredUsuarios.length} de {total} usuarios
+          {debouncedSearch && ` para "${debouncedSearch}"`}
+          {estadoFilter && ` (${estadoFilter})`}
+        </div>
+
+        {/* 🔍 BUSCADOR ELEGANTE */}
+        <div className="relative w-72">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+          <Input
+            placeholder="Buscar usuarios..."
+            value={searchValue}
+            onChange={(e) => setSearchValue(e.target.value)}
+            className="pl-10 pr-10"
+          />
+          {searchValue && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={clearSearch}
+              className="absolute right-1 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0 hover:bg-gray-100"
+            >
+              <X className="h-3 w-3" />
+            </Button>
+          )}
+        </div>
       </div>
 
       <div className="rounded-md border overflow-x-auto">
@@ -389,7 +508,20 @@ const UsersTable = ({ searchTerm, estadoFilter }: UsersTableProps) => {
                   colSpan={columns.length}
                   className="text-center py-8 text-muted-foreground"
                 >
-                  No se encontraron usuarios
+                  {debouncedSearch ? (
+                    <div>
+                      <p>No se encontraron usuarios para {debouncedSearch}</p>
+                      <Button
+                        variant="link"
+                        onClick={clearSearch}
+                        className="mt-2"
+                      >
+                        Limpiar búsqueda
+                      </Button>
+                    </div>
+                  ) : (
+                    "No se encontraron usuarios"
+                  )}
                 </TableCell>
               </TableRow>
             ) : (
