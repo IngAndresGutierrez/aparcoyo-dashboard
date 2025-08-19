@@ -253,7 +253,7 @@ const TransactionsTable = () => {
             {transactions.length > 0 ? (
               <span className="text-green-600">✅ Datos reales</span>
             ) : (
-              <span className="text-orange-600">⚠️ Datos de ejemplo</span>
+              <span className="text-orange-600"></span>
             )}
           </span>
         </div>
