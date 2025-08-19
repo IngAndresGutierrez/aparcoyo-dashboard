@@ -4,23 +4,24 @@ import { Card } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { TrendingUp, TrendingDown, Users, MapPin } from "lucide-react"
 import React from "react"
-import { useReservasCityStats } from "../../hooks/useReservasCity"
+import { useReservasEstadoStats } from "../../hooks/useReservasState"
+// ← CORRECCIÓN: Hook principal
 
 interface MetricCardReservasProps {
   rango?: "dia" | "semana" | "mes"
 }
 
 const MetricCardReservas = ({ rango = "mes" }: MetricCardReservasProps) => {
-  const { data, loading, error } = useReservasCityStats(rango)
+  const { data, loading, error } = useReservasEstadoStats(rango) // ← CORRECCIÓN: Hook principal
 
   // Si está cargando, mostrar skeletons
   if (loading) {
     return (
-      <div className="gap-4 grid grid-cols-2 lg:grid-cols-2 md:grid-cols-2">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-full">
         {[1, 2].map((index) => (
           <Card
             key={index}
-            className="p-4 w-full h-29"
+            className="p-4 sm:p-6 min-h-[116px] max-w-full"
           >
             <Skeleton className="h-4 w-3/4 mb-2" />
             <Skeleton className="h-8 w-1/2" />
@@ -51,22 +52,22 @@ const MetricCardReservas = ({ rango = "mes" }: MetricCardReservasProps) => {
     ]
 
     return (
-      <div className="gap-4 grid grid-cols-2 lg:grid-cols-2 md:grid-cols-2">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-full">
         {errorCards.map((card, index) => (
           <Card
             key={index}
-            className="p-4 w-full h-29 relative"
+            className="p-4 sm:p-6 min-h-[116px] relative max-w-full"
           >
             <p className="absolute top-2 right-2 text-sm text-gray-400">
               Error
             </p>
             <div className="flex items-center gap-2 mb-1">
               {card.icon}
-              <h2 className="text-base font-semibold text-tertiary">
+              <h2 className="text-sm sm:text-base font-semibold text-tertiary">
                 {card.title}
               </h2>
             </div>
-            <p className="text-2xl font-bold">{card.value}</p>
+            <p className="text-xl sm:text-2xl font-bold">{card.value}</p>
           </Card>
         ))}
       </div>
@@ -76,6 +77,7 @@ const MetricCardReservas = ({ rango = "mes" }: MetricCardReservasProps) => {
   // Calcular métricas basadas en los datos reales
   const totalReservas = data?.reservasTotal || 0
   const plazasConReservas = data?.plazasConReservaActiva || 0
+  const reservasCanceladas = data?.reservasCanceladas || 0
 
   // Simular crecimiento (en un caso real vendría de comparación temporal)
   const reservasGrowth = totalReservas > 0 ? 15.5 : 0
@@ -94,15 +96,16 @@ const MetricCardReservas = ({ rango = "mes" }: MetricCardReservasProps) => {
       value: totalReservas.toString(),
       icon: <Users className="h-4 w-4 text-green-600" />,
       percentage: `+${reservasGrowth}%`,
+      isPositive: totalReservas > reservasCanceladas,
     },
   ]
 
   return (
-    <div className="gap-4 grid grid-cols-2 lg:grid-cols-2 md:grid-cols-2">
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-full overflow-hidden">
       {cards.map((card, index) => (
         <Card
           key={index}
-          className="p-4 w-full h-29 relative hover:shadow-md transition-shadow"
+          className="p-4 sm:p-6 min-h-[116px] relative hover:shadow-md transition-shadow max-w-full"
         >
           {/* Porcentaje en esquina superior derecha */}
           <div className="absolute top-2 right-2 flex items-center gap-1">
@@ -112,7 +115,7 @@ const MetricCardReservas = ({ rango = "mes" }: MetricCardReservasProps) => {
               <TrendingDown className="h-3 w-3 text-red-500" />
             )}
             <p
-              className={`text-sm font-medium ${
+              className={`text-xs sm:text-sm font-medium ${
                 card.isPositive ? "text-green-500" : "text-red-500"
               }`}
             >
@@ -121,18 +124,17 @@ const MetricCardReservas = ({ rango = "mes" }: MetricCardReservasProps) => {
           </div>
 
           {/* Título con icono */}
-          <div className="flex items-center gap-2 mb-1">
+          <div className="flex items-center gap-2 mb-1 overflow-hidden">
             {card.icon}
-            <h2 className="text-base font-semibold text-tertiary">
+            <h2 className="text-sm sm:text-base font-semibold text-tertiary truncate">
               {card.title}
             </h2>
           </div>
 
           {/* Valor principal */}
-          <p className="text-2xl font-bold mb-1">{card.value}</p>
+          <p className="text-xl sm:text-2xl font-bold mb-1">{card.value}</p>
 
-          {/* Descripción adicional */}
-          <p className="text-xs text-muted-foreground"></p>
+          {/* Sin descripción adicional */}
         </Card>
       ))}
     </div>
