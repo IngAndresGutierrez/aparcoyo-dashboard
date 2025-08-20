@@ -1,3 +1,23 @@
+"use client"
+
+import * as React from "react"
+import {
+  ColumnDef,
+  flexRender,
+  getCoreRowModel,
+  useReactTable,
+  getPaginationRowModel,
+  RowData,
+} from "@tanstack/react-table"
+import { MoreHorizontal, Loader2, RefreshCw } from "lucide-react"
+
+import { Button } from "@/components/ui/button"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import {
   Table,
   TableBody,
@@ -6,260 +26,366 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { MoreHorizontal, Trash2 } from "lucide-react"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 import Image from "next/image"
 
-const reports = [
-  {
-    id: 1,
-    content:
-      "Me habló con groserías y me insultó cuando le pedí que se moviera un poco.",
-    date: "Jan 16, 2025",
-    status: "Pendiente",
-    category: "Contenido falso o engañoso",
-    reportedBy: {
-      name: "Sienna Hewitt",
-      email: "hi@siennahewitt...",
-      avatar: "/home/avatar-report.svg",
-    },
-  },
-  {
-    id: 2,
-    content:
-      "El usuario no era el mismo que aparecía en la reserva, parecía alguien diferente.",
-    date: "Jan 16, 2025",
-    status: "Pendiente",
-    category: "Ubicación incorrecta o inexistente",
-    reportedBy: {
-      name: "Piper Williamson",
-      email: "pippa@pippawc...",
-      avatar: "/home/avatar-report.svg",
-    },
-  },
-  {
-    id: 3,
-    content: "Me dijo que si no le pagaba por fuera, no me dejaba aparcar.",
-    date: "Jan 15, 2025",
-    status: "Pendiente",
-    category: "Lenguaje ofensivo o inapropiado",
-    reportedBy: {
-      name: "Olly Schroeder",
-      email: "olly_s@icloud.co...",
-      avatar: "/home/avatar-report.svg",
-    },
-  },
-  {
-    id: 4,
-    content: "Me mandó muchos mensajes sin sentido, parecía spam.",
-    date: "Jan 14, 2025",
-    status: "Pendiente",
-    category: "Contenido falso o engañoso",
-    reportedBy: {
-      name: "Mathilde Lewis",
-      email: "mathilde@hey.c...",
-      avatar: "/home/avatar-report.svg",
-    },
-  },
-  {
-    id: 5,
-    content: "Intentó coquetearme y me hizo sentir incómoda.",
-    date: "Jan 14, 2025",
-    status: "Pendiente",
-    category: "Contenido inapropiado o explí...",
-    reportedBy: {
-      name: "Julius Vaughan",
-      email: "juliusvaughan@...",
-      avatar: "/home/avatar-report.svg",
-    },
-  },
-  {
-    id: 6,
-    content:
-      "Me insistió varias veces para cancelar la reserva y no pagarle en efectivo.",
-    date: "Jan 14, 2025",
-    status: "Pendiente",
-    category: "Spam o mensajes irrelevantes",
-    reportedBy: {
-      name: "Zaid Schwartz",
-      email: "zaid@zaidstudio...",
-      avatar: "/home/avatar-report.svg",
-    },
-  },
-]
+import { useEffect } from "react"
+import { useReportes } from "@/features/reportes/hooks/useReportsTable"
+import { Reporte } from "@/features/reportes/types/reports-table"
+import ReporteDetailsModal from "@/features/reportes/components/ModalReports"
 
-const TableReport = () => {
-  return (
-    <Card className="">
-      <CardHeader>
-        <CardTitle className="text-lg font-semibold">
-          18 Reportes recibidos
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="">
-        <div className="overflow-x-auto">
-          <Table className="w-full">
-            <TableHeader className="">
-              <TableRow className="border-b border-gray-200">
-                <TableHead className="font-medium text-quaternary">
-                  Reporte
-                </TableHead>
-                <TableHead className="font-medium hidden md:table-cell lg:hidden xl:table-cell">
-                  <div className="flex items-center justify-center gap-1 text-quaternary">
-                    Fecha
-                    <Image
-                      className="mt-1"
-                      src="/home/button-utility.svg"
-                      alt="icon"
-                      width={20}
-                      height={20}
-                    />
-                  </div>
-                </TableHead>
+// Extender la interfaz ColumnMeta para incluir la propiedad responsive
+declare module "@tanstack/react-table" {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  interface ColumnMeta<TData extends RowData, TValue> {
+    responsive?: boolean
+  }
+}
 
-                <TableHead className="font-medium">
-                  <div className="flex items-center justify-center gap-1 text-quaternary">
-                    Estado
-                    <Image
-                      className="mt-1"
-                      src="/home/button-utility.svg"
-                      alt="icon"
-                      width={20}
-                      height={20}
-                    />
-                  </div>
-                </TableHead>
+// Tipo para mostrar en la tabla (usando los datos reales de reportes)
+export type ReportTableItem = {
+  id: string
+  descripcion: string
+  categoria: string
+  categoriaLabel: string
+  estado: string
+  fecha: string
+  usuario: string
+  respuestaAdmin: string | null
+}
 
-                <TableHead className="font-medium hidden md:table-cell lg:hidden xl:table-cell">
-                  <div className="flex items-center justify-center gap-1 text-quaternary">
-                    Categoría
-                    <Image
-                      className="mt-1"
-                      src="/home/button-utility.svg"
-                      alt="icon"
-                      width={20}
-                      height={20}
-                    />
-                  </div>
-                </TableHead>
+interface UsersTableReportsProps {
+  filtroFecha?: string
+}
 
-                <TableHead className="font-medium hidden lg:table-cell">
-                  <div className="flex items-center justify-center gap-1 text-quaternary">
-                    Reservado por
-                    <Image
-                      className="mt-1"
-                      src="/home/button-utility.svg"
-                      alt="icon"
-                      width={20}
-                      height={20}
-                    />
-                  </div>
-                </TableHead>
+// Función para transformar los reportes del API al formato de la tabla
+const formatDate = (dateString: string) => {
+  return new Date(dateString).toLocaleDateString("es-ES", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  })
+}
 
-                <TableHead className="w-[70px]"></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {reports.map((report) => (
-                <TableRow
-                  key={report.id}
-                  className="border-b border-gray-200"
-                >
-                  <TableCell className="max-w-75 whitespace-normal break-words leading-5 py-2">
-                    <p className="text-sm">&ldquo;{report.content}&rdquo;</p>
-                  </TableCell>
-                  <TableCell className="hidden md:table-cell lg:hidden xl:table-cell">
-                    <span className="text-sm text-muted-foreg round">
-                      {report.date}
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    <Badge
-                      variant="secondary"
-                      className="bg-orange-100 text-orange-800 hover:bg-orange-100"
-                    >
-                      {report.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="whitespace-normal break-words leading-5 max-w-36 hidden md:table-cell lg:hidden xl:table-cell">
-                    <span className="text-sm text-muted-foreground whitespace-normal break-words leading-5">
-                      {report.category}
-                    </span>
-                  </TableCell>
-                  <TableCell className="hidden lg:table-cell">
-                    <div className="flex items-center gap-3">
-                      <Avatar className="h-8 w-8">
-                        <AvatarImage
-                          src={
-                            report.reportedBy.avatar.startsWith("/")
-                              ? report.reportedBy.avatar
-                              : ""
-                          }
-                        />
-                        <AvatarFallback className="text-xs bg-blue-500 text-white">
-                          {report.reportedBy.avatar.startsWith("/")
-                            ? report.reportedBy.name
-                                .split(" ")
-                                .map((n) => n[0])
-                                .join("")
-                            : report.reportedBy.avatar}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex flex-col">
-                        <span className="text-sm font-medium">
-                          {report.reportedBy.name}
-                        </span>
-                        <span className="text-xs text-muted-foreground">
-                          {report.reportedBy.email}
-                        </span>
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell className="">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 w-8 p-0"
-                        >
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem className="text-error-primary font-semibold">
-                          <Trash2 className="mr-2 h-4 w-4 text-error-primary" />
-                          Eliminar reporte
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-        <div className="border border-b mt-3"></div>
-        <div className="flex justify-center pt-4">
-          <Button
-            className="mx-auto ml-1 lg:ml-10 rounded-full text-secondary text-sm"
-            variant="outline"
+const getEstadoColor = (estado: string) => {
+  switch (estado.toLowerCase()) {
+    case "pendiente":
+      return "text-yellow-600 bg-yellow-50 border-yellow-200"
+    case "resuelto":
+      return "text-green-600 bg-green-50 border-green-200"
+    case "cancelado":
+      return "text-red-600 bg-red-50 border-red-200"
+    default:
+      return "text-gray-600 bg-gray-50 border-gray-200"
+  }
+}
+
+const Tablereports: React.FC<UsersTableReportsProps> = ({
+  filtroFecha = "mes",
+}) => {
+  const { reportes, loading, error, refresh, getSummary } = useReportes()
+  const [selectedReporteId, setSelectedReporteId] = React.useState<
+    string | null
+  >(null)
+  const [isModalOpen, setIsModalOpen] = React.useState(false)
+
+  // Cargar datos cuando cambie el filtro
+  useEffect(() => {
+    getSummary(filtroFecha)
+  }, [filtroFecha, getSummary])
+
+  // Función para abrir el modal
+  const handleOpenModal = (reporteId: string) => {
+    setSelectedReporteId(reporteId)
+    setIsModalOpen(true)
+  }
+
+  // Función para cerrar el modal
+  const handleCloseModal = () => {
+    setIsModalOpen(false)
+    setSelectedReporteId(null)
+  }
+
+  // Función para refrescar después de actualizar
+  const handleReporteUpdate = () => {
+    refresh(filtroFecha)
+  }
+
+  // Función para cancelar reporte directamente desde la tabla
+
+  // Definir las columnas dentro del componente para acceder a handleOpenModal
+  const columns: ColumnDef<ReportTableItem>[] = [
+    {
+      id: "select",
+      header: () => <input type="checkbox" />,
+      cell: () => <input type="checkbox" />,
+    },
+    {
+      accessorKey: "descripcion",
+      header: "Descripción",
+      cell: ({ row }) => (
+        <div className="flex items-center gap-2">
+          <Image
+            src="/home/avatar-report.svg"
+            alt="avatar"
+            width={10}
+            height={10}
+            className="w-6 h-6 rounded-full flex-shrink-0"
+          />
+          <span
+            className="truncate text-sm max-w-[200px]"
+            title={row.original.descripcion}
           >
-            Ver todos los reportes
+            {row.original.descripcion}
+          </span>
+        </div>
+      ),
+    },
+    {
+      accessorKey: "fecha",
+      header: "Fecha",
+      cell: ({ row }) => (
+        <span className="text-sm">{formatDate(row.original.fecha)}</span>
+      ),
+    },
+    {
+      accessorKey: "estado",
+      header: "Estado",
+      cell: ({ row }) => (
+        <span
+          className={`px-2 py-1 rounded-full text-xs font-medium border ${getEstadoColor(
+            row.original.estado
+          )}`}
+        >
+          {row.original.estado}
+        </span>
+      ),
+      meta: { responsive: true },
+    },
+    {
+      accessorKey: "categoriaLabel",
+      header: "Categoría",
+      cell: ({ row }) => (
+        <span
+          className="text-sm truncate block max-w-[150px]"
+          title={row.original.categoriaLabel}
+        >
+          {row.original.categoriaLabel}
+        </span>
+      ),
+      meta: { responsive: true },
+    },
+    {
+      accessorKey: "usuario",
+      header: "Reportado por",
+      cell: ({ row }) => (
+        <span className="text-sm font-medium">{row.original.usuario}</span>
+      ),
+      meta: { responsive: true },
+    },
+    {
+      id: "actions",
+      cell: ({ row }) => (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              className="h-8 w-8 p-0"
+            >
+              <MoreHorizontal />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => handleOpenModal(row.original.id)}>
+              Resolver reporte
+            </DropdownMenuItem>
+            {row.original.estado === "Pendiente" && (
+              <DropdownMenuItem className="text-red-600">
+                Cancelar reporte
+              </DropdownMenuItem>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      ),
+      meta: { responsive: true },
+    },
+  ]
+
+  // Los reportes vienen del summary
+  const tableData = React.useMemo(() => {
+    // Asegurarse de que reportes sea un array antes de hacer map
+    if (!Array.isArray(reportes)) {
+      return []
+    }
+
+    return reportes.map((reporte: Reporte) => ({
+      id: reporte.id,
+      descripcion: reporte.descripcion,
+      categoria: reporte.categoria,
+      categoriaLabel: reporte.categoriaLabel,
+      estado: reporte.estado,
+      fecha: reporte.fecha,
+      usuario: reporte.usuario.nombre,
+      respuestaAdmin: reporte.respuestaAdmin,
+    }))
+  }, [reportes])
+
+  const table = useReactTable({
+    data: tableData,
+    columns,
+    getCoreRowModel: getCoreRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+  })
+
+  // Mostrar loading
+  if (loading) {
+    return (
+      <div className="w-full flex items-center justify-center py-8">
+        <div className="flex items-center gap-2">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          <span>Cargando reportes...</span>
+        </div>
+      </div>
+    )
+  }
+
+  // Mostrar error
+  if (error) {
+    return (
+      <div className="w-full">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <div className="text-red-600">
+                <span className="font-medium">Error al cargar reportes:</span>
+                <span className="ml-2">{error}</span>
+              </div>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => refresh(filtroFecha)}
+              className="ml-2"
+            >
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Reintentar
+            </Button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="w-full">
+      {/* Header con botón refresh */}
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-lg font-semibold">Reportes Detallados</h2>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => refresh(filtroFecha)}
+          disabled={loading}
+        >
+          <RefreshCw
+            className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`}
+          />
+          Actualizar
+        </Button>
+      </div>
+
+      {/* Tabla */}
+      <div className="rounded-md border overflow-x-auto">
+        <Table className="min-w-full">
+          <TableHeader>
+            {table.getHeaderGroups().map((headerGroup) => (
+              <TableRow key={headerGroup.id}>
+                {headerGroup.headers.map((header) => (
+                  <TableHead
+                    key={header.id}
+                    className={`text-muted-foreground px-2 py-3 ${
+                      header.column.columnDef.meta?.responsive
+                        ? "hidden lg:table-cell"
+                        : ""
+                    }`}
+                  >
+                    {flexRender(
+                      header.column.columnDef.header,
+                      header.getContext()
+                    )}
+                  </TableHead>
+                ))}
+              </TableRow>
+            ))}
+          </TableHeader>
+          <TableBody>
+            {table.getRowModel().rows?.length ? (
+              table.getRowModel().rows.map((row) => (
+                <TableRow key={row.id}>
+                  {row.getVisibleCells().map((cell) => (
+                    <TableCell
+                      key={cell.id}
+                      className={`py-3 px-2 ${
+                        cell.column.columnDef.meta?.responsive
+                          ? "hidden lg:table-cell"
+                          : ""
+                      }`}
+                    >
+                      {flexRender(
+                        cell.column.columnDef.cell,
+                        cell.getContext()
+                      )}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell
+                  colSpan={columns.length}
+                  className="h-24 text-center"
+                >
+                  No hay reportes disponibles
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </div>
+
+      {/* Paginación simplificada */}
+      <div className="flex items-center justify-between space-x-2 py-4">
+        <div className="text-sm text-muted-foreground">
+          Mostrando {reportes.length} reportes
+        </div>
+        <div className="flex items-center space-x-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => table.previousPage()}
+            disabled={!table.getCanPreviousPage() || loading}
+          >
+            Atrás
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => table.nextPage()}
+            disabled={!table.getCanNextPage() || loading}
+          >
+            Adelante
           </Button>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+
+      {/* Modal de detalles */}
+      <ReporteDetailsModal
+        reporteId={selectedReporteId}
+        isOpen={isModalOpen}
+        onClose={handleCloseModal}
+        onUpdate={handleReporteUpdate}
+      />
+    </div>
   )
 }
 
-export default TableReport
+export default Tablereports

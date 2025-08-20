@@ -7,40 +7,43 @@ import UserReservas from "@/features/edit-user/components/UserReservas"
 import AppSidebarDashboard from "@/features/shared/components/AppSidebarDashboard"
 
 interface UserPageProps {
-  params: { id: string }
+  params: Promise<{ id: string }> // ✅ Ahora es una Promise
 }
 
-const page = ({ params }: UserPageProps) => {
+const page = async ({ params }: UserPageProps) => {
+  // ✅ Usar await para resolver los params
+  const { id } = await params
+
   return (
     <AppSidebarDashboard>
       <div className="p-6 max-w-6xl mx-auto space-y-6">
         {/* Header del usuario - queda arriba solo */}
-        <UserHeader userId={params.id} />
+        <UserHeader userId={id} />
 
         {/* Grid principal: columna izquierda (detalles) y columna derecha (plazas) */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Columna izquierda: Detalles, Vehículos, Créditos */}
           <div className="lg:col-span-2 space-y-6">
             {/* Detalles del usuario */}
-            <UserDetails userId={params.id} />
+            <UserDetails userId={id} />
 
             {/* Grid interno: Vehículos y Créditos lado a lado */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <UserVehicle userId={params.id} />
-              <UserCredits userId={params.id} />
+              <UserVehicle userId={id} />
+              <UserCredits userId={id} />
             </div>
           </div>
 
           {/* Columna derecha: Plazas publicadas */}
           <div className="lg:col-span-1">
-            <UserPlazas userId={params.id} />
+            <UserPlazas userId={id} />
           </div>
         </div>
       </div>
 
       {/* Tabla de reservas - abajo de todo, separada */}
       <div className="p-6 max-w-6xl mx-auto">
-        <UserReservas userId={params.id} />
+        <UserReservas userId={id} />
       </div>
     </AppSidebarDashboard>
   )
