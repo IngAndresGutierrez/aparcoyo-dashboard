@@ -8,6 +8,7 @@ import {
   useReactTable,
   getPaginationRowModel,
 } from "@tanstack/react-table"
+import { useRouter } from "next/navigation" // ← AGREGAR: import del router
 
 import { Button } from "@/components/ui/button"
 import {
@@ -22,16 +23,17 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { useEffect, useState } from "react"
 
 import { useGetAllPlazas } from "../../hooks/useGetAllPlazas"
-import { createColumns } from "./columns" // ← CAMBIO: usar createColumns
+import { createColumns } from "./columns"
 import { eliminarPlazaService } from "../../services/plazas"
 
 const UsersTablePlazas = () => {
+  const router = useRouter() // ← AGREGAR: inicializar el router
   const { getAllPlazas, plazas, isLoading } = useGetAllPlazas()
 
-  // ← NUEVO: Estado para controlar qué plaza se está eliminando
+  // Estado para controlar qué plaza se está eliminando
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
-  // ← NUEVO: Función para eliminar plaza
+  // Función para eliminar plaza
   const handleEliminarPlaza = async (id: string, direccion: string) => {
     // Validar que tengamos un ID válido
     if (!id) {
@@ -135,15 +137,25 @@ const UsersTablePlazas = () => {
     }
   }
 
-  // ← NUEVO: Crear columnas con las funciones de eliminación
+  // ← AGREGAR: Función para manejar la navegación a editar
+  const handleEditarPlaza = (id: string) => {
+    console.log("🔄 Navegando a editar plaza con ID:", id)
+    console.log("🔄 URL destino:", `/plazas/${id}`)
+
+    // Navegar a tu página de edición
+    router.push(`/plazas/${id}`)
+  }
+
+  // ← MODIFICAR: Crear columnas con AMBAS funciones (eliminar Y editar)
   const columns = createColumns({
     onEliminarPlaza: handleEliminarPlaza,
     deletingId,
+    onEditarPlaza: handleEditarPlaza, // ← AGREGAR esta línea
   })
 
   const table = useReactTable({
     data: plazas,
-    columns, // ← Usar las columnas dinámicas
+    columns,
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
   })
@@ -151,6 +163,13 @@ const UsersTablePlazas = () => {
   useEffect(() => {
     getAllPlazas()
   }, [])
+
+  // ← AGREGAR: Debug para verificar que las funciones están conectadas
+  useEffect(() => {
+    console.log("🔍 Componente UsersTablePlazas montado")
+    console.log("🔍 Función handleEditarPlaza:", handleEditarPlaza)
+    console.log("🔍 Total de plazas:", plazas.length)
+  }, [plazas])
 
   if (isLoading) {
     return (

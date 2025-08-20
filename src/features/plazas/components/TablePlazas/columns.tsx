@@ -27,11 +27,14 @@ declare module "@tanstack/react-table" {
 interface ColumnProps {
   onEliminarPlaza: (id: string, nombre: string) => Promise<void>
   deletingId: string | null
+  // Agregar función de navegación opcional
+  onEditarPlaza?: (id: string) => void
 }
 
 export const createColumns = ({
   onEliminarPlaza,
   deletingId,
+  onEditarPlaza,
 }: ColumnProps): ColumnDef<Plaza>[] => [
   {
     id: "select",
@@ -82,7 +85,7 @@ export const createColumns = ({
       </span>
     ),
     meta: { responsive: true }, // Ocultar en responsive
-  }, // ← COMA AGREGADA
+  },
   {
     accessorKey: "disponibilidadDesde",
     header: "Fecha de publicación",
@@ -123,7 +126,7 @@ export const createColumns = ({
       }
     },
     meta: { responsive: true }, // Ocultar en responsive
-  }, // ← COMA AGREGADA
+  },
   {
     accessorKey: "propietario",
     header: "Propietario",
@@ -152,6 +155,13 @@ export const createColumns = ({
       const plaza = row.original
       const isDeleting = deletingId === plaza.id
 
+      // Función para manejar la navegación a editar
+      const handleEditClick = () => {
+        if (onEditarPlaza) {
+          onEditarPlaza(plaza.id)
+        }
+      }
+
       return (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -168,7 +178,10 @@ export const createColumns = ({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem disabled={isDeleting}>
+            <DropdownMenuItem
+              disabled={isDeleting}
+              onClick={handleEditClick}
+            >
               <span className="text-gray-700">Editar plaza</span>
             </DropdownMenuItem>
             <DropdownMenuItem
