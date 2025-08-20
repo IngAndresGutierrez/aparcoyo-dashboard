@@ -3,8 +3,20 @@
 
 import { useState, useCallback } from "react"
 import modalPlazaService from "../services/service-edit"
-import { PlazaModal, FormDataModal, ActualizarPlazaModal } from "../types/edit-plazas"
+import { ActualizarPlazaModal, PlazaModal } from "../types/edit-plazas"
 
+
+// ✅ Definir FormDataModal aquí mismo
+export interface FormDataModal {
+  nombre: string        // No titulo
+  descripcion: string
+  precio: number        // number para formulario
+  propietario: {
+    id: string         // id para formulario
+    nombre: string
+    email: string      // email para formulario
+  }
+}
 
 export interface UseModalPlazaReturn {
   // Datos
@@ -75,24 +87,24 @@ export function useModalPlaza(plazaId: string): UseModalPlazaReturn {
 
       console.log("🔄 Guardando cambios en modal:", formData)
 
-      // Transformar datos del formulario al formato de la API
+      // ✅ Transformar datos del formulario al formato de la API (CORREGIDO)
       const datosParaAPI: ActualizarPlazaModal = {
-        titulo: formData.titulo.trim(),
+        nombre: formData.nombre.trim(),                    // ✅ nombre, no titulo
         descripcion: formData.descripcion.trim(),
-        precio: Number(formData.precio),
-        propietarioId: formData.propietario.id,
+        precio: formData.precio.toString(),               // ✅ string para API
+        propietarioUid: formData.propietario.id,          // ✅ propietarioUid, no propietarioId
       }
 
-      // Validaciones básicas antes de enviar
-      if (!datosParaAPI.titulo) {
-        throw new Error('El título es requerido')
+      // ✅ Validaciones básicas antes de enviar (CORREGIDAS)
+      if (!datosParaAPI.nombre) {                          // ✅ nombre, no titulo
+        throw new Error('El nombre es requerido')
       }
       
-      if (datosParaAPI.precio <= 0) {
+      if (parseFloat(datosParaAPI.precio) <= 0) {          // ✅ validar como número
         throw new Error('El precio debe ser mayor a 0')
       }
       
-      if (!datosParaAPI.propietarioId) {
+      if (!datosParaAPI.propietarioUid) {                  // ✅ propietarioUid
         throw new Error('Debe seleccionar un propietario')
       }
 
