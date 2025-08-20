@@ -10,6 +10,7 @@ import {
   RowData,
 } from "@tanstack/react-table"
 import { MoreHorizontal, User, Loader2, Search, X } from "lucide-react"
+import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -285,20 +286,92 @@ const UsersTable = ({
           <DropdownMenuContent align="end">
             <DropdownMenuItem
               onClick={() => {
+                // ✅ VALIDACIÓN CON TOAST ELEGANTE
+                if (!row.original.isActive) {
+                  toast.error("Usuario inactivo", {
+                    description: `No puedes editar a ${
+                      row.original.nombre || "este usuario"
+                    } porque está inactivo.`,
+                    action: {
+                      label: "Activar usuario",
+                      onClick: () => {
+                        handleToggleUserStatus(
+                          row.original.uid,
+                          row.original.isActive
+                        )
+                        toast.success("Activando usuario...", {
+                          description: "Una vez activado, podrás editarlo",
+                        })
+                      },
+                    },
+                    duration: 6000, // 6 segundos
+                  })
+                  return
+                }
+
+                // Si está activo, navegar normalmente
                 router.push(`/usuarios/${row.original.uid}`)
+
+                // Toast opcional de confirmación
+                toast.success("Redirigiendo...", {
+                  description: `Editando a ${row.original.nombre}`,
+                  duration: 2000,
+                })
               }}
             >
               Editar usuario
             </DropdownMenuItem>
+
             <DropdownMenuItem
-              onClick={() => {
+              onClick={async () => {
                 console.log(
                   "🔍 Usando UID:",
                   row.original.uid,
                   "isActive:",
                   row.original.isActive
                 )
-                handleToggleUserStatus(row.original.uid, row.original.isActive)
+
+                // Toast de loading
+                const loadingToast = toast.loading(
+                  row.original.isActive
+                    ? "Desactivando usuario..."
+                    : "Activando usuario...",
+                  { description: "Por favor espera..." }
+                )
+
+                try {
+                  await handleToggleUserStatus(
+                    row.original.uid,
+                    row.original.isActive
+                  )
+
+                  // Dismiss loading toast
+                  toast.dismiss(loadingToast)
+
+                  // Success toast
+                  toast.success(
+                    row.original.isActive
+                      ? "Usuario desactivado"
+                      : "Usuario activado",
+                    {
+                      description: `${row.original.nombre} ha sido ${
+                        row.original.isActive ? "desactivado" : "activado"
+                      } correctamente`,
+                      duration: 4000,
+                    }
+                  )
+
+                  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                } catch (error) {
+                  // Dismiss loading toast
+                  toast.dismiss(loadingToast)
+
+                  // Error toast
+                  toast.error("Error al cambiar estado", {
+                    description: "Hubo un problema. Inténtalo de nuevo.",
+                    duration: 5000,
+                  })
+                }
               }}
               disabled={isProcessing}
             >
