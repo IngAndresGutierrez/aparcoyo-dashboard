@@ -1,9 +1,10 @@
+import Image from "next/image"
 import React from "react"
 
 const Logo = () => {
   return (
     <div className="flex items-center justify-center">
-      <img
+      <Image
         className="top-0"
         src="/login/logo-new.svg"
         alt="Logo"
