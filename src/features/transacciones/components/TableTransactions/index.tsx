@@ -9,7 +9,7 @@ import {
   getPaginationRowModel,
   RowData,
 } from "@tanstack/react-table"
-import { MoreHorizontal } from "lucide-react"
+import { MoreHorizontal, Loader2 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -27,6 +27,8 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import Image from "next/image"
+import { usePlatformStats } from "../../hooks/useTransaction"
+import { Transaction } from "../../types/transaction"
 
 // Extender la interfaz ColumnMeta para incluir la propiedad responsive
 declare module "@tanstack/react-table" {
@@ -36,152 +38,228 @@ declare module "@tanstack/react-table" {
   }
 }
 
-const data: Report[] = [
+// Función helper para formatear moneda
+const formatCurrency = (amount: string) => {
+  const numAmount = parseFloat(amount)
+  return new Intl.NumberFormat("es-ES", {
+    style: "currency",
+    currency: "EUR",
+  }).format(numAmount)
+}
+
+// Función para formatear fecha
+const formatDate = (dateString: string) => {
+  if (dateString === "Sin fecha") return "Sin fecha"
+
+  try {
+    const date = new Date(dateString)
+    return date.toLocaleDateString("es-ES", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    })
+  } catch {
+    return dateString
+  }
+}
+
+// Función para obtener el color del estado
+const getStatusColor = (estado: string) => {
+  switch (estado.toLowerCase()) {
+    case "completado":
+      return "text-green-600 bg-green-50 border border-green-200"
+    case "pendiente":
+      return "text-yellow-600 bg-yellow-50 border border-yellow-200"
+    case "cancelado":
+      return "text-red-600 bg-red-50 border border-red-200"
+    default:
+      return "text-gray-600 bg-gray-50 border border-gray-200"
+  }
+}
+
+// Datos de fallback para cuando carga o hay error
+const fallbackData: Transaction[] = [
   {
-    name: "Lily-Rose Chedjou",
-    email: "lilyrose@gmail.com",
-    date: "Jan 16, 2025",
-    reservations: 12,
-    listings: 1,
-  },
-  {
-    name: "Caitlyn King",
-    email: "hi@caitlynking.com",
-    date: "Jan 16, 2025",
-    reservations: 3,
-    listings: 0,
-  },
-  {
-    name: "Fleur Cook",
-    email: "fleurcook@icloud.com",
-    date: "Jan 15, 2025",
-    reservations: 7,
-    listings: 0,
-  },
-  {
-    name: "Marco Kelly",
-    email: "marco@marcokelly.co",
-    date: "Jan 14, 2025",
-    reservations: 2,
-    listings: 0,
-  },
-  {
-    name: "Lulu Meyers",
-    email: "lulu@lulumeyers.com",
-    date: "Jan 14, 2025",
-    reservations: 1,
-    listings: 0,
-  },
-  {
-    name: "Mikey Lawrence",
-    email: "m.lawrence@gmail.com",
-    date: "Jan 14, 2025",
-    reservations: 0,
-    listings: 3,
-  },
-  {
-    name: "Freya Browning",
-    email: "hey@freyabrowning.com",
-    date: "Jan 14, 2025",
-    reservations: 0,
-    listings: 0,
+    factura: "Factura N° ejemplo-123",
+    importe: "3.50",
+    fecha: "Sin fecha",
+    estado: "completado",
+    cliente: "Cliente de ejemplo",
+    tipo: "Reserva de plaza",
   },
 ]
 
-export type Report = {
-  name: string
-  email: string
-  date: string
-  reservations: number
-  listings: number
-}
-
-export const columns: ColumnDef<Report>[] = [
+export const columns: ColumnDef<Transaction>[] = [
   {
     id: "select",
-    header: () => <input type="checkbox" />,
-    cell: () => <input type="checkbox" />,
-    // Sin meta.responsive para que siempre sea visible
+    header: () => (
+      <input
+        type="checkbox"
+        className="rounded"
+      />
+    ),
+    cell: ({ row }) => (
+      <input
+        type="checkbox"
+        className="rounded"
+        data-row-id={row.id}
+      />
+    ),
   },
   {
-    accessorKey: "name",
+    accessorKey: "factura",
     header: "Factura n.º",
     cell: ({ row }) => (
       <div className="flex items-center gap-2">
         <Image
           src="/home/avatar-report.svg"
-          alt="avatar"
+          alt="factura"
           width={10}
           height={10}
           className="w-6 h-6 rounded-full flex-shrink-0"
         />
-        <span className="truncate text-sm">{row.original.name}</span>
+        <span className="truncate text-sm font-medium max-w-[200px]">
+          {row.original.factura}
+        </span>
       </div>
     ),
-    // Sin meta.responsive para que siempre sea visible
   },
   {
-    accessorKey: "email",
+    accessorKey: "importe",
     header: "Importe",
     cell: ({ row }) => (
-      <span className="text-sm truncate block max-w-[150px]">
-        {row.original.email}
+      <span className="text-sm font-semibold text-green-600">
+        {formatCurrency(row.original.importe)}
       </span>
     ),
-    // Sin meta.responsive para que siempre sea visible
   },
   {
-    accessorKey: "date",
+    accessorKey: "fecha",
     header: "Fecha",
-    cell: ({ row }) => <span>{row.original.date}</span>,
-    meta: { responsive: true }, // Ocultar en responsive
+    cell: ({ row }) => (
+      <span className="text-sm text-muted-foreground">
+        {formatDate(row.original.fecha)}
+      </span>
+    ),
+    meta: { responsive: true },
   },
   {
-    accessorKey: "reservations",
+    accessorKey: "estado",
     header: "Estado",
-    cell: ({ row }) => <span>{row.original.reservations}</span>,
-    meta: { responsive: true }, // Ocultar en responsive
+    cell: ({ row }) => (
+      <span
+        className={`text-xs px-2 py-1 rounded-full font-medium ${getStatusColor(
+          row.original.estado
+        )}`}
+      >
+        {row.original.estado}
+      </span>
+    ),
+    meta: { responsive: true },
   },
   {
-    accessorKey: "listings",
+    accessorKey: "cliente",
     header: "Cliente",
-    cell: ({ row }) => <span>{row.original.listings}</span>,
-    meta: { responsive: true }, // Ocultar en responsive
+    cell: ({ row }) => (
+      <span className="text-sm truncate block max-w-[150px]">
+        {row.original.cliente}
+      </span>
+    ),
+    meta: { responsive: true },
   },
   {
     id: "actions",
-    cell: () => (
+    cell: ({ row }) => (
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
             variant="ghost"
             className="h-8 w-8 p-0"
           >
-            <MoreHorizontal />
+            <MoreHorizontal className="h-4 w-4" />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          <DropdownMenuItem>Editar usuario</DropdownMenuItem>
-          <DropdownMenuItem className="text-red-600">
-            Eliminar usuario
+          <DropdownMenuItem
+            onClick={() => console.log("Ver detalles:", row.original.factura)}
+          >
+            Ver detalles
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() =>
+              console.log("Descargar factura:", row.original.factura)
+            }
+          >
+            Descargar factura
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            className="text-red-600"
+            onClick={() =>
+              console.log("Anular transacción:", row.original.factura)
+            }
+          >
+            Anular transacción
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
     ),
-    meta: { responsive: true }, // Ocultar en responsive
+    meta: { responsive: true },
   },
 ]
 
-const UsersTableTransactions = () => {
+const TransactionsTable = () => {
+  const { loading, error, transactions, refetch } = usePlatformStats({
+    refetchInterval: 5 * 60 * 1000, // Refetch cada 5 minutos
+  })
+
+  // Usar datos reales o fallback
+  const tableData = transactions.length > 0 ? transactions : fallbackData
+
   const table = useReactTable({
-    data,
+    data: tableData,
     columns,
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
+    initialState: {
+      pagination: {
+        pageSize: 10, // Mostrar 10 transacciones por página
+      },
+    },
   })
 
   return (
-    <div className="w-full">
+    <div className="w-full space-y-4">
+      {/* Header con indicadores */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-lg font-semibold">Transacciones Recientes</h3>
+          <p className="text-sm text-muted-foreground">
+            {loading ? "Cargando..." : `${tableData.length} transacciones`}
+          </p>
+        </div>
+
+        {/* Indicador de estado */}
+        <div className="flex items-center gap-2">
+          {loading && <Loader2 className="w-4 h-4 animate-spin" />}
+          {error && (
+            <button
+              onClick={refetch}
+              className="text-xs bg-orange-500 text-white px-2 py-1 rounded hover:bg-orange-600"
+            >
+              Reintentar
+            </button>
+          )}
+          <span className="text-xs">
+            {transactions.length > 0 ? (
+              <span className="text-green-600">✅ Datos reales</span>
+            ) : (
+              <span className="text-orange-600"></span>
+            )}
+          </span>
+        </div>
+      </div>
+
+      {/* Tabla */}
       <div className="rounded-md border overflow-x-auto">
         <Table className="min-w-full">
           <TableHeader>
@@ -206,45 +284,75 @@ const UsersTableTransactions = () => {
             ))}
           </TableHeader>
           <TableBody>
-            {table.getRowModel().rows.map((row) => (
-              <TableRow key={row.id}>
-                {row.getVisibleCells().map((cell) => (
-                  <TableCell
-                    key={cell.id}
-                    className={`py-3 px-2 ${
-                      cell.column.columnDef.meta?.responsive
-                        ? "hidden lg:table-cell"
-                        : ""
-                    }`}
-                  >
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                  </TableCell>
-                ))}
+            {table.getRowModel().rows?.length ? (
+              table.getRowModel().rows.map((row) => (
+                <TableRow key={row.id}>
+                  {row.getVisibleCells().map((cell) => (
+                    <TableCell
+                      key={cell.id}
+                      className={`py-3 px-2 ${
+                        cell.column.columnDef.meta?.responsive
+                          ? "hidden lg:table-cell"
+                          : ""
+                      }`}
+                    >
+                      {flexRender(
+                        cell.column.columnDef.cell,
+                        cell.getContext()
+                      )}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell
+                  colSpan={columns.length}
+                  className="h-24 text-center"
+                >
+                  {loading ? (
+                    <div className="flex items-center justify-center gap-2">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Cargando transacciones...
+                    </div>
+                  ) : (
+                    "No hay transacciones disponibles."
+                  )}
+                </TableCell>
               </TableRow>
-            ))}
+            )}
           </TableBody>
         </Table>
       </div>
-      <div className="flex items-center justify-end space-x-2 py-4">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => table.previousPage()}
-          disabled={!table.getCanPreviousPage()}
-        >
-          Atrás
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => table.nextPage()}
-          disabled={!table.getCanNextPage()}
-        >
-          Adelante
-        </Button>
+
+      {/* Paginación */}
+      <div className="flex items-center justify-between">
+        <div className="text-sm text-muted-foreground">
+          Página {table.getState().pagination.pageIndex + 1} de{" "}
+          {table.getPageCount()} ({tableData.length} transacciones total)
+        </div>
+
+        <div className="flex items-center space-x-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => table.previousPage()}
+            disabled={!table.getCanPreviousPage()}
+          >
+            Atrás
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => table.nextPage()}
+            disabled={!table.getCanNextPage()}
+          >
+            Adelante
+          </Button>
+        </div>
       </div>
     </div>
   )
 }
 
-export default UsersTableTransactions
+export default TransactionsTable

@@ -1,0 +1,70 @@
+// services/reservas.ts
+import axios from "axios";
+
+import { EstadisticasReservasResponse } from "../types/reservas-range";
+import { ReservasTableResponse } from "../types";
+
+const BASE_URL = "https://aparcoyo-back.onrender.com/apa/reservas";
+
+// ✅ Servicio para obtener todas las reservas (TABLA)
+export const getAllReservasService = () => {
+  const token = localStorage.getItem("token");
+  
+  console.log("🔄 Llamando al servicio de reservas para tabla:", BASE_URL);
+  
+  return axios.get<ReservasTableResponse>(`${BASE_URL}`, {
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    }
+  });
+};
+
+// ✅ Servicio para estadísticas (GRÁFICAS)
+export const getReservasStatsByRangeService = async (
+  rango: "dia" | "semana" | "mes",
+  signal?: AbortSignal
+): Promise<{ data: EstadisticasReservasResponse }> => {
+  try {
+    console.log(`🔄 Llamando al servicio de reservas estadísticas: ${BASE_URL}/estadisticas?rango=${rango}`)
+
+    // Obtener token de autenticación
+    const token = localStorage.getItem("token")
+    if (!token) {
+      throw new Error("No hay token de autenticación")
+    }
+
+    const response = await axios.get<EstadisticasReservasResponse>(
+      `${BASE_URL}/estadisticas`, 
+      {
+        params: { rango }, // axios maneja los query params automáticamente
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        signal, // Para cancelar peticiones
+      }
+    )
+
+    console.log(`✅ Datos recibidos del servicio de reservas estadísticas:`, {
+      rango,
+      totalReservas: response.data.reservasDetalle?.length || 0,
+    })
+
+    return response
+    
+  } catch (error) {
+    // Si la petición fue cancelada
+    if (axios.isCancel(error)) {
+      console.log(`🚫 Petición de reservas estadísticas cancelada para rango: ${rango}`)
+      throw error
+    }
+
+    console.error(`❌ Error en getReservasStatsByRangeService:`, {
+      rango,
+      error: error instanceof Error ? error.message : error,
+    })
+    
+    throw error
+  }
+}

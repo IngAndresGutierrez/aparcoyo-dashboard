@@ -1,23 +1,16 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client"
 
 import * as React from "react"
 import {
-  ColumnDef,
   flexRender,
   getCoreRowModel,
   useReactTable,
   getPaginationRowModel,
-  RowData,
 } from "@tanstack/react-table"
-import { MoreHorizontal } from "lucide-react"
+import { useRouter } from "next/navigation" // ← AGREGAR: import del router
 
 import { Button } from "@/components/ui/button"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 import {
   Table,
   TableBody,
@@ -26,159 +19,165 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import Image from "next/image"
+import { Skeleton } from "@/components/ui/skeleton"
+import { useEffect, useState } from "react"
 
-// Extender la interfaz ColumnMeta para incluir la propiedad responsive
-declare module "@tanstack/react-table" {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  interface ColumnMeta<TData extends RowData, TValue> {
-    responsive?: boolean
-  }
-}
-
-const data: Report[] = [
-  {
-    name: "Lily-Rose Chedjou",
-    email: "lilyrose@gmail.com",
-    date: "Jan 16, 2025",
-    reservations: 12,
-    listings: 1,
-  },
-  {
-    name: "Caitlyn King",
-    email: "hi@caitlynking.com",
-    date: "Jan 16, 2025",
-    reservations: 3,
-    listings: 0,
-  },
-  {
-    name: "Fleur Cook",
-    email: "fleurcook@icloud.com",
-    date: "Jan 15, 2025",
-    reservations: 7,
-    listings: 0,
-  },
-  {
-    name: "Marco Kelly",
-    email: "marco@marcokelly.co",
-    date: "Jan 14, 2025",
-    reservations: 2,
-    listings: 0,
-  },
-  {
-    name: "Lulu Meyers",
-    email: "lulu@lulumeyers.com",
-    date: "Jan 14, 2025",
-    reservations: 1,
-    listings: 0,
-  },
-  {
-    name: "Mikey Lawrence",
-    email: "m.lawrence@gmail.com",
-    date: "Jan 14, 2025",
-    reservations: 0,
-    listings: 3,
-  },
-  {
-    name: "Freya Browning",
-    email: "hey@freyabrowning.com",
-    date: "Jan 14, 2025",
-    reservations: 0,
-    listings: 0,
-  },
-]
-
-export type Report = {
-  name: string
-  email: string
-  date: string
-  reservations: number
-  listings: number
-}
-
-export const columns: ColumnDef<Report>[] = [
-  {
-    id: "select",
-    header: () => <input type="checkbox" />,
-    cell: () => <input type="checkbox" />,
-    // Sin meta.responsive para que siempre sea visible
-  },
-  {
-    accessorKey: "name",
-    header: "Plaza",
-    cell: ({ row }) => (
-      <div className="flex items-center gap-2">
-        <Image
-          src="/home/avatar-report.svg"
-          alt="avatar"
-          width={10}
-          height={10}
-          className="w-6 h-6 rounded-full flex-shrink-0"
-        />
-        <span className="truncate text-sm">{row.original.name}</span>
-      </div>
-    ),
-    // Sin meta.responsive para que siempre sea visible
-  },
-  {
-    accessorKey: "email",
-    header: "Reservas",
-    cell: ({ row }) => (
-      <span className="text-sm truncate block max-w-[150px]">
-        {row.original.email}
-      </span>
-    ),
-    // Sin meta.responsive para que siempre sea visible
-  },
-  {
-    accessorKey: "date",
-    header: "Precio",
-    cell: ({ row }) => <span>{row.original.date}</span>,
-    meta: { responsive: true }, // Ocultar en responsive
-  },
-  {
-    accessorKey: "reservations",
-    header: "Fecha de publicación",
-    cell: ({ row }) => <span>{row.original.reservations}</span>,
-    meta: { responsive: true }, // Ocultar en responsive
-  },
-  {
-    accessorKey: "listings",
-    header: "Propietario",
-    cell: ({ row }) => <span>{row.original.listings}</span>,
-    meta: { responsive: true }, // Ocultar en responsive
-  },
-  {
-    id: "actions",
-    cell: () => (
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            variant="ghost"
-            className="h-8 w-8 p-0"
-          >
-            <MoreHorizontal />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuItem>Editar usuario</DropdownMenuItem>
-          <DropdownMenuItem className="text-red-600">
-            Eliminar usuario
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    ),
-    meta: { responsive: true }, // Ocultar en responsive
-  },
-]
+import { useGetAllPlazas } from "../../hooks/useGetAllPlazas"
+import { createColumns } from "./columns"
+import { eliminarPlazaService } from "../../services/plazas"
 
 const UsersTablePlazas = () => {
+  const router = useRouter() // ← AGREGAR: inicializar el router
+  const { getAllPlazas, plazas, isLoading } = useGetAllPlazas()
+
+  // Estado para controlar qué plaza se está eliminando
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+
+  // Función para eliminar plaza
+  const handleEliminarPlaza = async (id: string, direccion: string) => {
+    // Validar que tengamos un ID válido
+    if (!id) {
+      alert("Error: ID de plaza no válido")
+      return
+    }
+
+    // Confirmación del usuario
+    const confirmed = window.confirm(
+      `¿Estás seguro de que quieres eliminar la plaza "${direccion}"?\n\nEsta acción no se puede deshacer.`
+    )
+
+    if (!confirmed) return
+
+    try {
+      setDeletingId(id) // Mostrar loading en esta plaza específica
+
+      console.log(`🗑️ Iniciando eliminación de plaza:`, { id, direccion })
+
+      // Llamar al servicio de eliminación
+      const response = await eliminarPlazaService(id)
+
+      console.log(`✅ Plaza eliminada exitosamente:`, response.data)
+
+      // Mostrar mensaje de éxito
+      alert("Plaza eliminada exitosamente")
+
+      // Recargar la lista de plazas
+      await getAllPlazas()
+    } catch (error: any) {
+      console.error("❌ Error completo al eliminar plaza:", error)
+
+      // Manejo de errores específicos con más detalle
+      if (error.response) {
+        // El servidor respondió con un código de error
+        const status = error.response.status
+        const data = error.response.data
+
+        console.error(`❌ Error del servidor:`, {
+          status,
+          data,
+          headers: error.response.headers,
+        })
+
+        switch (status) {
+          case 400:
+            // Extraer el mensaje específico del servidor
+            const serverMessage =
+              data?.message || data?.msg || data?.error || "Petición inválida"
+            console.error(`❌ Mensaje del servidor (400):`, serverMessage)
+
+            // Mostrar mensaje más específico según el contenido
+            if (serverMessage.includes("reservas activas")) {
+              alert(
+                `No se puede eliminar la plaza "${direccion}" porque tiene reservas activas. Cancela las reservas primero.`
+              )
+            } else if (serverMessage.includes("dependencias")) {
+              alert(
+                `No se puede eliminar la plaza "${direccion}" porque tiene datos relacionados.`
+              )
+            } else {
+              alert(`Error: ${serverMessage}`)
+            }
+            break
+          case 401:
+            alert(
+              "Error 401 - No tienes autorización para eliminar plazas. Verifica tu sesión."
+            )
+            break
+          case 403:
+            alert("Error 403 - No tienes permisos para eliminar esta plaza.")
+            break
+          case 404:
+            alert("Error 404 - La plaza no existe o ya fue eliminada.")
+            break
+          case 500:
+            alert(
+              "Error 500 - Error interno del servidor. Inténtalo más tarde."
+            )
+            break
+          default:
+            alert(
+              `Error ${status}: ${
+                data?.message || data?.msg || "Error desconocido del servidor"
+              }`
+            )
+        }
+      } else if (error.request) {
+        // La petición se hizo pero no hubo respuesta
+        console.error(`❌ Sin respuesta del servidor:`, error.request)
+        alert(
+          "Error de conexión: No se pudo conectar con el servidor. Verifica tu conexión a internet."
+        )
+      } else {
+        // Algo más pasó
+        console.error(`❌ Error de configuración:`, error.message)
+        alert(`Error: ${error.message}`)
+      }
+    } finally {
+      setDeletingId(null) // Quitar loading
+    }
+  }
+
+  // ← AGREGAR: Función para manejar la navegación a editar
+  const handleEditarPlaza = (id: string) => {
+    console.log("🔄 Navegando a editar plaza con ID:", id)
+    console.log("🔄 URL destino:", `/plazas/${id}`)
+
+    // Navegar a tu página de edición
+    router.push(`/plazas/${id}`)
+  }
+
+  // ← MODIFICAR: Crear columnas con AMBAS funciones (eliminar Y editar)
+  const columns = createColumns({
+    onEliminarPlaza: handleEliminarPlaza,
+    deletingId,
+    onEditarPlaza: handleEditarPlaza, // ← AGREGAR esta línea
+  })
+
   const table = useReactTable({
-    data,
+    data: plazas,
     columns,
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
   })
+
+  useEffect(() => {
+    getAllPlazas()
+  }, [])
+
+  // ← AGREGAR: Debug para verificar que las funciones están conectadas
+  useEffect(() => {
+    console.log("🔍 Componente UsersTablePlazas montado")
+    console.log("🔍 Función handleEditarPlaza:", handleEditarPlaza)
+    console.log("🔍 Total de plazas:", plazas.length)
+  }, [plazas])
+
+  if (isLoading) {
+    return (
+      <div className="h-6">
+        <Skeleton className="h-full" />
+      </div>
+    )
+  }
 
   return (
     <div className="w-full">
@@ -206,22 +205,36 @@ const UsersTablePlazas = () => {
             ))}
           </TableHeader>
           <TableBody>
-            {table.getRowModel().rows.map((row) => (
-              <TableRow key={row.id}>
-                {row.getVisibleCells().map((cell) => (
-                  <TableCell
-                    key={cell.id}
-                    className={`py-3 px-2 ${
-                      cell.column.columnDef.meta?.responsive
-                        ? "hidden lg:table-cell"
-                        : ""
-                    }`}
-                  >
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                  </TableCell>
-                ))}
+            {plazas.length === 0 ? (
+              <TableRow>
+                <TableCell
+                  colSpan={columns.length}
+                  className="text-center py-8 text-muted-foreground"
+                >
+                  No se encontraron plazas
+                </TableCell>
               </TableRow>
-            ))}
+            ) : (
+              table.getRowModel().rows.map((row) => (
+                <TableRow key={row.id}>
+                  {row.getVisibleCells().map((cell) => (
+                    <TableCell
+                      key={cell.id}
+                      className={`py-3 px-2 ${
+                        cell.column.columnDef.meta?.responsive
+                          ? "hidden lg:table-cell"
+                          : ""
+                      }`}
+                    >
+                      {flexRender(
+                        cell.column.columnDef.cell,
+                        cell.getContext()
+                      )}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))
+            )}
           </TableBody>
         </Table>
       </div>
