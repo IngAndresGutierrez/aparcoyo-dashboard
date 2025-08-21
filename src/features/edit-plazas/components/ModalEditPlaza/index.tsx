@@ -21,64 +21,70 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import useModalPlaza from "../../hooks/useEdit"
 
-// ✅ Interfaz con props correctas
-interface ModalDetallesPlazaProps {
-  isOpen: boolean
-  onClose: () => void
-  plazaId: string
-  onSuccess?: () => void
-  propietarios?: Array<{
+// ✅ Interfaces para tipado
+interface Propietario {
+  id: string
+  nombre: string
+  email: string
+}
+
+interface PlazaData {
+  id: string
+  nombre: string
+  descripcion: string
+  precio: string | number
+  propietario: {
+    uid: string
+    nombre: string
+    email?: string
+  }
+}
+
+interface FormData {
+  nombre: string
+  descripcion: string
+  precio: number
+  propietario: {
     id: string
     nombre: string
     email: string
-  }>
+  }
 }
 
-// ✅ Función que RECIBE props
+// ✅ Props del modal - TODO viene del componente padre
+interface ModalDetallesPlazaProps {
+  isOpen: boolean
+  onClose: () => void
+
+  // Datos que vienen del padre
+  plazaData: PlazaData | null
+  loading: boolean
+  saving: boolean
+  error: string | null
+  propietarios: Propietario[]
+
+  // Funciones que ejecuta el padre
+  onSave: (formData: FormData) => Promise<void>
+  onRetry: () => void
+  onClearError: () => void
+}
+
+// ✅ Modal que SOLO maneja UI
 function ModalDetallesPlaza({
   isOpen,
   onClose,
-  plazaId,
-  onSuccess,
-  propietarios = [],
+  plazaData,
+  loading,
+  saving,
+  error,
+  propietarios,
+  onSave,
+  onRetry,
+  onClearError,
 }: ModalDetallesPlazaProps) {
-  // Hook personalizado para manejar la plaza
-  const {
-    plazaData,
-    loading,
-    saving,
-    error,
-    cargarPlaza,
-    guardarCambios,
-    clearError,
-  } = useModalPlaza(plazaId)
-
-  // Propietarios disponibles
-  const propietariosDisponibles =
-    propietarios.length > 0
-      ? propietarios
-      : [
-          {
-            id: "prop-1",
-            nombre: "Pippa Wilkinson",
-            email: "pippa@pippaw.com",
-          },
-          {
-            id: "prop-2",
-            nombre: "John Smith",
-            email: "john@example.com",
-          },
-          {
-            id: "prop-3",
-            nombre: "Maria García",
-            email: "maria@example.com",
-          },
-        ]
-
-  // Estado del formulario
-  const [formData, setFormData] = useState({
+  // Estado del formulario (solo UI)
+  const [formData, setFormData] = useState<FormData>({
     nombre: "",
     descripcion: "",
     precio: 0,
@@ -89,28 +95,33 @@ function ModalDetallesPlaza({
     },
   })
 
-  // Estado para errores de validación
+  // Estado para errores de validación (solo UI)
   const [errores, setErrores] = useState<Record<string, string>>({})
 
-  // Cargar datos cuando se abre el modal
+  // Limpiar errores cuando se abre el modal
   useEffect(() => {
-    if (isOpen && plazaId) {
-      cargarPlaza()
-      clearError()
+    if (isOpen) {
+      setErrores({})
+      if (onClearError) {
+        onClearError()
+      }
     }
-  }, [isOpen, plazaId, cargarPlaza, clearError])
+  }, [isOpen, onClearError])
 
-  // Actualizar formulario cuando llegan los datos
+  // Actualizar formulario cuando llegan los datos del padre
   useEffect(() => {
     if (plazaData) {
       setFormData({
-        nombre: plazaData.nombre, // ✅ CORREGIDO
-        descripcion: plazaData.descripcion,
-        precio: parseFloat(plazaData.precio) || 0, // ✅ Convertir string a number
+        nombre: plazaData.nombre,
+        descripcion: plazaData.descripcion || "",
+        precio:
+          typeof plazaData.precio === "string"
+            ? parseFloat(plazaData.precio) || 0
+            : plazaData.precio || 0,
         propietario: {
-          id: plazaData.propietario.uid, // ✅ uid -> id
+          id: plazaData.propietario.uid,
           nombre: plazaData.propietario.nombre,
-          email: "", // ✅ email con fallback
+          email: plazaData.propietario.email || "",
         },
       })
     }
@@ -134,7 +145,7 @@ function ModalDetallesPlaza({
 
   // Función para manejar cambio de propietario
   const handlePropietarioChange = (propietarioId: string) => {
-    const propietarioSeleccionado = propietariosDisponibles.find(
+    const propietarioSeleccionado = propietarios.find(
       (p) => p.id === propietarioId
     )
     if (propietarioSeleccionado) {
@@ -142,12 +153,12 @@ function ModalDetallesPlaza({
     }
   }
 
-  // Función de validación
+  // Función de validación (solo UI)
   const validarFormulario = () => {
     const nuevosErrores: Record<string, string> = {}
 
     if (!formData.nombre.trim()) {
-      nuevosErrores.titulo = "El título es requerido"
+      nuevosErrores.nombre = "El nombre es requerido"
     }
 
     if (!formData.descripcion.trim()) {
@@ -171,37 +182,39 @@ function ModalDetallesPlaza({
     if (!validarFormulario()) return
 
     try {
-      await guardarCambios(formData)
+      // ✅ Llamar función del padre (que maneja el backend)
+      await onSave(formData)
 
-      // Llamar callback de éxito si existe
-      if (onSuccess) {
-        onSuccess()
-      }
-
+      // Si llegamos aquí, fue exitoso
       onClose()
     } catch (error) {
-      // El error ya se maneja en el hook
+      // El error ya se maneja en el componente padre
       console.error("Error en el modal:", error)
     }
   }
 
   // Función para manejar cancelar
   const handleCancelar = () => {
-    // Resetear formulario a datos del servidor
+    // Resetear formulario a datos originales
     if (plazaData) {
       setFormData({
         nombre: plazaData.nombre,
-        descripcion: plazaData.descripcion,
-        precio: parseFloat(plazaData.precio) || 0, // ✅ Con fallback
+        descripcion: plazaData.descripcion || "",
+        precio:
+          typeof plazaData.precio === "string"
+            ? parseFloat(plazaData.precio) || 0
+            : plazaData.precio || 0,
         propietario: {
           id: plazaData.propietario.uid,
           nombre: plazaData.propietario.nombre,
-          email: "",
+          email: plazaData.propietario.email || "",
         },
       })
     }
     setErrores({})
-    clearError()
+    if (onClearError) {
+      onClearError()
+    }
     onClose()
   }
 
@@ -210,9 +223,8 @@ function ModalDetallesPlaza({
       open={isOpen}
       onOpenChange={onClose}
     >
-      <DialogTitle>Detalles de la plaza</DialogTitle>
       <DialogContent className="max-w-[450px] p-0 gap-0 bg-white rounded-xl shadow-2xl">
-        {/* Mostrar loading */}
+        {/* Estado de loading */}
         {loading && (
           <div className="p-8 text-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-3"></div>
@@ -220,7 +232,7 @@ function ModalDetallesPlaza({
           </div>
         )}
 
-        {/* Mostrar error de carga */}
+        {/* Estado de error */}
         {error && !loading && (
           <div className="p-8 text-center">
             <div className="text-red-600 mb-4">
@@ -229,7 +241,7 @@ function ModalDetallesPlaza({
             </div>
             <div className="flex gap-2 justify-center">
               <Button
-                onClick={cargarPlaza}
+                onClick={onRetry}
                 variant="outline"
                 size="sm"
               >
@@ -246,7 +258,7 @@ function ModalDetallesPlaza({
           </div>
         )}
 
-        {/* Mostrar formulario cuando hay datos */}
+        {/* Formulario cuando hay datos */}
         {plazaData && !loading && (
           <>
             {/* Header del modal */}
@@ -273,25 +285,25 @@ function ModalDetallesPlaza({
 
             {/* Contenido del modal */}
             <div className="px-6 py-6 space-y-6">
-              {/* Título */}
+              {/* Nombre */}
               <div className="space-y-2">
                 <Label
-                  htmlFor="titulo"
+                  htmlFor="nombre"
                   className="text-sm font-medium text-gray-700"
                 >
-                  Título
+                  Nombre
                 </Label>
                 <Input
-                  id="titulo"
+                  id="nombre"
                   value={formData.nombre}
-                  onChange={(e) => handleChange("titulo", e.target.value)}
+                  onChange={(e) => handleChange("nombre", e.target.value)}
                   className={`h-11 text-gray-900 border-gray-200 focus:border-blue-500 focus:ring-blue-500 ${
-                    errores.titulo ? "border-red-300" : ""
+                    errores.nombre ? "border-red-300" : ""
                   }`}
                   disabled={saving}
                 />
-                {errores.titulo && (
-                  <p className="text-xs text-red-600">{errores.titulo}</p>
+                {errores.nombre && (
+                  <p className="text-xs text-red-600">{errores.nombre}</p>
                 )}
               </div>
 
@@ -357,7 +369,7 @@ function ModalDetallesPlaza({
                     </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
-                    {propietariosDisponibles.map((propietario) => (
+                    {propietarios.map((propietario) => (
                       <SelectItem
                         key={propietario.id}
                         value={propietario.id}

@@ -5,7 +5,7 @@ import { useParams } from "next/navigation"
 import PlazaDetails from "@/features/edit-plazas/components/DetailPlaza"
 import PlazaHeader from "@/features/edit-plazas/components/HeaderPlazas"
 import PlazaPhotos from "@/features/edit-plazas/components/PhotosPlaza"
-import PlazaReservationsTable from "@/features/edit-plazas/components/ReservationHeader/columns"
+import PlazaReservationsTable from "@/features/edit-plazas/components/ReservationTable/columns"
 import PlazaReviews from "@/features/edit-plazas/components/ReseñasPlazas"
 import AppSidebarDashboard from "@/features/shared/components/AppSidebarDashboard"
 
