@@ -10,6 +10,9 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import {
+
+} from "@/components/ui/select"
 
 import { Trash2, Plus, Car } from "lucide-react"
 import {
@@ -31,12 +34,7 @@ interface VehiculoFormState {
   id?: string // undefined para nuevos vehículos
   matricula: string
   modelo: string
-  marca: string
-  año: number
-  color: string
-  tipoVehiculo: "auto" | "moto" | "camion" | "furgoneta"
-  numeroMotor?: string
-  numeroChasis?: string
+  // ✅ Solo estos campos según Figma
   isNew?: boolean // Para identificar vehículos nuevos
 }
 
@@ -70,12 +68,6 @@ const EditVehiculoModal: React.FC<EditVehiculoModalProps> = ({
           id: vehiculo.id,
           matricula: vehiculo.placa,
           modelo: vehiculo.modelo,
-          marca: vehiculo.marca,
-          año: vehiculo.año,
-          color: vehiculo.color,
-          tipoVehiculo: vehiculo.tipoVehiculo,
-          numeroMotor: vehiculo.numeroMotor || "",
-          numeroChasis: vehiculo.numeroChasis || "",
           isNew: false,
         }))
         setVehiculosForm(initialForm)
@@ -106,12 +98,6 @@ const EditVehiculoModal: React.FC<EditVehiculoModalProps> = ({
     const newVehiculo: VehiculoFormState = {
       matricula: "",
       modelo: "",
-      marca: "",
-      año: new Date().getFullYear(),
-      color: "",
-      tipoVehiculo: "auto",
-      numeroMotor: "",
-      numeroChasis: "",
       isNew: true,
     }
     setVehiculosForm((prev) => [...prev, newVehiculo])
@@ -137,11 +123,10 @@ const EditVehiculoModal: React.FC<EditVehiculoModalProps> = ({
     try {
       let success = false
 
+      // Validación de userId antes de llamar funciones admin
       if (userId) {
-        // Modo admin
         success = await deleteVehiculoAdmin(userId, vehiculo.id)
       } else {
-        // Modo usuario normal
         success = await deleteVehiculo(vehiculo.id)
       }
 
@@ -152,7 +137,7 @@ const EditVehiculoModal: React.FC<EditVehiculoModalProps> = ({
       }
     } catch (error) {
       console.error("Error al eliminar vehículo:", error)
-      alert("Error al eliminar el vehículo")
+      // Los toasts de error ya se manejan en el servicio
     }
   }
 
@@ -165,63 +150,71 @@ const EditVehiculoModal: React.FC<EditVehiculoModalProps> = ({
 
     try {
       // Procesar cada vehículo
-      const promises = vehiculosForm.map(async (formVehiculo) => {
+      const promises = vehiculosForm.map(async (formVehiculo, index) => {
         if (formVehiculo.isNew || !formVehiculo.id) {
-          // Crear nuevo vehículo
+          // Validar campos requeridos
+          if (!formVehiculo.matricula?.trim()) {
+            throw new Error(`La matrícula es requerida para el vehículo ${index + 1}`)
+          }
+          if (!formVehiculo.modelo?.trim()) {
+            throw new Error(`El modelo es requerido para el vehículo ${index + 1}`)
+          }
+          
+          // ✅ Crear nuevo vehículo - solo matricula y modelo según Figma
           const createData: CreateVehiculoRequest = {
             placa: formVehiculo.matricula,
             modelo: formVehiculo.modelo,
-            marca: formVehiculo.marca,
-            año: formVehiculo.año,
-            color: formVehiculo.color,
-            tipoVehiculo: formVehiculo.tipoVehiculo,
-            numeroMotor: formVehiculo.numeroMotor || undefined,
-            numeroChasis: formVehiculo.numeroChasis || undefined,
           }
+          
+          console.log("🔍 Creando vehículo con datos:", createData)
           return createVehiculo(createData)
+        }
+
+        // Validación de ID requerido para actualización
+        if (!formVehiculo.id) {
+          console.warn("Vehículo sin ID, saltando actualización")
+          return Promise.resolve(null)
+        }
+
+        // Actualizar vehículo existente
+        const originalVehiculo = vehiculos.find((v) => v.id === formVehiculo.id)
+        if (!originalVehiculo) {
+          console.warn("Vehículo original no encontrado")
+          return Promise.resolve(null)
+        }
+
+        // Verificar cambios solo en campos disponibles
+        const hasVehiculoChanges =
+          originalVehiculo.placa !== formVehiculo.matricula ||
+          originalVehiculo.modelo !== formVehiculo.modelo
+
+        if (!hasVehiculoChanges) {
+          console.log("Sin cambios en vehículo, saltando actualización")
+          return Promise.resolve(null)
+        }
+
+        // Preparar datos para actualizar - SOLO campos que acepta el backend
+        const updateData: UpdateVehiculoRequest = {
+          placa: formVehiculo.matricula,
+          modelo: formVehiculo.modelo,
+          // ❌ Backend tampoco acepta estos campos:
+          // numeroMotor: formVehiculo.numeroMotor || undefined,
+          // numeroChasis: formVehiculo.numeroChasis || undefined,
+        }
+
+        console.log("🔍 Datos de actualización filtrados:", updateData)
+
+        // Actualizar según el modo
+        if (userId) {
+          return updateVehiculoAdmin(userId, formVehiculo.id, updateData)
         } else {
-          // Actualizar vehículo existente
-          const originalVehiculo = vehiculos.find(
-            (v) => v.id === formVehiculo.id
-          )
-          if (!originalVehiculo) return
-
-          // Verificar si hay cambios
-          const hasVehiculoChanges =
-            originalVehiculo.placa !== formVehiculo.matricula ||
-            originalVehiculo.modelo !== formVehiculo.modelo ||
-            originalVehiculo.marca !== formVehiculo.marca ||
-            originalVehiculo.año !== formVehiculo.año ||
-            originalVehiculo.color !== formVehiculo.color ||
-            originalVehiculo.tipoVehiculo !== formVehiculo.tipoVehiculo ||
-            (originalVehiculo.numeroMotor || "") !== formVehiculo.numeroMotor ||
-            (originalVehiculo.numeroChasis || "") !== formVehiculo.numeroChasis
-
-          if (!hasVehiculoChanges) return
-
-          // Preparar datos para actualizar
-          const updateData: UpdateVehiculoRequest = {
-            placa: formVehiculo.matricula,
-            modelo: formVehiculo.modelo,
-            marca: formVehiculo.marca,
-            año: formVehiculo.año,
-            color: formVehiculo.color,
-            tipoVehiculo: formVehiculo.tipoVehiculo,
-            numeroMotor: formVehiculo.numeroMotor || undefined,
-            numeroChasis: formVehiculo.numeroChasis || undefined,
-          }
-
-          // Actualizar según el modo
-          if (userId) {
-            return updateVehiculoAdmin(userId, formVehiculo.id, updateData)
-          } else {
-            return updateVehiculo(formVehiculo.id, updateData)
-          }
+          return updateVehiculo(formVehiculo.id, updateData)
         }
       })
 
       // Esperar a que todas las operaciones terminen
-      await Promise.all(promises)
+      const results = await Promise.all(promises)
+      console.log("✅ Operaciones completadas:", results)
 
       // Llamar callback de éxito si existe
       if (onSuccess) {
@@ -231,17 +224,14 @@ const EditVehiculoModal: React.FC<EditVehiculoModalProps> = ({
       onClose()
     } catch (error) {
       console.error("Error al guardar vehículos:", error)
-      alert("Error al guardar los cambios")
+      // Los toasts de error ya se manejan en el servicio
     }
   }
 
   // Mostrar estado vacío
   if (vehiculosForm.length === 0) {
     return (
-      <Dialog
-        open={isOpen}
-        onOpenChange={onClose}
-      >
+      <Dialog open={isOpen} onOpenChange={onClose}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center space-x-2">
@@ -264,21 +254,14 @@ const EditVehiculoModal: React.FC<EditVehiculoModalProps> = ({
               perfil y pueda utilizarlo en futuras reservas.
             </p>
 
-            <Button
-              onClick={handleAddVehiculo}
-              className="mb-6"
-            >
+            <Button onClick={handleAddVehiculo} className="mb-6">
               <Plus className="h-4 w-4 mr-2" />
               Añadir vehículo
             </Button>
           </div>
 
           <div className="flex justify-end space-x-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onClose}
-            >
+            <Button type="button" variant="outline" onClick={onClose}>
               Cancelar
             </Button>
             <Button
@@ -295,10 +278,7 @@ const EditVehiculoModal: React.FC<EditVehiculoModalProps> = ({
 
   // Mostrar formulario con vehículos
   return (
-    <Dialog
-      open={isOpen}
-      onOpenChange={onClose}
-    >
+    <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-2xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center space-x-2">
@@ -316,7 +296,14 @@ const EditVehiculoModal: React.FC<EditVehiculoModalProps> = ({
               className="border rounded-lg p-4"
             >
               <div className="flex items-center justify-between mb-4">
-                <h3 className="font-medium">Vehículo {index + 1}</h3>
+                <h3 className="font-medium">
+                  Vehículo {index + 1}
+                  {!vehiculo.isNew && (
+                    <span className="text-xs text-muted-foreground ml-2">
+                      (algunos campos no editables)
+                    </span>
+                  )}
+                </h3>
                 <Button
                   type="button"
                   variant="ghost"
@@ -329,13 +316,14 @@ const EditVehiculoModal: React.FC<EditVehiculoModalProps> = ({
                 </Button>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4">
+                {/* Matrícula - Siempre editable */}
                 <div>
                   <Label
                     htmlFor={`matricula-${index}`}
                     className="text-sm font-medium"
                   >
-                    Matrícula
+                    Matrícula *
                   </Label>
                   <Input
                     id={`matricula-${index}`}
@@ -346,15 +334,17 @@ const EditVehiculoModal: React.FC<EditVehiculoModalProps> = ({
                     }
                     className="mt-1"
                     placeholder="Ej: ABC123"
+                    required
                   />
                 </div>
 
+                {/* Modelo - Siempre editable */}
                 <div>
                   <Label
                     htmlFor={`modelo-${index}`}
                     className="text-sm font-medium"
                   >
-                    Modelo
+                    Modelo *
                   </Label>
                   <Input
                     id={`modelo-${index}`}
@@ -365,44 +355,7 @@ const EditVehiculoModal: React.FC<EditVehiculoModalProps> = ({
                     }
                     className="mt-1"
                     placeholder="Ej: Corolla 2020"
-                  />
-                </div>
-
-                <div>
-                  <Label
-                    htmlFor={`marca-${index}`}
-                    className="text-sm font-medium"
-                  >
-                    Marca
-                  </Label>
-                  <Input
-                    id={`marca-${index}`}
-                    type="text"
-                    value={vehiculo.marca}
-                    onChange={(e) =>
-                      handleInputChange(index, "marca", e.target.value)
-                    }
-                    className="mt-1"
-                    placeholder="Ej: Toyota"
-                  />
-                </div>
-
-                <div>
-                  <Label
-                    htmlFor={`color-${index}`}
-                    className="text-sm font-medium"
-                  >
-                    Color
-                  </Label>
-                  <Input
-                    id={`color-${index}`}
-                    type="text"
-                    value={vehiculo.color}
-                    onChange={(e) =>
-                      handleInputChange(index, "color", e.target.value)
-                    }
-                    className="mt-1"
-                    placeholder="Ej: Rojo"
+                    required
                   />
                 </div>
               </div>
@@ -430,10 +383,7 @@ const EditVehiculoModal: React.FC<EditVehiculoModalProps> = ({
           >
             Cancelar
           </Button>
-          <Button
-            onClick={handleSave}
-            disabled={loading}
-          >
+          <Button onClick={handleSave} disabled={loading}>
             {loading ? "Guardando..." : "Guardar"}
           </Button>
         </div>
