@@ -177,15 +177,15 @@ function ModalDetallesPlaza({
     return Object.keys(nuevosErrores).length === 0
   }
 
-  // Función para manejar guardar
+  // ✅ Función para manejar guardar - AQUÍ SE CONECTA CON EL BACKEND
   const handleGuardar = async () => {
     if (!validarFormulario()) return
 
     try {
-      // ✅ Llamar función del padre (que maneja el backend)
+      // ✅ Llamar función del padre que conecta con /apa/plazas/{id} PATCH
       await onSave(formData)
 
-      // Si llegamos aquí, fue exitoso
+      // Si llegamos aquí, fue exitoso - el modal se cierra automáticamente
       onClose()
     } catch (error) {
       // El error ya se maneja en el componente padre
@@ -261,7 +261,7 @@ function ModalDetallesPlaza({
         {/* Formulario cuando hay datos */}
         {plazaData && !loading && (
           <>
-            {/* Header del modal */}
+            {/* Header del modal - ✅ Solo un ícono aquí */}
             <DialogHeader className="px-6 py-5 border-b border-gray-100">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -432,7 +432,7 @@ function ModalDetallesPlaza({
               </div>
             </div>
 
-            {/* Footer con botones */}
+            {/* Footer con botones - ✅ AQUÍ ESTÁ LA CONEXIÓN CON EL BACKEND */}
             <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 rounded-b-xl">
               <div className="flex justify-end gap-3">
                 <Button
@@ -444,7 +444,7 @@ function ModalDetallesPlaza({
                   Cancelar
                 </Button>
                 <Button
-                  onClick={handleGuardar}
+                  onClick={handleGuardar} // ✅ Esta función llama a onSave que conecta con tu API
                   className="px-6 h-10 bg-blue-600 hover:bg-blue-700 text-white font-medium"
                   disabled={saving}
                 >

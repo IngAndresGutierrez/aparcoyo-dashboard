@@ -2,7 +2,14 @@
 "use client"
 
 import { useState } from "react"
-import { MoreHorizontal, Edit, Trash2, ArrowUpDown, AlertCircle, Loader2 } from "lucide-react"
+import {
+  MoreHorizontal,
+  Edit,
+  Trash2,
+  ArrowUpDown,
+  AlertCircle,
+  Loader2,
+} from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -22,7 +29,6 @@ import {
 import { Card, CardContent } from "@/components/ui/card"
 import Image from "next/image"
 import { usePlaza } from "../../hooks/useTableReservas"
-
 
 interface PlazaReservationsTableProps {
   plazaId: string
@@ -88,7 +94,9 @@ function PlazaReservationsTable({
   const handleEliminarReserva = async (reservaId: string) => {
     try {
       // Confirmar eliminación
-      const confirmed = window.confirm("¿Estás seguro de que quieres eliminar esta reserva?")
+      const confirmed = window.confirm(
+        "¿Estás seguro de que quieres eliminar esta reserva?"
+      )
       if (!confirmed) return
 
       // Si hay un callback personalizado, usarlo
@@ -171,7 +179,9 @@ function PlazaReservationsTable({
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <AlertCircle className="h-4 w-4 text-red-600" />
-                <span className="text-red-800">Error al cargar las reservas: {error.message}</span>
+                <span className="text-red-800">
+                  Error al cargar las reservas: {error.message}
+                </span>
               </div>
               <Button
                 variant="outline"
@@ -194,8 +204,13 @@ function PlazaReservationsTable({
       <Card className="w-full">
         <CardContent className="p-8">
           <div className="text-center">
-            <p className="text-gray-500 mb-4">No hay reservas para esta plaza</p>
-            <Button variant="outline" onClick={refresh}>
+            <p className="text-gray-500 mb-4">
+              No hay reservas para esta plaza
+            </p>
+            <Button
+              variant="outline"
+              onClick={refresh}
+            >
               Actualizar
             </Button>
           </div>
@@ -303,7 +318,7 @@ function PlazaReservationsTable({
                         {reserva.usuario?.avatar ? (
                           <Image
                             src={reserva.usuario.avatar}
-                            alt={reserva.usuario.nombre || 'Usuario'}
+                            alt={reserva.usuario.nombre || "Usuario"}
                             width={40}
                             height={40}
                             className="w-full h-full rounded-full object-cover"
@@ -311,16 +326,16 @@ function PlazaReservationsTable({
                         ) : (
                           <span className="text-gray-600 text-sm font-medium">
                             {reserva.usuario?.iniciales ||
-                              getIniciales(reserva.usuario?.nombre || 'NN')}
+                              getIniciales(reserva.usuario?.nombre || "NN")}
                           </span>
                         )}
                       </div>
                       <div className="min-w-0">
                         <p className="font-medium text-gray-900 text-sm truncate">
-                          {reserva.usuario?.nombre || 'Sin nombre'}
+                          {reserva.usuario?.nombre || "Sin nombre"}
                         </p>
                         <p className="text-gray-500 text-xs truncate">
-                          {reserva.usuario?.email || 'Sin email'}
+                          {reserva.usuario?.email || "Sin email"}
                         </p>
                       </div>
                     </div>
@@ -329,7 +344,7 @@ function PlazaReservationsTable({
                   {/* Fecha de confirmación */}
                   <TableCell className="py-4 px-4">
                     <span className="text-gray-900 text-sm">
-                      {reserva.fechaConfirmacion || 'N/A'}
+                      {reserva.fechaConfirmacion || "N/A"}
                     </span>
                   </TableCell>
 
@@ -341,9 +356,10 @@ function PlazaReservationsTable({
                   {/* Fecha de reserva */}
                   <TableCell className="py-4 px-4">
                     <div className="text-gray-900 text-sm">
-                      <p>{reserva.fechaReserva || 'N/A'}</p>
+                      <p>{reserva.fechaReserva || "N/A"}</p>
                       <p className="text-gray-500 text-xs">
-                        {reserva.horaInicio || 'N/A'} - {reserva.horaFin || 'N/A'}
+                        {reserva.horaInicio || "N/A"} -{" "}
+                        {reserva.horaFin || "N/A"}
                       </p>
                     </div>
                   </TableCell>
@@ -399,17 +415,6 @@ function PlazaReservationsTable({
         </div>
 
         {/* Debug info - remover en producción */}
-        <div className="m-4 p-3 bg-gray-50 rounded-md text-xs text-gray-600">
-          <strong>Debug API:</strong> Plaza ID: {plazaId} | 
-          Reservas desde API: {reservas?.length || 0} |
-          {loading && " Estado: Cargando... |"}
-          {error && ` Error: ${error.message} |`}
-          <br />
-          <strong>Hook status:</strong> 
-          Loading: {loading ? 'Sí' : 'No'} | 
-          Error: {error ? 'Sí' : 'No'} | 
-          Reservas: {reservas?.length || 0}
-        </div>
       </CardContent>
     </Card>
   )

@@ -32,6 +32,12 @@ export function usePlaza(plazaId: string, options: UsePlazaOptions = {}) {
     try {
       const plaza = await plazaApi.getById(plazaId)
 
+      // ✨ LOGS DE DEBUG PARA VER QUÉ DATOS LLEGAN
+      console.log("🔍 Plaza completa recibida:", plaza)
+      console.log("🔍 Campo reservas:", plaza.reservas)
+      console.log("🔍 Campo reseñas:", plaza.reseñas) // ← Buscar si viene este campo
+      console.log("🔍 Todos los campos de plaza:", Object.keys(plaza))
+
       // Extraer reservas si vienen incluidas en la respuesta
       const reservas = plaza.reservas || []
 

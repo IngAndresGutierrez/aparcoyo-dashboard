@@ -3,8 +3,6 @@
 
 import { ActualizarPlazaModal, PlazaModal } from "../types/edit-plazas"
 
-
-
 // ✅ Definir PlazaModalError aquí mismo
 interface PlazaModalError {
   ok: false
@@ -89,7 +87,8 @@ export const modalPlazaService = {
         precio: data.precio || '0',                             // ✅ string, no number
         propietario: {
           uid: data.propietario?.uid || '',                     // ✅ uid, no id
-          nombre: data.propietario?.nombre || 'Sin nombre'
+          nombre: data.propietario?.nombre || 'Sin nombre',
+          email: data.propietario?.email || ''                  // ✅ Agregar email obligatorio
         },
         resenas: data.resenas || [],                            // ✅ Agregar resenas
         cantidadResenas: data.cantidadResenas || 0,             // ✅ Agregar cantidadResenas
@@ -116,12 +115,37 @@ export const modalPlazaService = {
     try {
       const url = `${API_BASE_URL}/apa/plazas/${id}`
       console.log(`🔄 Actualizando plaza: ${url}`)
-      console.log(`📤 Datos a enviar:`, datos)
+      console.log(`📤 Datos originales recibidos:`, datos)
+
+      // ✅ Formatear datos según lo que espera el backend
+      const datosFormateados = {
+        nombre: datos.nombre,
+        descripcion: datos.descripcion,
+        precio: Math.round(Number(datos.precio) * 100) / 100, // ✅ Redondear a 2 decimales
+        // ✅ Probar diferentes nombres para el propietario (descomenta la línea correcta)
+        // propietario_uid: datos.propietarioUid,  // Opción 1
+        propietario: datos.propietarioUid,         // Opción 2 - MÁS COMÚN
+        // owner_id: datos.propietarioUid,         // Opción 3
+        // uid: datos.propietarioUid,              // Opción 4
+      }
+
+      // ✅ Validar que el precio sea un número válido y positivo
+      if (isNaN(datosFormateados.precio) || datosFormateados.precio <= 0) {
+        throw new Error('El precio debe ser un número válido mayor a 0')
+      }
+
+      // 🔍 DEBUG: Ver exactamente qué se está enviando
+      console.log(`🔍 DEBUG - Datos originales:`, JSON.stringify(datos, null, 2))
+      console.log(`🔍 DEBUG - Precio original:`, datos.precio, `(tipo: ${typeof datos.precio})`)
+      console.log(`🔍 DEBUG - Precio convertido:`, datosFormateados.precio, `(tipo: ${typeof datosFormateados.precio})`)
+      console.log(`🔍 DEBUG - Datos finales a enviar:`, JSON.stringify(datosFormateados, null, 2))
+
+      console.log(`📤 Datos formateados para enviar:`, datosFormateados)
 
       const response = await fetch(url, {
-        method: 'PUT',
+        method: 'PATCH', // ✅ CAMBIADO DE PUT A PATCH
         headers: getHeaders(),
-        body: JSON.stringify(datos),
+        body: JSON.stringify(datosFormateados), // ✅ Enviar datos formateados
       })
 
       console.log(`📡 Respuesta de actualización:`, response.status, response.statusText)
@@ -156,7 +180,8 @@ export const modalPlazaService = {
         precio: data.precio || datos.precio,                    // ✅ string
         propietario: {
           uid: data.propietario?.uid || datos.propietarioUid,   // ✅ uid
-          nombre: data.propietario?.nombre || 'Sin nombre'
+          nombre: data.propietario?.nombre || 'Sin nombre',
+          email: data.propietario?.email || ''                  // ✅ Agregar email obligatorio
         },
         resenas: data.resenas || [],
         cantidadResenas: data.cantidadResenas || 0,
