@@ -15,7 +15,7 @@ interface ReporteDetailsModalProps {
 
 interface ReporteDetalle {
   id: string
-  descripcion: string
+  descripcion: string 
   categoria: string
   categoriaLabel: string
   estado: string

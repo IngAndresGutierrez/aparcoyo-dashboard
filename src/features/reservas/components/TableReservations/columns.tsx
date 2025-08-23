@@ -55,7 +55,11 @@ const getReservaStatus = (fechaInicio: string, fechaFin: string) => {
   }
 }
 
-export const reservasColumns: ColumnDef<ReservaTable>[] = [
+// ✨ CAMBIO PRINCIPAL: Función que retorna las columnas y recibe callbacks
+export const reservasColumns = (
+  onEditReservation?: (reservation: ReservaTable) => void,
+  onDeleteReservation?: (reservation: ReservaTable) => void
+): ColumnDef<ReservaTable>[] => [
   {
     id: "select",
     header: () => <input type="checkbox" />,
@@ -181,11 +185,14 @@ export const reservasColumns: ColumnDef<ReservaTable>[] = [
           <DropdownMenuItem>
             <span className="text-gray-700">Ver detalle</span>
           </DropdownMenuItem>
-          <DropdownMenuItem>
+          <DropdownMenuItem onClick={() => onEditReservation?.(row.original)}>
             <span className="text-gray-700">Editar reserva</span>
           </DropdownMenuItem>
-          <DropdownMenuItem className="text-red-600">
-            Cancelar reserva
+          <DropdownMenuItem 
+            onClick={() => onDeleteReservation?.(row.original)}
+            className="text-red-600 focus:text-red-600"
+          >
+            Eliminar reserva
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

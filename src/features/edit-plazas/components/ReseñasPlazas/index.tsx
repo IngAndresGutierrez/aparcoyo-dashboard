@@ -34,7 +34,7 @@ import { usePlazaReviews } from "@/features/plazas/hooks/useReseña"
 // Imports del backend
 
 interface PlazaReviewsProps {
-  userId: string
+  userId?: string // ← Ahora es opcional
   plazaId?: string
   onPlazaSelect?: (plaza: Plaza) => void
   showDebugInfo?: boolean
@@ -43,10 +43,14 @@ interface PlazaReviewsProps {
 function PlazaReviews({
   userId,
   plazaId,
-
   showDebugInfo = false,
 }: PlazaReviewsProps) {
-  console.log("🎯 PlazaReviews renderizado con userId:", userId)
+  console.log(
+    "🎯 PlazaReviews renderizado con userId:",
+    userId,
+    "plazaId:",
+    plazaId
+  )
 
   // Hook para manejar datos del backend
   const {
@@ -54,6 +58,7 @@ function PlazaReviews({
     loading,
     error,
     fetchPlazasByUser,
+    fetchPlazaById, // ← Nueva función agregada
     updateReview,
     deleteReview,
     clearError,
@@ -67,13 +72,25 @@ function PlazaReviews({
   const [dropdownAbierto, setDropdownAbierto] = useState<string | null>(null)
   const [plazaSeleccionada, setPlazaSeleccionada] = useState<Plaza | null>(null)
 
-  // Cargar datos al montar el componente
+  // ✨ Cargar datos al montar el componente - ACTUALIZADO
   useEffect(() => {
-    console.log("🔄 useEffect - userId:", userId)
-    if (userId) {
+    console.log("🔄 useEffect - userId:", userId, "plazaId:", plazaId)
+
+    if (plazaId) {
+      // Modo editar: obtener plaza específica por ID
+      console.log("🎯 Modo EDITAR - Obteniendo plaza específica:", plazaId)
+      fetchPlazaById(plazaId)
+    } else if (userId) {
+      // Modo listado: obtener todas las plazas del usuario
+      console.log(
+        "📋 Modo LISTADO - Obteniendo todas las plazas del usuario:",
+        userId
+      )
       fetchPlazasByUser(userId)
+    } else {
+      console.log("⚠️ No se proporcionó ni plazaId ni userId")
     }
-  }, [userId, fetchPlazasByUser])
+  }, [userId, plazaId, fetchPlazasByUser, fetchPlazaById])
 
   // Seleccionar plaza específica o la primera disponible
   useEffect(() => {
@@ -81,12 +98,18 @@ function PlazaReviews({
       console.log("📊 Plazas disponibles:", data.data.length)
 
       if (plazaId) {
-        const plaza = data.data.find((p: Plaza) => p.id === plazaId)
-        setPlazaSeleccionada(plaza || data.data[0])
-        console.log("🎯 Plaza seleccionada por ID:", plaza?.id)
+        // En modo editar, debería haber solo una plaza
+        const plaza =
+          data.data.find((p: Plaza) => p.id === plazaId) || data.data[0]
+        setPlazaSeleccionada(plaza)
+        console.log("🎯 Plaza seleccionada en modo editar:", plaza?.id)
       } else {
+        // En modo listado, seleccionar la primera
         setPlazaSeleccionada(data.data[0])
-        console.log("🎯 Primera plaza seleccionada:", data.data[0]?.id)
+        console.log(
+          "🎯 Primera plaza seleccionada en modo listado:",
+          data.data[0]?.id
+        )
       }
     } else {
       console.log("📭 No hay plazas disponibles")
@@ -100,7 +123,7 @@ function PlazaReviews({
     const resena = plazaSeleccionada?.resenas?.find((r) => r.id === resenaId)
     if (resena) {
       setResenaAEditar(resena)
-      setTextoResena(resena.comentario || "") // ← Solución: || ""
+      setTextoResena(resena.comentario || "")
       setModalEditarAbierto(true)
       setDropdownAbierto(null)
     }
@@ -125,7 +148,7 @@ function PlazaReviews({
 
   // Función para cancelar la edición
   const handleCancelarEdicion = () => {
-    setTextoResena(resenaAEditar?.comentario || "") // ← Solución: || ""
+    setTextoResena(resenaAEditar?.comentario || "")
     setModalEditarAbierto(false)
     setResenaAEditar(null)
   }
@@ -168,6 +191,15 @@ function PlazaReviews({
       .substring(0, 2)
   }
 
+  // ✨ Función de reintento actualizada
+  const handleReintentar = () => {
+    if (plazaId) {
+      fetchPlazaById(plazaId)
+    } else if (userId) {
+      fetchPlazasByUser(userId)
+    }
+  }
+
   // Estados de carga
   if (loading) {
     return (
@@ -175,7 +207,9 @@ function PlazaReviews({
         <CardContent className="flex items-center justify-center py-8">
           <div className="flex items-center gap-2">
             <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
-            <span className="text-gray-600">Cargando plazas...</span>
+            <span className="text-gray-600">
+              {plazaId ? "Cargando plaza..." : "Cargando plazas..."}
+            </span>
           </div>
         </CardContent>
       </Card>
@@ -189,7 +223,7 @@ function PlazaReviews({
         <CardContent className="py-8">
           <div className="text-center space-y-4">
             <div className="text-red-600 font-medium">
-              Error al cargar las plazas
+              Error al cargar {plazaId ? "la plaza" : "las plazas"}
             </div>
             <div className="text-gray-600 text-sm">{error}</div>
             <div className="flex gap-2 justify-center">
@@ -203,7 +237,7 @@ function PlazaReviews({
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => fetchPlazasByUser(userId)}
+                onClick={handleReintentar}
               >
                 Reintentar
               </Button>
@@ -225,19 +259,25 @@ function PlazaReviews({
             </div>
             <div className="space-y-2">
               <h3 className="text-lg font-medium text-gray-900">
-                Este usuario no tiene plazas
+                {plazaId
+                  ? "Plaza no encontrada"
+                  : "Este usuario no tiene plazas"}
               </h3>
               <p className="text-gray-600 text-sm">
-                Este usuario aún no ha registrado ninguna plaza en el sistema
+                {plazaId
+                  ? "La plaza solicitada no existe o no tienes permisos para verla"
+                  : "Este usuario aún no ha registrado ninguna plaza en el sistema"}
               </p>
             </div>
 
             {showDebugInfo && (
               <div className="mt-4 p-3 bg-gray-50 rounded-md text-xs text-gray-600">
                 <div>
-                  <strong>Debug Info (Admin Dashboard):</strong>
+                  <strong>Debug Info:</strong>
                 </div>
-                <div>Usuario ID: {userId}</div>
+                <div>Usuario ID: {userId || "N/A"}</div>
+                <div>Plaza ID: {plazaId || "N/A"}</div>
+                <div>Modo: {plazaId ? "EDITAR" : "LISTADO"}</div>
                 <div>Respuesta: {data?.msg}</div>
                 <div>Total plazas: {data?.data?.length || 0}</div>
                 <div>Estado: {data?.ok ? "OK" : "Error"}</div>
@@ -285,6 +325,21 @@ function PlazaReviews({
                 Esta plaza aún no tiene reseñas de usuarios
               </p>
             </div>
+
+            {showDebugInfo && (
+              <div className="mt-4 p-3 bg-gray-50 rounded-md text-xs text-gray-600 space-y-1">
+                <div>
+                  <strong>Debug Info:</strong>
+                </div>
+                <div>Plaza ID: {plazaSeleccionada?.id || "N/A"}</div>
+                <div>Usuario ID: {userId || "N/A"}</div>
+                <div>Plaza ID solicitada: {plazaId || "N/A"}</div>
+                <div>Modo: {plazaId ? "EDITAR" : "LISTADO"}</div>
+                <div>Total plazas: {data.data.length}</div>
+                <div>Reseñas de esta plaza: 0</div>
+                <div>Backend mensaje: {data.msg}</div>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -430,11 +485,13 @@ function PlazaReviews({
               <div>
                 <strong>Debug Info:</strong>
               </div>
-              <div>Plaza ID: {plazaSeleccionada.id}</div>
+              <div>Plaza ID: {plazaSeleccionada?.id || "N/A"}</div>
               <div>Usuario ID: {userId}</div>
+              <div>Plaza ID solicitada: {plazaId || "N/A"}</div>
+              <div>Modo: {plazaId ? "EDITAR" : "LISTADO"}</div>
               <div>Total plazas: {data.data.length}</div>
               <div>
-                Reseñas de esta plaza: {plazaSeleccionada.resenas.length}
+                Reseñas de esta plaza: {plazaSeleccionada?.resenas?.length || 0}
               </div>
               <div>Backend mensaje: {data.msg}</div>
             </div>

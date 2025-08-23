@@ -10,6 +10,7 @@ interface UsePlazaReviewsState {
 
 interface UsePlazaReviewsReturn extends UsePlazaReviewsState {
   fetchPlazasByUser: (uid: string) => Promise<void>;
+  fetchPlazaById: (plazaId: string) => Promise<void>; // ← Nueva función
   updateReview: (plazaId: string, reviewId: string, updateData: UpdateReviewRequest) => Promise<void>;
   deleteReview: (plazaId: string, reviewId: string) => Promise<void>;
   clearError: () => void;
@@ -24,11 +25,14 @@ export const usePlazaReviews = (): UsePlazaReviewsReturn => {
   });
   
   const [lastUserId, setLastUserId] = useState<string | null>(null);
+  const [lastPlazaId, setLastPlazaId] = useState<string | null>(null); // ← Nuevo estado
 
+  // Función original: obtener todas las plazas de un usuario
   const fetchPlazasByUser = useCallback(async (uid: string) => {
     console.log('🚀 Hook: fetchPlazasByUser con UID:', uid);
     setState(prev => ({ ...prev, loading: true, error: null }));
     setLastUserId(uid);
+    setLastPlazaId(null); // ← Limpiar plazaId cuando se busca por usuario
     
     try {
       const response = await plazaReviewsService.getPlazasByUser(uid);
@@ -51,6 +55,40 @@ export const usePlazaReviews = (): UsePlazaReviewsReturn => {
     }
   }, []);
 
+  // ✨ Nueva función: obtener una plaza específica por ID
+  const fetchPlazaById = useCallback(async (plazaId: string) => {
+    console.log('🚀 Hook: fetchPlazaById con ID:', plazaId);
+    setState(prev => ({ ...prev, loading: true, error: null }));
+    setLastPlazaId(plazaId);
+    setLastUserId(null); // ← Limpiar userId cuando se busca por plaza
+    
+    try {
+      const response = await plazaReviewsService.getPlazaById(plazaId);
+      console.log('🎉 Hook: Plaza específica recibida:', response);
+      
+      // Convertir la respuesta de una plaza al mismo formato que el array de plazas
+      const formattedResponse: PlazasUsuarioResponse = {
+        ok: true,
+        msg: 'Plaza obtenida correctamente',
+        data: [response] // ← Envolver en array para mantener compatibilidad
+      };
+      
+      setState(prev => ({ 
+        ...prev, 
+        data: formattedResponse, 
+        loading: false 
+      }));
+    } catch (error) {
+      console.log('❌ Hook: Error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Error obteniendo plaza';
+      setState(prev => ({ 
+        ...prev, 
+        error: errorMessage, 
+        loading: false 
+      }));
+    }
+  }, []);
+
   const updateReview = useCallback(async (
     plazaId: string, 
     reviewId: string, 
@@ -60,7 +98,13 @@ export const usePlazaReviews = (): UsePlazaReviewsReturn => {
     
     try {
       await plazaReviewsService.updateReview(plazaId, reviewId, updateData);
-      if (lastUserId) {
+      
+      // ✨ Refrescar según el contexto actual
+      if (lastPlazaId) {
+        // Estamos en modo plaza específica
+        await fetchPlazaById(lastPlazaId);
+      } else if (lastUserId) {
+        // Estamos en modo usuario
         await fetchPlazasByUser(lastUserId);
       }
     } catch (error) {
@@ -71,14 +115,20 @@ export const usePlazaReviews = (): UsePlazaReviewsReturn => {
         loading: false 
       }));
     }
-  }, [lastUserId, fetchPlazasByUser]);
+  }, [lastUserId, lastPlazaId, fetchPlazasByUser, fetchPlazaById]);
 
   const deleteReview = useCallback(async (plazaId: string, reviewId: string) => {
     setState(prev => ({ ...prev, loading: true, error: null }));
     
     try {
       await plazaReviewsService.deleteReview(plazaId, reviewId);
-      if (lastUserId) {
+      
+      // ✨ Refrescar según el contexto actual
+      if (lastPlazaId) {
+        // Estamos en modo plaza específica
+        await fetchPlazaById(lastPlazaId);
+      } else if (lastUserId) {
+        // Estamos en modo usuario
         await fetchPlazasByUser(lastUserId);
       }
     } catch (error) {
@@ -89,23 +139,27 @@ export const usePlazaReviews = (): UsePlazaReviewsReturn => {
         loading: false 
       }));
     }
-  }, [lastUserId, fetchPlazasByUser]);
+  }, [lastUserId, lastPlazaId, fetchPlazasByUser, fetchPlazaById]);
 
   const clearError = useCallback(() => {
     setState(prev => ({ ...prev, error: null }));
   }, []);
 
   const refetch = useCallback(async () => {
-    if (lastUserId) {
+    // ✨ Refrescar según el contexto actual
+    if (lastPlazaId) {
+      await fetchPlazaById(lastPlazaId);
+    } else if (lastUserId) {
       await fetchPlazasByUser(lastUserId);
     }
-  }, [lastUserId, fetchPlazasByUser]);
+  }, [lastUserId, lastPlazaId, fetchPlazasByUser, fetchPlazaById]);
 
   return {
     data: state.data,
     loading: state.loading,
     error: state.error,
     fetchPlazasByUser,
+    fetchPlazaById, // ← Nueva función exportada
     updateReview,
     deleteReview,
     clearError,

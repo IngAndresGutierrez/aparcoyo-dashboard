@@ -25,6 +25,7 @@ export interface Reserva {
 }
 
 export interface Plaza {
+  reseñas(arg0: string, reseñas: any): unknown
   id: string
   nombre: string
   descripcion?: string
