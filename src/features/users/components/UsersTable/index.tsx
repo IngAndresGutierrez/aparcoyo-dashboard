@@ -34,6 +34,109 @@ import { UsuarioTabla } from "../../types/table"
 import { useUsuariosTabla } from "../../hooks/useTable"
 import { useUserActions } from "../../hooks/useChange"
 import { useRouter } from "next/navigation"
+import Image from "next/image"
+
+// 🖼️ NUEVO COMPONENTE: Avatar con foto real (CON DEBUG)
+const UserAvatar: React.FC<{
+  userId: string
+  userName?: string
+  userEmail: string
+}> = ({ userId, userName, userEmail }) => {
+  const [photoUrl, setPhotoUrl] = React.useState<string | null>(null)
+  const [loading, setLoading] = React.useState(true)
+
+  React.useEffect(() => {
+    const fetchPhoto = async () => {
+      console.log(`🖼️ Iniciando carga de foto para usuario: ${userId}`)
+
+      try {
+        const token =
+          localStorage.getItem("token") || localStorage.getItem("authToken")
+        console.log(`🔑 Token disponible: ${token ? "SÍ" : "NO"}`)
+
+        const url = `https://aparcoyo-back.onrender.com/apa/archivos/perfil/foto/${userId}`
+        console.log(`🔗 URL completa: ${url}`)
+
+        const response = await fetch(url, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        })
+
+        console.log(`📨 Response status: ${response.status}`)
+        console.log(
+          `📨 Response headers:`,
+          Object.fromEntries(response.headers.entries())
+        )
+
+        if (response.ok) {
+          console.log(`✅ Foto encontrada para usuario ${userId}`)
+          const blob = await response.blob()
+          console.log(`📁 Blob size: ${blob.size} bytes, type: ${blob.type}`)
+          const imageUrl = URL.createObjectURL(blob)
+          setPhotoUrl(imageUrl)
+          console.log(`🖼️ URL de imagen creada: ${imageUrl}`)
+        } else {
+          console.log(
+            `❌ No se encontró foto para usuario ${userId}: ${response.status} ${response.statusText}`
+          )
+          const errorText = await response.text()
+          console.log(`📄 Error response body:`, errorText)
+        }
+      } catch (error) {
+        console.error(
+          `❌ Error completo fetching photo for user ${userId}:`,
+          error
+        )
+      } finally {
+        setLoading(false)
+        console.log(`🏁 Finalizando carga de foto para usuario ${userId}`)
+      }
+    }
+
+    if (userId) {
+      console.log(
+        `🚀 useEffect ejecutado para UserAvatar con userId: ${userId}`
+      )
+      fetchPhoto()
+    } else {
+      console.log("❌ No hay userId en UserAvatar")
+      setLoading(false)
+    }
+
+    // Cleanup function
+    return () => {
+      if (photoUrl) {
+        URL.revokeObjectURL(photoUrl)
+      }
+    }
+  }, [userId, photoUrl])
+
+  if (loading) {
+    return <Skeleton className="w-6 h-6 rounded-full" />
+  }
+
+  if (photoUrl) {
+    return (
+      <Image
+        src={photoUrl}
+        alt={`Foto de ${userName || userEmail}`}
+        className="w-6 h-6 rounded-full object-cover border border-gray-200"
+        onError={() => setPhotoUrl(null)}
+      />
+    )
+  }
+
+  // Fallback con inicial o ícono
+  return (
+    <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+      {userName?.charAt(0)?.toUpperCase() ||
+        userEmail?.charAt(0)?.toUpperCase() || (
+          <User className="w-3 h-3 text-blue-600" />
+        )}
+    </div>
+  )
+}
 
 // Extender la interfaz ColumnMeta para incluir la propiedad responsive
 declare module "@tanstack/react-table" {
@@ -185,7 +288,7 @@ const UsersTable = ({
     }
   }
 
-  // COLUMNAS ACTUALIZADAS CON FUNCIONALIDAD
+  // 🖼️ COLUMNAS ACTUALIZADAS CON AVATAR DE FOTO REAL
   const columns: ColumnDef<UsuarioTabla>[] = [
     {
       id: "select",
@@ -197,9 +300,12 @@ const UsersTable = ({
       header: "Usuario",
       cell: ({ row }) => (
         <div className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
-            <User className="w-3 h-3 text-blue-600" />
-          </div>
+          {/* 🖼️ AQUÍ SE USA EL NUEVO COMPONENTE UserAvatar */}
+          <UserAvatar
+            userId={row.original.uid}
+            userName={row.original.nombre}
+            userEmail={row.original.email}
+          />
           <div className="min-w-0">
             <span className="text-sm font-medium truncate block">
               {row.original.nombre || "Sin nombre"}

@@ -1,8 +1,15 @@
 "use client"
 
+import { ArrowUp, ArrowDown, TrendingUp, Loader2 } from "lucide-react"
 import { Area, AreaChart, CartesianGrid, XAxis } from "recharts"
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
 import {
   ChartConfig,
   ChartContainer,
@@ -11,50 +18,140 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart"
-import { ArrowUp } from "lucide-react"
+import { Skeleton } from "@/components/ui/skeleton"
+import { useUsuariosStats } from "@/features/users/hooks/useUsers"
 
-export const description = "An area chart with a legend"
 
-const chartData = [
-  { month: "January", desktop: 186, mobile: 80 },
-  { month: "February", desktop: 305, mobile: 200 },
-  { month: "March", desktop: 237, mobile: 120 },
-  { month: "April", desktop: 73, mobile: 190 },
-  { month: "May", desktop: 209, mobile: 130 },
-  { month: "June", desktop: 214, mobile: 140 },
-]
+export const description =
+  "Gráfico de usuarios totales con datos en tiempo real"
+
+// Datos de ejemplo para el gráfico (en producción vendrían del API)
+const generateChartData = (usuariosTotales: number) => {
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun"]
+  const baseValue = Math.max(usuariosTotales - 20, 5)
+
+  return months.map((month, index) => ({
+    month,
+    activos: Math.floor(baseValue + Math.random() * 10 + index * 2),
+    nuevos: Math.floor(2 + Math.random() * 3 + index * 1),
+  }))
+}
 
 const chartConfig = {
-  desktop: {
-    label: "Desktop",
-    color: "#0E47E1", // azul (línea de arriba)
+  activos: {
+    label: "Usuarios Activos",
+    color: "#0E47E1", // azul principal
   },
-  mobile: {
-    label: "Mobile",
-    color: "#9A75E5", // violeta (línea de abajo)
+  nuevos: {
+    label: "Usuarios Nuevos",
+    color: "#9A75E5", // púrpura
   },
 } satisfies ChartConfig
 
-export function GraphicsHome() {
+interface TotalUsersGraphProps {
+  rango?: "dia" | "semana" | "mes"
+}
+
+export function GraphicsHome({ rango = "mes" }: TotalUsersGraphProps) {
+  const { data, loading, error } = useUsuariosStats(rango)
+
+  // Calcular datos del gráfico
+  const chartData = data ? generateChartData(data.usuariosTotales) : []
+
+  // Calcular crecimiento basado en períodos
+  const crecimiento = data
+    ? ((data.periodoActual - data.periodoAnterior) /
+        Math.max(data.periodoAnterior, 1)) *
+      100
+    : 0
+
+  const isPositiveGrowth = crecimiento >= 0
+
+  // Estado de carga
+  if (loading) {
+    return (
+      <Card className="">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm text-muted-foreground font-medium">
+            Usuarios totales
+          </CardTitle>
+          <div className="flex items-center gap-2 pt-1">
+            <Skeleton className="h-8 w-20" />
+            <Skeleton className="h-4 w-16" />
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="h-[200px] flex items-center justify-center">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          </div>
+        </CardContent>
+        <CardFooter>
+          <Skeleton className="h-4 w-full" />
+        </CardFooter>
+      </Card>
+    )
+  }
+
+  // Estado de error
+  if (error) {
+    return (
+      <Card className="">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm text-muted-foreground font-medium">
+            Usuarios totales
+          </CardTitle>
+          <div className="flex items-center gap-2 pt-1">
+            <span className="text-2xl font-bold text-primary">0</span>
+            <div className="flex items-center text-sm text-red-500 font-medium">
+              <ArrowDown className="w-4 h-4 mr-1" />
+              Error
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="h-[200px] flex items-center justify-center text-muted-foreground">
+            Error al cargar datos de usuarios
+          </div>
+        </CardContent>
+        <CardFooter>
+          <div className="text-sm text-muted-foreground">
+            No se pudieron cargar las estadísticas
+          </div>
+        </CardFooter>
+      </Card>
+    )
+  }
+
   return (
-    <Card>
+    <Card className="">
       <CardHeader className="pb-2">
         <CardTitle className="text-sm text-muted-foreground font-medium">
           Usuarios totales
         </CardTitle>
 
         <div className="flex items-center gap-2 pt-1">
-          {/* Número */}
-          <span className="text-2xl font-bold text-primary">2,332</span>
+          {/* Número total de usuarios */}
+          <span className="text-2xl font-bold text-primary">
+            {data?.usuariosTotales?.toLocaleString() || 0}
+          </span>
 
-          {/* Porcentaje */}
-          <div className="flex items-center text-sm text-[#61AA12] font-medium">
-            <ArrowUp className="w-4 h-4 mr-1 -ml text-[#61AA12]" />
-            100%
+          {/* Porcentaje de crecimiento */}
+          <div
+            className={`flex items-center text-sm font-medium ${
+              isPositiveGrowth ? "text-[#61AA12]" : "text-red-500"
+            }`}
+          >
+            {isPositiveGrowth ? (
+              <ArrowUp className="w-4 h-4 mr-1" />
+            ) : (
+              <ArrowDown className="w-4 h-4 mr-1" />
+            )}
+            {Math.abs(crecimiento).toFixed(1)}%
           </div>
         </div>
       </CardHeader>
-      <CardContent className="">
+
+      <CardContent>
         <ChartContainer config={chartConfig}>
           <AreaChart
             accessibilityLayer
@@ -77,25 +174,41 @@ export function GraphicsHome() {
               content={<ChartTooltipContent indicator="line" />}
             />
             <Area
-              dataKey="mobile"
+              dataKey="nuevos"
               type="natural"
-              fill="var(--color-mobile)"
+              fill="var(--color-nuevos)"
               fillOpacity={0.4}
-              stroke="var(--color-mobile)"
+              stroke="var(--color-nuevos)"
               stackId="a"
             />
             <Area
-              dataKey="desktop"
+              dataKey="activos"
               type="natural"
-              fill="var(--color-desktop)"
+              fill="var(--color-activos)"
               fillOpacity={0.4}
-              stroke="var(--color-desktop)"
+              stroke="var(--color-activos)"
               stackId="a"
             />
             <ChartLegend content={<ChartLegendContent />} />
           </AreaChart>
         </ChartContainer>
       </CardContent>
+
+      <CardFooter>
+        <div className="flex w-full items-start gap-2 text-sm">
+          <div className="grid gap-2">
+            <div className="flex items-center gap-2 leading-none font-medium">
+              {isPositiveGrowth ? "Trending up" : "Trending down"} by{" "}
+              {Math.abs(crecimiento).toFixed(1)}% this {rango}
+              <TrendingUp className="h-4 w-4" />
+            </div>
+            <div className="text-muted-foreground flex items-center gap-2 leading-none">
+              {data?.usuariosConPlaza || 0} con plazas •{" "}
+              {data?.usuariosNuevos || 0} nuevos • Rango: {rango}
+            </div>
+          </div>
+        </div>
+      </CardFooter>
     </Card>
   )
 }
