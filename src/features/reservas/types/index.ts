@@ -1,5 +1,6 @@
 // types/reservas-table.ts
 export interface ReservaTable {
+  id: any
   usuario: string
   plaza: string
   matricula: string

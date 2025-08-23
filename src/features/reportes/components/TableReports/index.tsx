@@ -87,6 +87,9 @@ const UsersTableReports: React.FC<UsersTableReportsProps> = ({
     string | null
   >(null)
   const [isModalOpen, setIsModalOpen] = React.useState(false)
+  const [deletingReportId, setDeletingReportId] = React.useState<string | null>(
+    null
+  )
 
   // Cargar datos cuando cambie el filtro
   useEffect(() => {
@@ -110,7 +113,58 @@ const UsersTableReports: React.FC<UsersTableReportsProps> = ({
     refresh(filtroFecha)
   }
 
-  // Función para cancelar reporte directamente desde la tabla
+  // ✨ NUEVA FUNCIÓN para eliminar reporte
+  const handleDeleteReporte = async (
+    reporteId: string,
+    descripcion: string
+  ) => {
+    const confirmDelete = window.confirm(
+      `¿Estás seguro de que quieres eliminar este reporte?\n\n"${descripcion.substring(
+        0,
+        100
+      )}${
+        descripcion.length > 100 ? "..." : ""
+      }"\n\nEsta acción no se puede deshacer.`
+    )
+
+    if (!confirmDelete) return
+
+    setDeletingReportId(reporteId)
+
+    try {
+      console.log("🗑️ Eliminando reporte:", reporteId)
+
+      const response = await fetch(`/apa/reportes/${reporteId}`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          // 'Authorization': `Bearer ${token}` // Agregar si necesitas auth
+        },
+      })
+
+      console.log("📡 DELETE Response status:", response.status)
+
+      if (response.ok) {
+        console.log("✅ Reporte eliminado exitosamente")
+        // Refrescar la tabla
+        refresh(filtroFecha)
+
+        // Mostrar mensaje de éxito
+        alert("Reporte eliminado correctamente")
+      } else {
+        const errorText = await response.text()
+        console.error("❌ Error eliminando reporte:", errorText)
+        alert(
+          `Error eliminando reporte: ${response.status} ${response.statusText}`
+        )
+      }
+    } catch (error) {
+      console.error("❌ Error de red eliminando reporte:", error)
+      alert("Error de conexión eliminando el reporte")
+    } finally {
+      setDeletingReportId(null)
+    }
+  }
 
   // Definir las columnas dentro del componente para acceder a handleOpenModal
   const columns: ColumnDef<ReportTableItem>[] = [
@@ -184,28 +238,44 @@ const UsersTableReports: React.FC<UsersTableReportsProps> = ({
     },
     {
       id: "actions",
-      cell: ({ row }) => (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              className="h-8 w-8 p-0"
-            >
-              <MoreHorizontal />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => handleOpenModal(row.original.id)}>
-              Resolver reporte
-            </DropdownMenuItem>
-            {row.original.estado === "Pendiente" && (
-              <DropdownMenuItem className="text-red-600">
-                Cancelar reporte
+      cell: ({ row }) => {
+        const isDeleting = deletingReportId === row.original.id
+
+        return (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                className="h-8 w-8 p-0"
+                disabled={isDeleting}
+              >
+                {isDeleting ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <MoreHorizontal className="h-4 w-4" />
+                )}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                onClick={() => handleOpenModal(row.original.id)}
+                disabled={isDeleting}
+              >
+                Resolver reporte
               </DropdownMenuItem>
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      ),
+              <DropdownMenuItem
+                className="text-red-600 focus:text-red-600"
+                onClick={() =>
+                  handleDeleteReporte(row.original.id, row.original.descripcion)
+                }
+                disabled={isDeleting}
+              >
+                {isDeleting ? "Eliminando..." : "Eliminar reporte"}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )
+      },
       meta: { responsive: true },
     },
   ]
