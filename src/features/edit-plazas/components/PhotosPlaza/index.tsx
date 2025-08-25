@@ -1,7 +1,7 @@
 // features/edit-plazas/components/PlazaPhotos.tsx
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Image from "next/image"
 import { Camera, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -25,10 +25,36 @@ function PlazaPhotos({
   // Estados
   const [fotoSeleccionada, setFotoSeleccionada] = useState<Foto | null>(null)
   const [isEditModalOpen, setIsEditModalOpen] = useState<boolean>(false)
+  const [isClient, setIsClient] = useState(false) // Nuevo estado para hidratación
   const [fotos, setFotos] = useState<Foto[]>(() => {
-    // Solo usar datos recibidos, sin fotos hardcodeadas
+    // Solo usar datos iniciales, sin localStorage en el estado inicial
     return photosData?.fotos || []
   })
+
+  // Efecto para marcar que estamos en el cliente y cargar desde localStorage
+  useEffect(() => {
+    setIsClient(true)
+    
+    // Cargar desde localStorage solo en el cliente
+    if (plazaId) {
+      const savedPhotos = localStorage.getItem(`plaza-${plazaId}-photos`)
+      if (savedPhotos) {
+        try {
+          const parsedPhotos = JSON.parse(savedPhotos)
+          setFotos(parsedPhotos)
+        } catch (error) {
+          console.error('Error parsing saved photos:', error)
+        }
+      }
+    }
+  }, [plazaId])
+
+  // Guardar en localStorage cuando cambien las fotos (solo en el cliente)
+  useEffect(() => {
+    if (isClient && plazaId && fotos.length > 0) {
+      localStorage.setItem(`plaza-${plazaId}-photos`, JSON.stringify(fotos))
+    }
+  }, [fotos, plazaId, isClient])
 
   // Datos de la plaza
   const plazaPhotos: PlazaPhotosData = {
@@ -45,18 +71,25 @@ function PlazaPhotos({
     console.log("Abrir modal de edición para plaza:", plazaPhotos.id)
   }
 
-  // Función para guardar fotos desde el modal
+  // Función para guardar fotos desde el modal (MEJORADA)
   const handleSavePhotos = (newPhotosUrls: string[]): void => {
+    console.log("📥 Recibiendo fotos del modal:", newPhotosUrls)
+    
     // Convertir URLs de vuelta a objetos Foto
-    const newFotos: Foto[] = newPhotosUrls.map((url, index) => ({
-      id: `foto-${Date.now()}-${index}`, // Generar ID único
-      url: url,
-      alt: `Foto ${index + 1} del aparcamiento`,
-      principal: index === 0, // Primera foto es principal
-    }))
+    const newFotos: Foto[] = newPhotosUrls.map((url, index) => {
+      // Verificar si ya existe esta foto para mantener su ID
+      const existingFoto = fotos.find(f => f.url === url)
+      
+      return {
+        id: existingFoto?.id || `foto-${Date.now()}-${index}`,
+        url: url,
+        alt: `Foto ${index + 1} del aparcamiento`,
+        principal: index === 0, // Primera foto es principal
+      }
+    })
 
     setFotos(newFotos)
-    console.log("Fotos actualizadas:", newFotos)
+    console.log("✅ Fotos actualizadas y guardadas:", newFotos)
 
     // Aquí podrías llamar a una API para guardar en el backend
     // await updatePlazaPhotos(plazaId, newFotos)
@@ -67,37 +100,48 @@ function PlazaPhotos({
     setFotoSeleccionada(foto)
   }
 
-  // Función para manejar subida de foto directa (desde el grid)
-  const handleFileUpload = (
+  // Función para manejar subida de foto directa (desde el grid) - MEJORADA
+  const handleFileUpload = async (
     event: React.ChangeEvent<HTMLInputElement>
-  ): void => {
+  ): Promise<void> => {
     const file = event.target.files?.[0]
-    if (file) {
-      // Crear URL temporal del archivo
-      const url = URL.createObjectURL(file)
+    if (!file) return
+
+    try {
+      // Convertir archivo a Base64 para persistencia
+      const base64Url = await new Promise<string>((resolve) => {
+        const reader = new FileReader()
+        reader.onload = () => resolve(reader.result as string)
+        reader.readAsDataURL(file)
+      })
       
       // Crear objeto Foto
       const nuevaFoto: Foto = {
         id: `foto-${Date.now()}`,
-        url: url,
+        url: base64Url, // Usar Base64 en lugar de blob URL
         alt: `Foto ${fotos.length + 1} del aparcamiento`,
         principal: fotos.length === 0 // Primera foto es principal
       }
       
       setFotos([...fotos, nuevaFoto])
-      console.log('Archivo agregado directamente:', file.name)
+      console.log('✅ Archivo guardado permanentemente:', file.name)
       
       if (onAgregarFoto) {
         onAgregarFoto(file)
       }
+    } catch (error) {
+      console.error('Error procesando archivo:', error)
     }
+
+    // Limpiar el input
+    event.target.value = ''
   }
 
   // Función para eliminar foto individual (desde el grid)
   const handleEliminarFoto = (fotoId: string): void => {
     const fotoAEliminar = fotos.find(foto => foto.id === fotoId)
     
-    // Si es una URL temporal, limpiarla
+    // Si es una URL temporal (blob), limpiarla
     if (fotoAEliminar?.url.startsWith('blob:')) {
       URL.revokeObjectURL(fotoAEliminar.url)
     }
@@ -111,19 +155,31 @@ function PlazaPhotos({
     console.log("Foto eliminada:", fotoId)
   }
 
+  // Helper para determinar si una foto es Base64 (solo en cliente)
+  const isFotoLocal = (foto: Foto): boolean => {
+    return isClient && foto.url.startsWith('data:image/')
+  }
+
+  // Helper para determinar si una foto es temporal (solo en cliente) 
+  const isFotoTemporal = (foto: Foto): boolean => {
+    return isClient && foto.url.startsWith('blob:')
+  }
+
   return (
     <>
       <Card className="w-132">
         <CardHeader className="pb-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-gray-900">Fotos</h2>
+            <h2 className="text-lg font-semibold text-gray-900">
+              Fotos ({plazaPhotos.fotos.length}/6)
+            </h2>
             <Button
               variant="ghost"
               size="sm"
               onClick={handleEditar}
               className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 p-0 h-auto font-medium"
             >
-              Editar
+               Editar
             </Button>
           </div>
         </CardHeader>
@@ -177,12 +233,11 @@ function PlazaPhotos({
                       alt={foto.alt}
                       fill
                       className="object-cover transition-transform group-hover:scale-105"
-                      onError={() => {
+                      onError={(e) => {
                         console.error('Error cargando imagen:', foto.url)
-                        // Si es una imagen local que falló, eliminarla
-                        if (foto.url.startsWith('blob:') || foto.url.startsWith('/')) {
-                          handleEliminarFoto(foto.id)
-                        }
+                        const target = e.target as HTMLImageElement
+                        // Mostrar placeholder en caso de error
+                        target.src = "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik03MCA3MEgxMzBWMTMwSDcwVjcwWiIgZmlsbD0iI0Q5RDlEOSIvPgo8L3N2Zz4K"
                       }}
                     />
 
@@ -192,17 +247,26 @@ function PlazaPhotos({
                     {/* Indicador de foto principal */}
                     {foto.principal && (
                       <div className="absolute top-2 left-2">
-                        <span className="bg-blue-600 text-white text-xs px-2 py-1 rounded-md">
+                        <span className="bg-blue-600 text-white text-xs px-2 py-1 rounded-md font-medium">
                           Principal
                         </span>
                       </div>
                     )}
 
-                    {/* Indicador de foto temporal */}
-                    {foto.url.startsWith('blob:') && (
+                    {/* Indicador de foto local/guardada */}
+                    {isFotoLocal(foto) && (
                       <div className="absolute bottom-2 left-2">
-                        <span className="bg-yellow-500 text-white text-xs px-2 py-1 rounded-md">
-                          Temporal
+                        <span className="bg-green-500 text-white text-xs px-2 py-1 rounded-md font-medium">
+                          💾 Guardada
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Indicador de foto temporal */}
+                    {isFotoTemporal(foto) && (
+                      <div className="absolute bottom-2 left-2">
+                        <span className="bg-orange-500 text-white text-xs px-2 py-1 rounded-md font-medium">
+                          ⏳ Temporal
                         </span>
                       </div>
                     )}
@@ -212,31 +276,22 @@ function PlazaPhotos({
                       <Button
                         variant="secondary"
                         size="sm"
-                        className="w-8 h-8 p-0 bg-white hover:bg-gray-100"
+                        className="w-8 h-8 p-0 bg-white hover:bg-red-100 shadow-lg"
                         onClick={(e) => {
                           e.stopPropagation()
                           handleEliminarFoto(foto.id)
                         }}
                       >
-                        <X className="w-4 h-4" />
+                        <X className="w-4 h-4 text-red-600" />
                       </Button>
                     </div>
-                  </div>
-
-                  {/* Placeholder cuando la imagen no carga */}
-                  <div
-                    className={`absolute inset-0 bg-gray-200 flex items-center justify-center ${
-                      index === 0 ? "min-h-[200px]" : ""
-                    }`}
-                  >
-                    <Camera className="w-8 h-8 text-gray-400" />
                   </div>
                 </div>
               ))}
 
               {/* Botón para agregar más fotos (solo si hay menos de 6) */}
               {plazaPhotos.fotos.length < 6 && (
-                <div className="aspect-square border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center hover:border-gray-400 transition-colors">
+                <div className="aspect-square border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center hover:border-blue-400 hover:bg-blue-50 transition-all duration-200 group">
                   <input
                     type="file"
                     accept="image/*"
@@ -249,8 +304,8 @@ function PlazaPhotos({
                     className="cursor-pointer"
                   >
                     <div className="text-center p-4">
-                      <Camera className="w-6 h-6 text-gray-400 mx-auto mb-2" />
-                      <span className="text-xs text-gray-500">
+                      <Camera className="w-6 h-6 text-gray-400 group-hover:text-blue-500 mx-auto mb-2 transition-colors" />
+                      <span className="text-xs text-gray-500 group-hover:text-blue-600 transition-colors font-medium">
                         Agregar foto
                       </span>
                     </div>
@@ -260,10 +315,30 @@ function PlazaPhotos({
             </div>
           )}
 
-          {/* Mensaje informativo para fotos temporales */}
-          {fotos.some(foto => foto.url.startsWith('blob:')) && (
-            <div className="mt-4 p-3 bg-blue-50 rounded-md text-sm text-blue-700">
-              💡 Las fotos seleccionadas son temporales. Usa  para gestionarlas o guarda los cambios.
+          {/* Mensajes informativos - Solo mostrar en el cliente */}
+          {isClient && fotos.some(foto => isFotoTemporal(foto)) && (
+            <div className="mt-4 p-3 bg-orange-50 rounded-lg border border-orange-200">
+              <div className="flex items-center gap-2">
+                <span className="text-orange-600 text-sm font-medium">
+                  ⚠️ Fotos temporales detectadas
+                </span>
+              </div>
+              <p className="text-xs text-orange-600 mt-1">
+                Usa el botón Editar para gestionar y guardar permanentemente
+              </p>
+            </div>
+          )}
+
+          {isClient && fotos.some(foto => isFotoLocal(foto)) && (
+            <div className="mt-4 p-3 bg-green-50 rounded-lg border border-green-200">
+              <div className="flex items-center gap-2">
+                <span className="text-green-700 text-sm font-medium">
+                  ✅ Fotos guardadas localmente
+                </span>
+              </div>
+              <p className="text-xs text-green-600 mt-1">
+                {fotos.filter(f => isFotoLocal(f)).length} foto(s) se mantienen después de refrescar la página
+              </p>
             </div>
           )}
 
@@ -284,24 +359,20 @@ function PlazaPhotos({
                     fill
                     className="object-contain"
                   />
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    className="absolute top-4 right-4"
-                    onClick={() => setFotoSeleccionada(null)}
-                  >
-                    <X className="w-4 h-4" />
-                  </Button>
                 </div>
               </DialogContent>
             </Dialog>
           )}
 
-          {/* Debug info - remover en producción */}
-          <div className="mt-4 p-3 bg-gray-50 rounded-md text-xs text-gray-600">
-            <strong>Debug:</strong> Plaza ID: {plazaPhotos.id} | Total fotos:{" "}
-            {plazaPhotos.fotos.length} | Temporales: {fotos.filter(f => f.url.startsWith('blob:')).length}
-          </div>
+          {/* Debug info - Solo mostrar en cliente */}
+          {isClient && (
+            <div className="mt-4 p-3 bg-gray-50 rounded-md text-xs text-gray-600">
+              <strong>Debug:</strong> Plaza ID: {plazaPhotos.id} | 
+              Total: {plazaPhotos.fotos.length} | 
+              Guardadas: {fotos.filter(f => isFotoLocal(f)).length} | 
+              Temporales: {fotos.filter(f => isFotoTemporal(f)).length}
+            </div>
+          )}
         </CardContent>
       </Card>
 
