@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client"
 
@@ -54,11 +55,19 @@ const UserDetails: React.FC<UserDetailsProps> = ({ userId }) => {
         const token =
           localStorage.getItem("token") || localStorage.getItem("authToken")
 
-        console.log(`📡 Obteniendo detalles del usuario ${userId}...`)
+        console.log(
+          `📡 Obteniendo detalles del usuario ${userId} con ruta de admin...`
+        )
+        console.log(
+          `🔗 URL completa: https://aparcoyo-back.onrender.com/apa/usuarios/${userId}`
+        )
+        console.log(`🔑 Token presente:`, !!token)
 
+        // 🔄 Probando con la ruta específica de admin que debería traer fecha
         const response = await fetch(
           `https://aparcoyo-back.onrender.com/apa/usuarios/${userId}`,
           {
+            method: "GET", // Explicit GET method
             headers: {
               Authorization: `Bearer ${token}`,
               "Content-Type": "application/json",
@@ -75,7 +84,31 @@ const UserDetails: React.FC<UserDetailsProps> = ({ userId }) => {
         const data = await response.json()
         console.log(`✅ UserDetails - Usuario obtenido:`, data)
 
+        // 🔍 Debug completo del objeto usuario - buscando campos de fecha
         const userData = data.data || data
+        console.log(
+          `🔍 Estructura completa del usuario (ruta mi-perfil):`,
+          JSON.stringify(userData, null, 2)
+        )
+
+        const dateFields = {
+          fechaRegistro: userData.fechaRegistro,
+          fechaCreacion: userData.fechaCreacion,
+          createdAt: userData.createdAt,
+          created_at: userData.created_at,
+          dateCreated: userData.dateCreated,
+          registro: userData.registro,
+          timestamp: userData.timestamp,
+          fecha: userData.fecha,
+        }
+        console.log(
+          `📅 Campos de fecha encontrados:`,
+          JSON.stringify(dateFields, null, 2)
+        )
+        console.log(
+          `🗂️ Todas las propiedades del usuario:`,
+          Object.keys(userData).join(", ")
+        )
         setUsuario(userData)
 
         // Inicializar el formulario con los datos actuales
@@ -98,12 +131,90 @@ const UserDetails: React.FC<UserDetailsProps> = ({ userId }) => {
     }
   }, [userId])
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("es-ES", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
+  // ✅ Función para verificar si existe algún campo de fecha válido
+  const hasValidDate = (usuario: UsuarioDetalle | null) => {
+    if (!usuario) return false
+
+    const possibleDateFields = [
+      usuario.fechaRegistro,
+      (usuario as any).fechaCreacion,
+      (usuario as any).createdAt,
+      (usuario as any).created_at,
+      (usuario as any).dateCreated,
+      (usuario as any).registro,
+      (usuario as any).timestamp,
+      (usuario as any).fecha,
+    ]
+
+    return possibleDateFields.some((field) => {
+      if (!field) return false
+      try {
+        const date = new Date(field)
+        return !isNaN(date.getTime()) && date.getFullYear() > 1900
+      } catch {
+        return false
+      }
     })
+  }
+
+  // ✅ Función mejorada para formatear fechas con validación robusta
+  const formatDate = (usuario: UsuarioDetalle | null) => {
+    if (!usuario) return "Usuario no disponible"
+
+    // 🔍 Intentar múltiples campos de fecha que el backend podría usar
+    const possibleDateFields = [
+      usuario.fechaRegistro,
+      (usuario as any).fechaCreacion,
+      (usuario as any).createdAt,
+      (usuario as any).created_at,
+      (usuario as any).dateCreated,
+      (usuario as any).registro,
+      (usuario as any).timestamp,
+      (usuario as any).fecha,
+    ]
+
+    console.log(`🔍 Campos de fecha disponibles:`, possibleDateFields)
+
+    for (const dateField of possibleDateFields) {
+      if (dateField) {
+        console.log(`✅ Usando campo de fecha:`, dateField)
+
+        try {
+          // Lista de posibles formatos que puede enviar el backend
+          const possibleFormats = [
+            dateField, // Formato original
+            dateField.replace?.(/\//g, "-"), // Cambiar / por -
+            dateField.split?.("T")[0], // Solo la fecha si viene con hora
+          ]
+
+          for (const format of possibleFormats) {
+            if (!format) continue
+
+            try {
+              const date = new Date(format)
+
+              // Verificar si la fecha es válida
+              if (!isNaN(date.getTime()) && date.getFullYear() > 1900) {
+                return date.toLocaleDateString("es-ES", {
+                  day: "2-digit",
+                  month: "short",
+                  year: "numeric",
+                })
+              }
+            } catch (error) {
+              continue
+            }
+          }
+        } catch (error) {
+          console.log(`❌ Error procesando fecha:`, dateField, error)
+          continue
+        }
+      }
+    }
+
+    // Si ningún campo de fecha funcionó
+    console.log("⚠️ No se encontró ninguna fecha válida en el usuario")
+    return "Fecha no disponible"
   }
 
   const handleEditSubmit = async (e: React.FormEvent) => {
@@ -422,13 +533,6 @@ const UserDetails: React.FC<UserDetailsProps> = ({ userId }) => {
 
           <div>
             <label className="text-sm font-medium text-muted-foreground">
-              Fecha de registro
-            </label>
-            <p className="mt-1 text-sm">{formatDate(usuario.fechaRegistro)}</p>
-          </div>
-
-          <div>
-            <label className="text-sm font-medium text-muted-foreground">
               Rol
             </label>
             <p className="mt-1 text-sm capitalize">{usuario.rol}</p>
@@ -448,6 +552,16 @@ const UserDetails: React.FC<UserDetailsProps> = ({ userId }) => {
               >
                 {usuario.isActive ? "Activo" : "Inactivo"}
               </span>
+            </p>
+          </div>
+
+          {/* Siempre mostrar fecha, con fallback si no existe */}
+          <div>
+            <label className="text-sm font-medium text-muted-foreground">
+              Fecha de registro
+            </label>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {hasValidDate(usuario) ? formatDate(usuario) : "No registrada"}
             </p>
           </div>
         </div>

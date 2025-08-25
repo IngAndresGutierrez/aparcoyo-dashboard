@@ -182,13 +182,10 @@ export const reservasColumns = (
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          <DropdownMenuItem>
-            <span className="text-gray-700">Ver detalle</span>
-          </DropdownMenuItem>
           <DropdownMenuItem onClick={() => onEditReservation?.(row.original)}>
             <span className="text-gray-700">Editar reserva</span>
           </DropdownMenuItem>
-          <DropdownMenuItem 
+          <DropdownMenuItem
             onClick={() => onDeleteReservation?.(row.original)}
             className="text-red-600 focus:text-red-600"
           >
