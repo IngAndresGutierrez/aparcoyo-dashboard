@@ -3,32 +3,33 @@
 
 import { ApiError, Plaza, Reserva } from "../types/table-reservas"
 
-
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://aparcoyo-back.onrender.com'
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL || "https://aparcoyo-back.onrender.com"
 
 // Headers básicos - copiado del service que funciona
 function getHeaders(): Record<string, string> {
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
   }
-  
+
   // Agregar token de autenticación si existe
   const token = getAuthToken()
   if (token) {
-    headers['Authorization'] = `Bearer ${token}`
+    headers["Authorization"] = `Bearer ${token}`
   }
-  
+
   return headers
 }
 
 // Función para obtener token - copiado del service que funciona
 function getAuthToken(): string | null {
   // Verificar si estamos en el cliente
-  if (typeof window === 'undefined') return null
-  
+  if (typeof window === "undefined") return null
+
   // Opción 1: Desde localStorage - MISMO FORMATO QUE EL SERVICE QUE FUNCIONA
-  return localStorage.getItem('authToken') || localStorage.getItem('token') || null
+  return (
+    localStorage.getItem("authToken") || localStorage.getItem("token") || null
+  )
 }
 
 class PlazaService {
@@ -36,10 +37,9 @@ class PlazaService {
     endpoint: string,
     options: RequestInit = {}
   ): Promise<T> {
-    
     const config: RequestInit = {
       headers: {
-        'Accept': '*/*',
+        Accept: "*/*",
         ...getHeaders(), // Usar la función que funciona
         ...options.headers,
       },
@@ -50,15 +50,19 @@ class PlazaService {
     console.log(`📤 Headers:`, config.headers)
 
     const response = await fetch(`${API_BASE_URL}${endpoint}`, config)
-    
-    console.log(`📡 Respuesta del servidor:`, response.status, response.statusText)
+
+    console.log(
+      `📡 Respuesta del servidor:`,
+      response.status,
+      response.statusText
+    )
 
     if (!response.ok) {
       const errorData: ApiError = await response.json().catch(() => ({
         statusCode: response.status,
         message: `HTTP Error: ${response.status} ${response.statusText}`,
       }))
-      console.error('❌ Error de API:', errorData)
+      console.error("❌ Error de API:", errorData)
       throw errorData
     }
 
@@ -76,24 +80,25 @@ class PlazaService {
     try {
       const result = await this.makeRequest<any>(`/apa/plazas/${plazaId}`)
       const data = result.data || result // Flexible para diferentes formatos de respuesta
-      
+
       // Mapear a nuestro tipo Plaza, adaptando desde la respuesta real
       const plaza: Plaza = {
         id: data.id || plazaId,
-        nombre: data.nombre || 'Sin nombre',
-        descripcion: data.descripcion || '',
-        ubicacion: data.direccion || data.ubicacion || '',
+        nombre: data.nombre || "Sin nombre",
+        descripcion: data.descripcion || "",
+        ubicacion: data.direccion || data.ubicacion || "",
         precio: data.precio || 0,
         disponible: data.disponible ?? true,
-        usuarioId: data.propietario?.uid || data.usuarioId || '',
+        usuarioId: data.propietario?.uid || data.usuarioId || "",
         reservas: data.reservas || [],
         createdAt: data.createdAt || new Date().toISOString(),
         updatedAt: data.updatedAt || new Date().toISOString(),
+        reseñas: data.resenas || data.reseñas || [],
       }
 
       return plaza
     } catch (error) {
-      console.error('❌ Error obteniendo plaza:', error)
+      console.error("❌ Error obteniendo plaza:", error)
       throw error
     }
   }
@@ -102,20 +107,26 @@ class PlazaService {
    * Obtener todas las plazas (útil para debug)
    */
   async getAllPlazas(): Promise<Plaza[]> {
-    const response = await this.makeRequest<{ data: Plaza[] }>('/apa/plazas')
+    const response = await this.makeRequest<{ data: Plaza[] }>("/apa/plazas")
     return response.data
   }
 
   /**
    * Actualizar una reserva específica
    */
-  async updateReserva(reservaId: string, updates: Partial<Reserva>): Promise<Reserva> {
+  async updateReserva(
+    reservaId: string,
+    updates: Partial<Reserva>
+  ): Promise<Reserva> {
     // Asumiendo que existe un endpoint para actualizar reservas
     // Si no existe, tendrás que pedirlo al backend
-    const response = await this.makeRequest<{ data: Reserva }>(`/apa/reservas/${reservaId}`, {
-      method: 'PATCH',
-      body: JSON.stringify(updates),
-    })
+    const response = await this.makeRequest<{ data: Reserva }>(
+      `/apa/reservas/${reservaId}`,
+      {
+        method: "PATCH",
+        body: JSON.stringify(updates),
+      }
+    )
     return response.data
   }
 
@@ -124,7 +135,7 @@ class PlazaService {
    */
   async deleteReserva(reservaId: string): Promise<void> {
     await this.makeRequest(`/apa/reservas/${reservaId}`, {
-      method: 'DELETE',
+      method: "DELETE",
     })
   }
 
@@ -132,10 +143,13 @@ class PlazaService {
    * Actualizar plaza (si necesitas esta funcionalidad)
    */
   async updatePlaza(plazaId: string, updates: Partial<Plaza>): Promise<Plaza> {
-    const response = await this.makeRequest<{ data: Plaza }>(`/apa/plazas/${plazaId}`, {
-      method: 'PATCH',
-      body: JSON.stringify(updates),
-    })
+    const response = await this.makeRequest<{ data: Plaza }>(
+      `/apa/plazas/${plazaId}`,
+      {
+        method: "PATCH",
+        body: JSON.stringify(updates),
+      }
+    )
     return response.data
   }
 }
@@ -147,9 +161,9 @@ export const plazaService = new PlazaService()
 export const plazaApi = {
   getById: (id: string) => plazaService.getPlazaById(id),
   getAll: () => plazaService.getAllPlazas(),
-  updateReserva: (id: string, data: Partial<Reserva>) => 
+  updateReserva: (id: string, data: Partial<Reserva>) =>
     plazaService.updateReserva(id, data),
   deleteReserva: (id: string) => plazaService.deleteReserva(id),
-  updatePlaza: (id: string, data: Partial<Plaza>) => 
+  updatePlaza: (id: string, data: Partial<Plaza>) =>
     plazaService.updatePlaza(id, data),
 }

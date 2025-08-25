@@ -1,9 +1,8 @@
-// services/modal-plaza.service.ts
-// Servicio para el modal de edición de plazas
+/* eslint-disable @typescript-eslint/no-explicit-any */
+// services/modal-plaza.service.ts - VERSIÓN FINAL CORREGIDA
 
 import { ActualizarPlazaModal, PlazaModal } from "../types/edit-plazas"
 
-// ✅ Definir PlazaModalError aquí mismo
 interface PlazaModalError {
   ok: false
   error: string
@@ -11,34 +10,27 @@ interface PlazaModalError {
   statusCode: number
 }
 
-// ✅ Configuración para tu backend real
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://aparcoyo-back.onrender.com'
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL || "https://aparcoyo-back.onrender.com"
 
-// Headers básicos
 function getHeaders(): Record<string, string> {
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
   }
-  
-  // Agregar token de autenticación si existe
+
   const token = getAuthToken()
   if (token) {
-    headers['Authorization'] = `Bearer ${token}`
+    headers["Authorization"] = `Bearer ${token}`
   }
-  
+
   return headers
 }
 
-// Función para obtener token
 function getAuthToken(): string | null {
-  // Verificar si estamos en el cliente
-  if (typeof window === 'undefined') return null
-  
-  // Opción 1: Desde localStorage
-  return localStorage.getItem('authToken') || localStorage.getItem('token') || null
-  
-  // Opción 2: Desde cookies (si usas cookies)
-  // return document.cookie.split(';').find(c => c.trim().startsWith('token='))?.split('=')[1] || null
+  if (typeof window === "undefined") return null
+  return (
+    localStorage.getItem("authToken") || localStorage.getItem("token") || null
+  )
 }
 
 export const modalPlazaService = {
@@ -49,155 +41,195 @@ export const modalPlazaService = {
     try {
       const url = `${API_BASE_URL}/apa/plazas/${id}`
       console.log(`🔄 Obteniendo plaza: ${url}`)
-      
+
       const response = await fetch(url, {
-        method: 'GET',
+        method: "GET",
         headers: getHeaders(),
       })
 
-      console.log(`📡 Respuesta del servidor:`, response.status, response.statusText)
+      console.log(
+        `📡 Respuesta del servidor:`,
+        response.status,
+        response.statusText
+      )
 
       if (!response.ok) {
         let errorMessage = `Error ${response.status}: ${response.statusText}`
-        
+
         try {
           const errorData: PlazaModalError = await response.json()
           errorMessage = errorData.message || errorData.error || errorMessage
         } catch {
           // Si no puede parsear el JSON, usar mensaje por defecto
         }
-        
+
         throw new Error(errorMessage)
       }
 
       const result = await response.json()
-      const data = result.data || result // Flexible para diferentes formatos de respuesta
-      
+      const data = result.data || result
+
       console.log(`✅ Datos recibidos:`, data)
 
-      // ✅ Mapear y validar los datos - CORREGIDO PARA COINCIDIR CON BACKEND
       const plazaData: PlazaModal = {
         id: data.id || id,
-        nombre: data.nombre || 'Sin nombre',                    // ✅ nombre, no titulo
-        descripcion: data.descripcion || '',
-        tipo: data.tipo || 'Publica',                           // ✅ Agregar tipo
-        direccion: data.direccion || '',                        // ✅ Agregar direccion
-        lat: data.lat || 0,                                     // ✅ Agregar lat
-        lng: data.lng || 0,                                     // ✅ Agregar lng
-        precio: data.precio || '0',                             // ✅ string, no number
+        nombre: data.nombre || "Sin nombre",
+        descripcion: data.descripcion || "",
+        tipo: data.tipo || "Publica",
+        direccion: data.direccion || "",
+        lat: data.lat || 0,
+        lng: data.lng || 0,
+        precio: data.precio || "0",
+        
         propietario: {
-          uid: data.propietario?.uid || '',                     // ✅ uid, no id
-          nombre: data.propietario?.nombre || 'Sin nombre',
-          email: data.propietario?.email || ''                  // ✅ Agregar email obligatorio
+          uid: data.propietario?.uid || "",
+          nombre: data.propietario?.nombre || "Sin nombre",
+          email: data.propietario?.email || "",
+          
         },
-        resenas: data.resenas || [],                            // ✅ Agregar resenas
-        cantidadResenas: data.cantidadResenas || 0,             // ✅ Agregar cantidadResenas
-        rating: data.rating || 0                                // ✅ Agregar rating
+        resenas: data.resenas || [],
+        cantidadResenas: data.cantidadResenas || 0,
+        rating: data.rating || 0,
+        
       }
 
       return plazaData
-
     } catch (error) {
-      console.error('❌ Error obteniendo plaza:', error)
-      
+      console.error("❌ Error obteniendo plaza:", error)
+
       if (error instanceof Error) {
         throw error
       }
-      
-      throw new Error('Error desconocido al obtener la plaza')
+
+      throw new Error("Error desconocido al obtener la plaza")
     }
   },
 
   /**
-   * Actualizar datos de una plaza
+   * 🛠️ MÉTODO SIMPLIFICADO - SOLO ACTUALIZA, NO OBTIENE DATOS FRESCOS
    */
-  async actualizarPlaza(id: string, datos: ActualizarPlazaModal): Promise<PlazaModal> {
+  async actualizarPlaza(
+    id: string,
+    datos: ActualizarPlazaModal
+  ): Promise<PlazaModal> {
     try {
       const url = `${API_BASE_URL}/apa/plazas/${id}`
-      console.log(`🔄 Actualizando plaza: ${url}`)
-      console.log(`📤 Datos originales recibidos:`, datos)
 
-      // ✅ Formatear datos según lo que espera el backend
-      const datosFormateados = {
-        nombre: datos.nombre,
-        descripcion: datos.descripcion,
-        precio: Math.round(Number(datos.precio) * 100) / 100, // ✅ Redondear a 2 decimales
-        // ✅ Probar diferentes nombres para el propietario (descomenta la línea correcta)
-        // propietario_uid: datos.propietarioUid,  // Opción 1
-        propietario: datos.propietarioUid,         // Opción 2 - MÁS COMÚN
-        // owner_id: datos.propietarioUid,         // Opción 3
-        // uid: datos.propietarioUid,              // Opción 4
+      console.log("🔍 ======== ACTUALIZACIÓN PLAZA SIMPLIFICADA ========")
+      console.log(`🔄 URL: ${url}`)
+      console.log(`📤 Datos a actualizar:`, datos)
+
+      // 🛠️ SOLO ENVIAR LOS CAMPOS QUE EL BACKEND ACEPTA
+      const datosLimpios = {
+        nombre: datos.nombre.trim(),
+        descripcion: datos.descripcion?.trim() || "",
+        precio: Number(datos.precio), // El backend espera número
       }
 
-      // ✅ Validar que el precio sea un número válido y positivo
-      if (isNaN(datosFormateados.precio) || datosFormateados.precio <= 0) {
-        throw new Error('El precio debe ser un número válido mayor a 0')
+      // Validaciones
+      if (!datosLimpios.nombre || datosLimpios.nombre.length === 0) {
+        throw new Error("El nombre es requerido")
       }
 
-      // 🔍 DEBUG: Ver exactamente qué se está enviando
-      console.log(`🔍 DEBUG - Datos originales:`, JSON.stringify(datos, null, 2))
-      console.log(`🔍 DEBUG - Precio original:`, datos.precio, `(tipo: ${typeof datos.precio})`)
-      console.log(`🔍 DEBUG - Precio convertido:`, datosFormateados.precio, `(tipo: ${typeof datosFormateados.precio})`)
-      console.log(`🔍 DEBUG - Datos finales a enviar:`, JSON.stringify(datosFormateados, null, 2))
+      if (isNaN(datosLimpios.precio) || datosLimpios.precio <= 0) {
+        throw new Error("El precio debe ser un número válido mayor a 0")
+      }
 
-      console.log(`📤 Datos formateados para enviar:`, datosFormateados)
+      if (datosLimpios.nombre.length > 100) {
+        throw new Error("El nombre no puede tener más de 100 caracteres")
+      }
+
+      if (datosLimpios.descripcion.length > 500) {
+        throw new Error("La descripción no puede tener más de 500 caracteres")
+      }
+
+      console.log(
+        "🔍 Datos finales enviados al backend:",
+        JSON.stringify(datosLimpios, null, 2)
+      )
 
       const response = await fetch(url, {
-        method: 'PATCH', // ✅ CAMBIADO DE PUT A PATCH
+        method: "PATCH",
         headers: getHeaders(),
-        body: JSON.stringify(datosFormateados), // ✅ Enviar datos formateados
+        body: JSON.stringify(datosLimpios),
       })
 
-      console.log(`📡 Respuesta de actualización:`, response.status, response.statusText)
+      console.log(`📡 Status: ${response.status}`)
+
+      const responseText = await response.text()
+      console.log(`📄 Response body:`, responseText)
 
       if (!response.ok) {
-        let errorMessage = `Error ${response.status}: ${response.statusText}`
-        
+        let errorData
         try {
-          const errorData: PlazaModalError = await response.json()
-          errorMessage = errorData.message || errorData.error || errorMessage
+          errorData = responseText ? JSON.parse(responseText) : {}
         } catch {
-          // Si no puede parsear el JSON, usar mensaje por defecto
+          errorData = { message: responseText }
         }
-        
-        throw new Error(errorMessage)
+
+        console.error(`❌ Error ${response.status}:`, errorData)
+
+        if (response.status === 400) {
+          const mensaje =
+            errorData.message || errorData.error || `Error 400: Bad Request`
+          throw new Error(`Datos inválidos: ${mensaje}`)
+        } else if (response.status === 401) {
+          throw new Error("No autorizado. Verifica tu token de autenticación.")
+        } else if (response.status === 404) {
+          throw new Error("Plaza no encontrada")
+        } else if (response.status === 403) {
+          throw new Error("No tienes permisos para editar esta plaza")
+        } else {
+          throw new Error(
+            `Error ${response.status}: ${errorData.message || responseText}`
+          )
+        }
       }
 
-      const result = await response.json()
-      const data = result.data || result // Flexible para diferentes formatos de respuesta
-      
-      console.log(`✅ Plaza actualizada:`, data)
+      // ✅ ÉXITO - CONSTRUIR RESPUESTA MÍNIMA
+      const result = responseText ? JSON.parse(responseText) : {}
+      const data = result.data || result
 
-      // ✅ Mapear la respuesta actualizada - CORREGIDO
+      console.log(`✅ Respuesta del backend:`, data)
+
+      // 🛠️ DEVOLVER ESTRUCTURA MÍNIMA - EL HOOK SE ENCARGA DEL PROPIETARIO
       const plazaActualizada: PlazaModal = {
         id: data.id || id,
-        nombre: data.nombre || datos.nombre,                    // ✅ nombre, no titulo
+        nombre: data.nombre || datos.nombre,
         descripcion: data.descripcion || datos.descripcion,
-        tipo: data.tipo || 'Publica',
-        direccion: data.direccion || '',
+        tipo: data.tipo || "Publica",
+        direccion: data.direccion || "",
         lat: data.lat || 0,
         lng: data.lng || 0,
-        precio: data.precio || datos.precio,                    // ✅ string
+        precio: data.precio?.toString() || datos.precio,
+
+        // 🛠️ PROPIETARIO VACÍO - EL HOOK LO RELLENARÁ CORRECTAMENTE
+        // No intentamos preservar nada aquí, dejamos que el hook se encargue
         propietario: {
-          uid: data.propietario?.uid || datos.propietarioUid,   // ✅ uid
-          nombre: data.propietario?.nombre || 'Sin nombre',
-          email: data.propietario?.email || ''                  // ✅ Agregar email obligatorio
+          uid: "", // El hook lo rellenará con formData.propietario.id
+          nombre: "", // El hook lo rellenará con formData.propietario.nombre
+          email: "", // El hook lo rellenará con formData.propietario.email
         },
+
         resenas: data.resenas || [],
         cantidadResenas: data.cantidadResenas || 0,
-        rating: data.rating || 0
+        rating: data.rating || 0,
       }
 
-      return plazaActualizada
+      console.log(
+        "✅ Plaza preparada para el hook (propietario vacío intencionalmente):",
+        plazaActualizada
+      )
 
+      return plazaActualizada
     } catch (error) {
-      console.error('❌ Error actualizando plaza:', error)
-      
+      console.error("❌ Error actualizando plaza:", error)
+
       if (error instanceof Error) {
         throw error
       }
-      
-      throw new Error('Error desconocido al actualizar la plaza')
+
+      throw new Error("Error desconocido al actualizar la plaza")
     }
   },
 
@@ -206,17 +238,17 @@ export const modalPlazaService = {
    */
   async verificarConexion(): Promise<boolean> {
     try {
-      const url = `${API_BASE_URL}/health` // Asumiendo que tienes un endpoint de health
+      const url = `${API_BASE_URL}/health`
       const response = await fetch(url, {
-        method: 'GET',
+        method: "GET",
         headers: getHeaders(),
       })
-      
+
       return response.ok
     } catch {
       return false
     }
-  }
+  },
 }
 
 export default modalPlazaService

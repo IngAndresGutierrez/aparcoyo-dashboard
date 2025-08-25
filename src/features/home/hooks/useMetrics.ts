@@ -4,6 +4,9 @@ import { useState, useEffect } from "react"
 
 const API_BASE_URL = "https://aparcoyo-back.onrender.com"
 
+// Tipo para el filtro de tiempo
+export type TimeFilter = 'day' | 'week' | 'month'
+
 // Interfaces para las respuestas de la API
 interface ApiResponse {
   total?: number
@@ -37,33 +40,51 @@ interface UseMetricsReturn {
   metrics: MetricsState
   loading: boolean
   error: string | null
+  timeFilter: TimeFilter
+  setTimeFilter: (filter: TimeFilter) => void
   refetch: () => Promise<void>
 }
 
 // Función para obtener el token de autenticación
 const getAuthToken = (): string | null => {
-  // OPCIÓN 1: Desde localStorage (más común)
   if (typeof window !== 'undefined') {
     return localStorage.getItem('authToken') || 
            localStorage.getItem('token') || 
            localStorage.getItem('accessToken')
   }
-  
-  // OPCIÓN 2: Desde sessionStorage
-  // if (typeof window !== 'undefined') {
-  //   return sessionStorage.getItem('authToken')
-  // }
-  
-  // OPCIÓN 3: Desde cookies
-  // if (typeof document !== 'undefined') {
-  //   const match = document.cookie.match(/(?:^|;\s*)authToken\s*=\s*([^;]+)/)
-  //   return match ? match[1] : null
-  // }
-  
   return null
 }
 
+// Función para obtener parámetros de fecha según el filtro
+const getDateParams = (filter: TimeFilter): string => {
+  const now = new Date()
+  let startDate: Date
+  
+  switch (filter) {
+    case 'day':
+      // Últimas 24 horas
+      startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000)
+      break
+    case 'week':
+      // Últimos 7 días
+      startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+      break
+    case 'month':
+      // Últimos 30 días
+      startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+      break
+    default:
+      startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+  }
+
+  const startDateString = startDate.toISOString().split('T')[0]
+  const endDateString = now.toISOString().split('T')[0]
+  
+  return `?startDate=${startDateString}&endDate=${endDateString}`
+}
+
 export const useMetrics = (): UseMetricsReturn => {
+  const [timeFilter, setTimeFilter] = useState<TimeFilter>('month')
   const [metrics, setMetrics] = useState<MetricsState>({
     users: { value: 0, loading: true, error: null },
     plazas: { value: 0, loading: true, error: null },
@@ -76,12 +97,10 @@ export const useMetrics = (): UseMetricsReturn => {
 
   // Función helper para extraer el valor según la estructura de la respuesta
   const extractValue = (data: unknown): number => {
-    // Si es un array, retornamos la longitud
     if (Array.isArray(data)) {
       return data.length
     }
 
-    // Si es un objeto con propiedades conocidas
     if (data && typeof data === "object") {
       const apiResponse = data as ApiResponse
 
@@ -98,12 +117,10 @@ export const useMetrics = (): UseMetricsReturn => {
       }
     }
 
-    // Si es un número directamente
     if (typeof data === "number") {
       return data
     }
 
-    // Por defecto retornamos 0
     return 0
   }
 
@@ -112,31 +129,25 @@ export const useMetrics = (): UseMetricsReturn => {
       setGlobalLoading(true)
       setGlobalError(null)
 
+      // Obtener parámetros de fecha según el filtro seleccionado
+      const dateParams = getDateParams(timeFilter)
+
       const endpoints: Endpoint[] = [
-        { key: "users", url: `${API_BASE_URL}/apa/usuarios` },
-        { key: "plazas", url: `${API_BASE_URL}/apa/plazas` },
-        // OPCIÓN 1: Usar endpoint de estadísticas para plazas ocupadas
-        { key: "activeReservas", url: `${API_BASE_URL}/apa/plazas/estadisticas?tipo=ocupadas` },
-        // OPCIÓN 2: Usar endpoint de reservas activas si existe
-        // { key: "activeReservas", url: `${API_BASE_URL}/apa/reservas/activas` },
-        { key: "totalReservas", url: `${API_BASE_URL}/apa/reservas` },
+        { key: "users", url: `${API_BASE_URL}/apa/usuarios${dateParams}` },
+        { key: "plazas", url: `${API_BASE_URL}/apa/plazas` }, // Las plazas no cambian por tiempo
+        { key: "activeReservas", url: `${API_BASE_URL}/apa/plazas/estadisticas?tipo=ocupadas${dateParams.replace('?', '&')}` },
+        { key: "totalReservas", url: `${API_BASE_URL}/apa/reservas${dateParams}` },
       ]
 
-      // Obtener el token de autenticación
       const token = getAuthToken()
 
-      // Preparar headers base
       const headers: Record<string, string> = {
         "Content-Type": "application/json",
         "Accept": "application/json",
       }
 
-      // Agregar Authorization header si tenemos token
       if (token) {
         headers.Authorization = `Bearer ${token}`
-        console.log('Token encontrado, length:', token.length) // Debug
-      } else {
-        console.warn('No se encontró token de autenticación') // Debug
       }
 
       const results = await Promise.allSettled(
@@ -144,7 +155,7 @@ export const useMetrics = (): UseMetricsReturn => {
           fetch(endpoint.url, {
             method: 'GET',
             headers,
-            credentials: 'omit', // Cambiar a 'include' si necesitas enviar cookies
+            credentials: 'omit',
           })
         )
       )
@@ -158,7 +169,6 @@ export const useMetrics = (): UseMetricsReturn => {
         if (result.status === "fulfilled" && result.value.ok) {
           try {
             const data: unknown = await result.value.json()
-            console.log(`${endpoint.key} response:`, data) // Debug
 
             newMetrics[endpoint.key] = {
               value: extractValue(data),
@@ -175,13 +185,11 @@ export const useMetrics = (): UseMetricsReturn => {
           }
         } else {
           let errorMessage = "Network error"
-          let statusText = ""
 
           if (result.status === "fulfilled") {
             const status = result.value.status
-            statusText = result.value.statusText || ""
+            const statusText = result.value.statusText || ""
 
-            // Mensajes específicos para códigos de error comunes
             switch (status) {
               case 400:
                 errorMessage = "Bad Request - Verificar endpoint"
@@ -201,36 +209,16 @@ export const useMetrics = (): UseMetricsReturn => {
               case 500:
                 errorMessage = "Error interno del servidor"
                 break
-              case 502:
-                errorMessage = "Bad Gateway - Servidor no disponible"
-                break
-              case 503:
-                errorMessage = "Servicio no disponible"
-                break
               default:
                 errorMessage = `HTTP ${status} ${statusText}`
             }
 
-            // Log detallado para debugging
             console.error(`Error fetching ${endpoint.key}:`, {
               status,
               statusText,
               url: endpoint.url,
               hasToken: !!token,
-              tokenPreview: token ? `${token.substring(0, 10)}...` : 'N/A',
             })
-
-            // Si es 401 y no tenemos token, es probable que necesite autenticación
-            if (status === 401 && !token) {
-              console.warn(`${endpoint.key} requiere autenticación pero no se encontró token`)
-            }
-
-            // Si es 401 y sí tenemos token, el token puede estar expirado
-            if (status === 401 && token) {
-              console.warn(`${endpoint.key} devolvió 401 - el token puede estar expirado`)
-            }
-          } else {
-            console.error(`Network error for ${endpoint.key}:`, result.reason)
           }
 
           newMetrics[endpoint.key] = {
@@ -248,7 +236,6 @@ export const useMetrics = (): UseMetricsReturn => {
         error instanceof Error ? error.message : "Failed to fetch metrics"
       setGlobalError(errorMessage)
 
-      // Marcar todos como error
       setMetrics((prev) => {
         const errorMetrics: MetricsState = {} as MetricsState
 
@@ -268,15 +255,22 @@ export const useMetrics = (): UseMetricsReturn => {
     }
   }
 
-  // Ejecutar fetch al montar el componente
+  // Refetch cuando cambia el filtro de tiempo
   useEffect(() => {
     fetchMetrics()
-  }, [])
+  }, [timeFilter])
+
+  // Función para cambiar el filtro y refrescar datos
+  const handleTimeFilterChange = (filter: TimeFilter) => {
+    setTimeFilter(filter)
+  }
 
   return {
     metrics,
     loading: globalLoading,
     error: globalError,
+    timeFilter,
+    setTimeFilter: handleTimeFilterChange,
     refetch: fetchMetrics,
   }
 }

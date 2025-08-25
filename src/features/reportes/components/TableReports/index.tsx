@@ -114,6 +114,9 @@ const UsersTableReports: React.FC<UsersTableReportsProps> = ({
   }
 
   // ✨ NUEVA FUNCIÓN para eliminar reporte
+  // ✨ FUNCIÓN CORREGIDA para eliminar reporte
+  // ✅ SOLUCIÓN 1: Conectar directamente al backend
+  // ✅ FUNCIÓN CON TOKEN DINÁMICO
   const handleDeleteReporte = async (
     reporteId: string,
     descripcion: string
@@ -134,28 +137,58 @@ const UsersTableReports: React.FC<UsersTableReportsProps> = ({
     try {
       console.log("🗑️ Eliminando reporte:", reporteId)
 
-      const response = await fetch(`/apa/reportes/${reporteId}`, {
-        method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-          // 'Authorization': `Bearer ${token}` // Agregar si necesitas auth
-        },
-      })
+      // 🔑 OBTENER TOKEN DINÁMICAMENTE
+      // Opción 1: Desde localStorage
+      const token =
+        localStorage.getItem("authToken") || localStorage.getItem("token")
+
+      // Opción 2: Desde cookies
+      // const token = document.cookie.split('; ').find(row => row.startsWith('token='))?.split('=')[1];
+
+      // Opción 3: Desde un contexto de autenticación
+      // const { token } = useAuth(); // Si tienes un hook de auth
+
+      if (!token) {
+        alert("No estás autenticado. Por favor, inicia sesión nuevamente.")
+        // Redirigir al login si es necesario
+        // router.push('/login');
+        return
+      }
+
+      console.log("🔑 Usando token:", token.substring(0, 20) + "...")
+
+      const response = await fetch(
+        `https://aparcoyo-back.onrender.com/apa/reportes/${reporteId}`,
+        {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      )
 
       console.log("📡 DELETE Response status:", response.status)
 
       if (response.ok) {
         console.log("✅ Reporte eliminado exitosamente")
-        // Refrescar la tabla
         refresh(filtroFecha)
-
-        // Mostrar mensaje de éxito
         alert("Reporte eliminado correctamente")
+      } else if (response.status === 401) {
+        // Token expirado o inválido
+        alert("Tu sesión ha expirado. Por favor, inicia sesión nuevamente.")
+        // Limpiar token inválido
+        localStorage.removeItem("authToken")
+        localStorage.removeItem("token")
+        // Redirigir al login
+        // router.push('/login');
       } else {
-        const errorText = await response.text()
-        console.error("❌ Error eliminando reporte:", errorText)
+        const errorData = await response.json()
+        console.error("❌ Error eliminando reporte:", errorData)
         alert(
-          `Error eliminando reporte: ${response.status} ${response.statusText}`
+          `Error eliminando reporte: ${
+            errorData.message || response.statusText
+          }`
         )
       }
     } catch (error) {

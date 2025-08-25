@@ -9,15 +9,9 @@ import {
   getPaginationRowModel,
   RowData,
 } from "@tanstack/react-table"
-import { MoreHorizontal, Loader2 } from "lucide-react"
+import { Loader2 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 import {
   Table,
   TableBody,
@@ -167,44 +161,7 @@ export const columns: ColumnDef<Transaction>[] = [
     ),
     meta: { responsive: true },
   },
-  {
-    id: "actions",
-    cell: ({ row }) => (
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            variant="ghost"
-            className="h-8 w-8 p-0"
-          >
-            <MoreHorizontal className="h-4 w-4" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuItem
-            onClick={() => console.log("Ver detalles:", row.original.factura)}
-          >
-            Ver detalles
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            onClick={() =>
-              console.log("Descargar factura:", row.original.factura)
-            }
-          >
-            Descargar factura
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            className="text-red-600"
-            onClick={() =>
-              console.log("Anular transacción:", row.original.factura)
-            }
-          >
-            Anular transacción
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    ),
-    meta: { responsive: true },
-  },
+  // ✅ ELIMINADA: Columna de acciones con los 3 puntos
 ]
 
 const TransactionsTable = () => {

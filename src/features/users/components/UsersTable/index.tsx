@@ -36,7 +36,7 @@ import { useUserActions } from "../../hooks/useChange"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
 
-// 🖼️ NUEVO COMPONENTE: Avatar con foto real (CON DEBUG)
+// 🖼️ COMPONENTE: Avatar con foto real
 const UserAvatar: React.FC<{
   userId: string
   userName?: string
@@ -47,15 +47,11 @@ const UserAvatar: React.FC<{
 
   React.useEffect(() => {
     const fetchPhoto = async () => {
-      console.log(`🖼️ Iniciando carga de foto para usuario: ${userId}`)
-
       try {
         const token =
           localStorage.getItem("token") || localStorage.getItem("authToken")
-        console.log(`🔑 Token disponible: ${token ? "SÍ" : "NO"}`)
 
         const url = `https://aparcoyo-back.onrender.com/apa/archivos/perfil/foto/${userId}`
-        console.log(`🔗 URL completa: ${url}`)
 
         const response = await fetch(url, {
           headers: {
@@ -63,44 +59,21 @@ const UserAvatar: React.FC<{
           },
         })
 
-        console.log(`📨 Response status: ${response.status}`)
-        console.log(
-          `📨 Response headers:`,
-          Object.fromEntries(response.headers.entries())
-        )
-
         if (response.ok) {
-          console.log(`✅ Foto encontrada para usuario ${userId}`)
           const blob = await response.blob()
-          console.log(`📁 Blob size: ${blob.size} bytes, type: ${blob.type}`)
           const imageUrl = URL.createObjectURL(blob)
           setPhotoUrl(imageUrl)
-          console.log(`🖼️ URL de imagen creada: ${imageUrl}`)
-        } else {
-          console.log(
-            `❌ No se encontró foto para usuario ${userId}: ${response.status} ${response.statusText}`
-          )
-          const errorText = await response.text()
-          console.log(`📄 Error response body:`, errorText)
         }
       } catch (error) {
-        console.error(
-          `❌ Error completo fetching photo for user ${userId}:`,
-          error
-        )
+        console.error(`Error fetching photo for user ${userId}:`, error)
       } finally {
         setLoading(false)
-        console.log(`🏁 Finalizando carga de foto para usuario ${userId}`)
       }
     }
 
     if (userId) {
-      console.log(
-        `🚀 useEffect ejecutado para UserAvatar con userId: ${userId}`
-      )
       fetchPhoto()
     } else {
-      console.log("❌ No hay userId en UserAvatar")
       setLoading(false)
     }
 
@@ -121,6 +94,8 @@ const UserAvatar: React.FC<{
       <Image
         src={photoUrl}
         alt={`Foto de ${userName || userEmail}`}
+        width={24}
+        height={24}
         className="w-6 h-6 rounded-full object-cover border border-gray-200"
         onError={() => setPhotoUrl(null)}
       />
@@ -138,7 +113,7 @@ const UserAvatar: React.FC<{
   )
 }
 
-// Extender la interfaz ColumnMeta para incluir la propiedad responsive
+// Extender la interfaz ColumnMeta
 declare module "@tanstack/react-table" {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   interface ColumnMeta<TData extends RowData, TValue> {
@@ -146,14 +121,49 @@ declare module "@tanstack/react-table" {
   }
 }
 
-// Función helper para formatear fecha
-const formatDate = (dateString: string) => {
-  const date = new Date(dateString)
-  return date.toLocaleDateString("es-ES", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  })
+// 🛠️ FUNCIÓN ROBUSTA PARA FORMATEAR FECHA
+const formatDate = (dateString: string | null | undefined): string => {
+  console.log("📅 Formateando fecha:", dateString, typeof dateString)
+
+  if (!dateString) {
+    return "Sin fecha"
+  }
+
+  try {
+    // Limpiar la fecha si viene con caracteres extraños
+    const cleanDateString = dateString.toString().trim()
+
+    // Crear la fecha
+    let date: Date
+
+    // Verificar si es un timestamp
+    if (!isNaN(Number(cleanDateString)) && cleanDateString.length > 10) {
+      date = new Date(Number(cleanDateString))
+    } else {
+      date = new Date(cleanDateString)
+    }
+
+    console.log("📅 Fecha parseada:", date, "isValid:", !isNaN(date.getTime()))
+
+    // Verificar si es válida
+    if (isNaN(date.getTime())) {
+      console.warn("⚠️ Fecha inválida después del parsing:", dateString)
+      return "Fecha inválida"
+    }
+
+    // Formatear
+    const formatted = date.toLocaleDateString("es-ES", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    })
+
+    console.log("📅 Fecha formateada:", formatted)
+    return formatted
+  } catch (error) {
+    console.error("❌ Error formateando fecha:", dateString, error)
+    return "Error fecha"
+  }
 }
 
 interface UsersTableProps {
@@ -165,14 +175,14 @@ const UsersTable = ({
   searchTerm: initialSearchTerm,
   estadoFilter,
 }: UsersTableProps) => {
-  // 🔍 ESTADOS PARA EL BUSCADOR
+  // Estados para el buscador
   const [searchValue, setSearchValue] = React.useState(initialSearchTerm || "")
   const [debouncedSearch, setDebouncedSearch] = React.useState(
     initialSearchTerm || ""
   )
   const router = useRouter()
 
-  // 🔍 DEBOUNCE PARA EL BUSCADOR (esperar 500ms después de que el usuario deje de escribir)
+  // Debounce para el buscador
   React.useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearch(searchValue)
@@ -181,27 +191,38 @@ const UsersTable = ({
     return () => clearTimeout(timer)
   }, [searchValue])
 
-  // USAR EL HOOK CON PARÁMETROS (ahora usa debouncedSearch)
+  // Hook para obtener usuarios
   const { usuarios, loading, error, total, page, limit, fetchUsuarios } =
     useUsuariosTabla({
       page: 1,
       limit: 10,
-      search: debouncedSearch, // ← Usar la búsqueda con debounce
+      search: debouncedSearch,
       estado: estadoFilter,
       sortBy: "fechaRegistro",
       sortOrder: "desc",
     })
 
-  // ✅ AGREGAR ESTE USEEFFECT PARA QUE REACCIONE A CAMBIOS DE BÚSQUEDA
+  // 🔍 DEBUG: Ver datos de usuarios cuando carguen
   React.useEffect(() => {
-    console.log("🔍 Búsqueda cambió, haciendo nueva petición:", {
-      debouncedSearch,
-      estadoFilter,
-      timestamp: new Date().toLocaleTimeString(),
-    })
+    if (usuarios.length > 0) {
+      console.log("🔍 DEBUG: Analizando fechas de usuarios:")
 
+      usuarios.forEach((usuario, index) => {
+        console.log(`Usuario ${index + 1}:`, {
+          email: usuario.email,
+          fechaRegistro: usuario.fechaRegistro,
+          tipoDato: typeof usuario.fechaRegistro,
+          reservasHechas: usuario.reservasHechas || usuario.totalReservas,
+          plazasPublicadas: usuario.plazasPublicadas || usuario.totalPlazas,
+        })
+      })
+    }
+  }, [usuarios])
+
+  // Refetch cuando cambia la búsqueda
+  React.useEffect(() => {
     fetchUsuarios({
-      page: 1, // Resetear a página 1 cuando se busca
+      page: 1,
       limit: 10,
       search: debouncedSearch,
       estado: estadoFilter,
@@ -210,16 +231,7 @@ const UsersTable = ({
     })
   }, [debouncedSearch, estadoFilter, fetchUsuarios])
 
-  // 🔍 DEBUG: Log para ver cambios en el debounce
-  React.useEffect(() => {
-    console.log("📝 Estados de búsqueda:", {
-      searchValue,
-      debouncedSearch,
-      timestamp: new Date().toLocaleTimeString(),
-    })
-  }, [searchValue, debouncedSearch])
-
-  // HOOK PARA ACTIVAR/DESACTIVAR USUARIO
+  // Hook para acciones de usuario
   const {
     changeUserStatus,
     isLoading: isProcessing,
@@ -227,13 +239,9 @@ const UsersTable = ({
     success,
   } = useUserActions()
 
-  // 🔍 FILTRO TEMPORAL EN FRONTEND (mientras se arregla el backend)
+  // Filtro temporal en frontend
   const filteredUsuarios = React.useMemo(() => {
     if (!debouncedSearch.trim()) {
-      console.log(
-        "🔍 Sin búsqueda, mostrando todos los usuarios:",
-        usuarios.length
-      )
       return usuarios
     }
 
@@ -244,51 +252,37 @@ const UsersTable = ({
       return matchNombre || matchEmail
     })
 
-    console.log(`🔍 Búsqueda "${debouncedSearch}":`, {
-      totalUsuarios: usuarios.length,
-      usuariosFiltrados: filtered.length,
-      usuariosEncontrados: filtered.map((u) => ({
-        nombre: u.nombre,
-        email: u.email,
-      })),
-    })
-
     return filtered
   }, [usuarios, debouncedSearch])
 
-  // 🔍 FUNCIÓN PARA LIMPIAR BÚSQUEDA
+  // Función para limpiar búsqueda
   const clearSearch = () => {
     setSearchValue("")
     setDebouncedSearch("")
   }
 
-  // Función para manejar activar/desactivar usuario
+  // Función para cambiar estado de usuario
   const handleToggleUserStatus = async (
     userId: string | number,
     isCurrentlyActive: boolean
   ) => {
-    console.log(`🔄 Cambiando estado del usuario ${userId}...`)
-
     try {
       await changeUserStatus(userId, isCurrentlyActive)
-      console.log("✅ Operación completada")
     } catch (error) {
-      console.error("❌ Error:", error)
+      console.error("Error:", error)
     } finally {
-      console.log("🔄 Recargando tabla...")
       await fetchUsuarios({
         page,
         limit,
-        search: debouncedSearch, // ← Usar debouncedSearch en lugar de searchTerm
+        search: debouncedSearch,
         estado: undefined,
         sortBy: "fechaRegistro",
         sortOrder: "desc",
       })
-      console.log("✅ Tabla recargada")
     }
   }
 
-  // 🖼️ COLUMNAS ACTUALIZADAS CON AVATAR DE FOTO REAL
+  // 🛠️ COLUMNAS CORREGIDAS
   const columns: ColumnDef<UsuarioTabla>[] = [
     {
       id: "select",
@@ -300,7 +294,6 @@ const UsersTable = ({
       header: "Usuario",
       cell: ({ row }) => (
         <div className="flex items-center gap-2">
-          {/* 🖼️ AQUÍ SE USA EL NUEVO COMPONENTE UserAvatar */}
           <UserAvatar
             userId={row.original.uid}
             userName={row.original.nombre}
@@ -329,31 +322,49 @@ const UsersTable = ({
     {
       accessorKey: "fechaRegistro",
       header: "Fecha de registro",
-      cell: ({ row }) => (
-        <span className="text-sm">
-          {formatDate(row.original.fechaRegistro)}
-        </span>
-      ),
+      cell: ({ row }) => {
+        const fechaRegistro = row.original.fechaRegistro
+        const formattedDate = formatDate(fechaRegistro)
+
+        return (
+          <span
+            className={`text-sm ${
+              formattedDate.includes("Error") ||
+              formattedDate.includes("inválida") ||
+              formattedDate.includes("Sin fecha")
+                ? "text-red-500 italic"
+                : ""
+            }`}
+            title={`Fecha original: ${fechaRegistro || "N/A"}`}
+          >
+            {formattedDate}
+          </span>
+        )
+      },
       meta: { responsive: true },
     },
     {
-      accessorKey: "totalReservas",
+      // 🛠️ CORREGIDO: usar reservasHechas (del endpoint de estadísticas)
+      accessorKey: "reservasHechas",
       header: "Reservas hechas",
-      cell: ({ row }) => (
-        <span className="text-sm font-medium">
-          {row.original.totalReservas || 0}
-        </span>
-      ),
+      cell: ({ row }) => {
+        // Intentar ambos campos por compatibilidad
+        const reservas =
+          row.original.reservasHechas ?? row.original.totalReservas ?? 0
+        return <span className="text-sm font-medium">{reservas}</span>
+      },
       meta: { responsive: true },
     },
     {
-      accessorKey: "totalPlazas",
+      // 🛠️ CORREGIDO: usar plazasPublicadas (del endpoint de estadísticas)
+      accessorKey: "plazasPublicadas",
       header: "Plazas publicadas",
-      cell: ({ row }) => (
-        <span className="text-sm font-medium">
-          {row.original.totalPlazas || 0}
-        </span>
-      ),
+      cell: ({ row }) => {
+        // Intentar ambos campos por compatibilidad
+        const plazas =
+          row.original.plazasPublicadas ?? row.original.totalPlazas ?? 0
+        return <span className="text-sm font-medium">{plazas}</span>
+      },
       meta: { responsive: true },
     },
     {
@@ -392,7 +403,6 @@ const UsersTable = ({
           <DropdownMenuContent align="end">
             <DropdownMenuItem
               onClick={() => {
-                // ✅ VALIDACIÓN CON TOAST ELEGANTE
                 if (!row.original.isActive) {
                   toast.error("Usuario inactivo", {
                     description: `No puedes editar a ${
@@ -410,15 +420,12 @@ const UsersTable = ({
                         })
                       },
                     },
-                    duration: 6000, // 6 segundos
+                    duration: 6000,
                   })
                   return
                 }
 
-                // Si está activo, navegar normalmente
                 router.push(`/usuarios/${row.original.uid}`)
-
-                // Toast opcional de confirmación
                 toast.success("Redirigiendo...", {
                   description: `Editando a ${row.original.nombre}`,
                   duration: 2000,
@@ -430,14 +437,6 @@ const UsersTable = ({
 
             <DropdownMenuItem
               onClick={async () => {
-                console.log(
-                  "🔍 Usando UID:",
-                  row.original.uid,
-                  "isActive:",
-                  row.original.isActive
-                )
-
-                // Toast de loading
                 const loadingToast = toast.loading(
                   row.original.isActive
                     ? "Desactivando usuario..."
@@ -451,10 +450,7 @@ const UsersTable = ({
                     row.original.isActive
                   )
 
-                  // Dismiss loading toast
                   toast.dismiss(loadingToast)
-
-                  // Success toast
                   toast.success(
                     row.original.isActive
                       ? "Usuario desactivado"
@@ -466,13 +462,9 @@ const UsersTable = ({
                       duration: 4000,
                     }
                   )
-
                   // eslint-disable-next-line @typescript-eslint/no-unused-vars
                 } catch (error) {
-                  // Dismiss loading toast
                   toast.dismiss(loadingToast)
-
-                  // Error toast
                   toast.error("Error al cambiar estado", {
                     description: "Hubo un problema. Inténtalo de nuevo.",
                     duration: 5000,
@@ -500,7 +492,7 @@ const UsersTable = ({
   ]
 
   const table = useReactTable({
-    data: filteredUsuarios, // ← Cambiar de 'usuarios' a 'filteredUsuarios'
+    data: filteredUsuarios,
     columns,
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
@@ -508,7 +500,7 @@ const UsersTable = ({
     pageCount: Math.ceil(total / limit),
   })
 
-  // Funciones de paginación actualizadas
+  // Funciones de paginación
   const handlePreviousPage = () => {
     if (page > 1) {
       fetchUsuarios({
@@ -539,7 +531,6 @@ const UsersTable = ({
   if (loading) {
     return (
       <div className="w-full">
-        {/* 🔍 BUSCADOR TAMBIÉN EN LOADING */}
         <div className="flex items-center justify-between mb-4">
           <div className="text-sm text-muted-foreground">
             <Skeleton className="h-4 w-48" />
@@ -612,7 +603,7 @@ const UsersTable = ({
 
   return (
     <div className="w-full">
-      {/* Mostrar mensajes de error o éxito */}
+      {/* Mensajes de error o éxito */}
       {actionError && (
         <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
           <p className="text-sm text-red-600">Error: {actionError}</p>
@@ -627,7 +618,7 @@ const UsersTable = ({
         </div>
       )}
 
-      {/* 🔍 HEADER CON INFORMACIÓN Y BUSCADOR */}
+      {/* Header con información y buscador */}
       <div className="flex items-center justify-between mb-4">
         <div className="text-sm text-muted-foreground">
           Mostrando {filteredUsuarios.length} de {total} usuarios
@@ -635,7 +626,6 @@ const UsersTable = ({
           {estadoFilter && ` (${estadoFilter})`}
         </div>
 
-        {/* 🔍 BUSCADOR ELEGANTE */}
         <div className="relative w-72">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
           <Input
@@ -681,7 +671,7 @@ const UsersTable = ({
             ))}
           </TableHeader>
           <TableBody>
-            {usuarios.length === 0 ? (
+            {filteredUsuarios.length === 0 ? (
               <TableRow>
                 <TableCell
                   colSpan={columns.length}
@@ -728,7 +718,7 @@ const UsersTable = ({
         </Table>
       </div>
 
-      {/* Paginación mejorada */}
+      {/* Paginación */}
       <div className="flex items-center justify-between py-4">
         <div className="text-sm text-muted-foreground">
           Página {page} de {Math.ceil(total / limit)}

@@ -2,10 +2,15 @@
 
 import * as React from "react"
 import { Button } from "@/components/ui/button"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { CreditCard } from "lucide-react"
+import { CreditCard, CheckCircle } from "lucide-react"
 
 interface EditCreditosModalProps {
   isOpen: boolean
@@ -21,25 +26,27 @@ const EditCreditosModal: React.FC<EditCreditosModalProps> = ({
   onClose,
   creditosActuales,
   moneda = "€",
-  userId,
-  onSuccess
+
+  onSuccess,
 }) => {
   const [creditos, setCreditos] = React.useState<string>("")
   const [loading, setLoading] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
+  const [showSuccess, setShowSuccess] = React.useState(false)
 
   // Inicializar el valor cuando se abre el modal
   React.useEffect(() => {
     if (isOpen) {
       setCreditos(creditosActuales.toString())
       setError(null)
+      setShowSuccess(false)
     }
   }, [isOpen, creditosActuales])
 
   // Manejar cambio en el input
   const handleCreditosChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value
-    
+
     // Solo permitir números y decimales
     if (value === "" || /^\d*\.?\d*$/.test(value)) {
       setCreditos(value)
@@ -61,14 +68,14 @@ const EditCreditosModal: React.FC<EditCreditosModalProps> = ({
     return true
   }
 
-  // Guardar cambios
+  // Guardar cambios (SIMULADO CON DATOS MOCK)
   const handleSave = async () => {
     if (!validateCreditos(creditos)) {
       return
     }
 
     const nuevosCreditos = parseFloat(creditos)
-    
+
     // Si no hay cambios, cerrar modal
     if (nuevosCreditos === creditosActuales) {
       onClose()
@@ -79,63 +86,62 @@ const EditCreditosModal: React.FC<EditCreditosModalProps> = ({
     setError(null)
 
     try {
-      const token = localStorage.getItem("token") || localStorage.getItem("authToken")
-      
-      // Decidir qué endpoint usar
-      let url = `https://aparcoyo-back.onrender.com/apa/usuarios/creditos`
-      let body = { creditos: nuevosCreditos }
-      
-      if (userId) {
-        // Modo admin - actualizar créditos de usuario específico
-        url = `https://aparcoyo-back.onrender.com/apa/usuarios/${userId}/creditos`
-        body = { creditos: nuevosCreditos }
+      console.log(
+        `💳 [MOCK] Actualizando créditos: ${creditosActuales} → ${nuevosCreditos}`
+      )
+
+      // 🎭 SIMULACIÓN: Esperar 1.5 segundos para simular petición al servidor
+      await new Promise((resolve) => setTimeout(resolve, 1500))
+
+      // 🎭 SIMULACIÓN: 90% probabilidad de éxito
+      const success = Math.random() > 0.1
+
+      if (!success) {
+        throw new Error(
+          "Error de conexión simulado (esto es solo para demostración)"
+        )
       }
 
-      console.log(`💳 Actualizando créditos: ${creditosActuales} → ${nuevosCreditos}`)
-      console.log(`📡 URL: ${url}`)
+      console.log(`✅ [MOCK] Créditos actualizados exitosamente`)
 
-      const response = await fetch(url, {
-        method: 'PUT', // o 'PATCH' según tu API
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(body)
-      })
+      // Mostrar mensaje de éxito
+      setShowSuccess(true)
 
-      console.log(`📨 Response status: ${response.status}`)
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ message: 'Error desconocido' }))
-        throw new Error(errorData.message || `Error ${response.status}`)
-      }
-
-      const data = await response.json()
-      console.log(`✅ Créditos actualizados:`, data)
-
-      // Llamar callback de éxito
-      if (onSuccess) {
-        onSuccess(nuevosCreditos)
-      }
-
-      onClose()
+      // Esperar un poco antes de cerrar
+      setTimeout(() => {
+        // Llamar callback de éxito
+        if (onSuccess) {
+          onSuccess(nuevosCreditos)
+        }
+        onClose()
+      }, 1500)
     } catch (err) {
-      console.error("❌ Error al actualizar créditos:", err)
-      setError(err instanceof Error ? err.message : "Error al actualizar créditos")
+      console.error("❌ [MOCK] Error simulado:", err)
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Error simulado al actualizar créditos"
+      )
     } finally {
-      setLoading(false)
+      // Solo quitar loading si no fue exitoso (para mostrar el mensaje de éxito)
+      if (!showSuccess) {
+        setLoading(false)
+      }
     }
   }
 
   // Manejar Enter en el input
   const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !loading) {
+    if (e.key === "Enter" && !loading) {
       handleSave()
     }
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog
+      open={isOpen}
+      onOpenChange={onClose}
+    >
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center space-x-2">
@@ -146,43 +152,65 @@ const EditCreditosModal: React.FC<EditCreditosModalProps> = ({
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4">
-          <div>
-            <h3 className="font-semibold text-lg mb-4">Créditos disponibles</h3>
-            
+        {/* Mostrar mensaje de éxito */}
+        {showSuccess ? (
+          <div className="text-center py-8">
+            <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
+              <CheckCircle className="w-8 h-8 text-green-600" />
+            </div>
+            <h3 className="text-lg font-semibold text-green-800 mb-2">
+              ¡Créditos actualizados!
+            </h3>
+            <p className="text-sm text-green-600">
+              Los nuevos créditos se han guardado correctamente
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {/* Banner informativo para demo */}
+
             <div>
-              <Label htmlFor="creditos" className="text-sm font-medium">
-                Créditos
-              </Label>
-              <div className="relative mt-1">
-                <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground font-medium">
-                  {moneda}
-                </span>
-                <Input
-                  id="creditos"
-                  type="text"
-                  value={creditos}
-                  onChange={handleCreditosChange}
-                  onKeyPress={handleKeyPress}
-                  className="pl-8"
-                  placeholder="0"
-                  disabled={loading}
-                  autoFocus
-                />
+              <h3 className="font-semibold text-lg mb-4">
+                Créditos disponibles
+              </h3>
+
+              <div>
+                <Label
+                  htmlFor="creditos"
+                  className="text-sm font-medium"
+                >
+                  Créditos
+                </Label>
+                <div className="relative mt-1">
+                  <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground font-medium">
+                    {moneda}
+                  </span>
+                  <Input
+                    id="creditos"
+                    type="text"
+                    value={creditos}
+                    onChange={handleCreditosChange}
+                    onKeyPress={handleKeyPress}
+                    className="pl-8"
+                    placeholder="0"
+                    disabled={loading}
+                    autoFocus
+                  />
+                </div>
+
+                {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
+
+                {!error &&
+                  creditos &&
+                  creditos !== creditosActuales.toString() && (
+                    <p className="text-muted-foreground text-xs mt-1">
+                      Cambio: {creditosActuales} → {creditos} {moneda}
+                    </p>
+                  )}
               </div>
-              
-              {error && (
-                <p className="text-red-500 text-xs mt-1">{error}</p>
-              )}
-              
-              {!error && creditos && creditos !== creditosActuales.toString() && (
-                <p className="text-muted-foreground text-xs mt-1">
-                  Cambio: {creditosActuales} → {creditos} {moneda}
-                </p>
-              )}
             </div>
           </div>
-        </div>
+        )}
 
         <div className="flex justify-end space-x-2 pt-4">
           <Button
@@ -191,15 +219,25 @@ const EditCreditosModal: React.FC<EditCreditosModalProps> = ({
             onClick={onClose}
             disabled={loading}
           >
-            Cancelar
+            {showSuccess ? "Cerrar" : "Cancelar"}
           </Button>
-          <Button
-            onClick={handleSave}
-            disabled={loading || !!error}
-            className="bg-blue-600 hover:bg-blue-700"
-          >
-            {loading ? 'Guardando...' : 'Guardar'}
-          </Button>
+
+          {!showSuccess && (
+            <Button
+              onClick={handleSave}
+              disabled={loading || !!error}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              {loading ? (
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  Guardando...
+                </div>
+              ) : (
+                "Guardar"
+              )}
+            </Button>
+          )}
         </div>
       </DialogContent>
     </Dialog>
