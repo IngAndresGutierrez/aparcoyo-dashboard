@@ -1,6 +1,6 @@
-// services/vehiculosService.ts
+// services/vehiculosService.ts - VERSIÓN LIMPIA
 
-import { toast } from "sonner" // ✅ Agregar importación de Sonner
+import { toast } from "sonner"
 import {
   APIError,
   CreateVehiculoRequest,
@@ -27,13 +27,12 @@ class VehiculosService {
       const errorData = await response
         .json()
         .catch(() => ({ message: "Error desconocido" }))
-      console.log("🔍 Error completo del backend:", errorData)
-      console.log("🔍 Status:", response.status)
 
-      // ✅ Logging mejorado para debugging
-      console.log("🔍 Error completo del backend:", errorData)
-      console.log("🔍 Status:", response.status)
-      console.log("🔍 URL:", response.url)
+      // Solo logging en modo desarrollo
+      if (process.env.NODE_ENV === "development") {
+        console.log("🔍 Error del backend:", errorData.message)
+        console.log("🔍 Status:", response.status)
+      }
 
       const error: APIError = {
         message: errorData.message || `Error ${response.status}`,
@@ -41,9 +40,8 @@ class VehiculosService {
         field: errorData.field,
       }
 
-      // ✅ Manejo específico de errores 400 (validación)
+      // Manejo específico de errores con toasts
       if (response.status === 400 && Array.isArray(errorData.message)) {
-        console.log("🔍 Errores de validación:", errorData.message)
         const errorMessages = errorData.message.join(", ")
         toast.error("Errores de validación", {
           description: errorMessages,
@@ -93,18 +91,15 @@ class VehiculosService {
         queryParams.toString() ? `?${queryParams}` : ""
       }`
 
-      console.log(`📡 Obteniendo vehículos: ${url}`)
-
       const response = await fetch(url, {
         method: "GET",
         headers: this.getAuthHeaders(),
       })
 
       const data = await this.handleResponse<VehiculosResponse>(response)
-      console.log("✅ Vehículos obtenidos:", data)
       return data
     } catch (error) {
-      console.error("❌ Error al obtener vehículos:", error)
+      // Solo re-lanzar, handleResponse ya mostró el error
       throw error
     }
   }
@@ -129,18 +124,14 @@ class VehiculosService {
         queryParams.toString() ? `?${queryParams}` : ""
       }`
 
-      console.log(`📡 Obteniendo vehículos del usuario ${userId}: ${url}`)
-
       const response = await fetch(url, {
         method: "GET",
         headers: this.getAuthHeaders(),
       })
 
       const data = await this.handleResponse<VehiculosResponse>(response)
-      console.log("✅ Vehículos del usuario obtenidos:", data)
       return data
     } catch (error) {
-      console.error("❌ Error al obtener vehículos del usuario:", error)
       throw error
     }
   }
@@ -148,30 +139,23 @@ class VehiculosService {
   // Obtener un vehículo específico
   async getVehiculoById(vehiculoId: string): Promise<VehiculoResponse> {
     try {
-      console.log(`📡 Obteniendo vehículo ${vehiculoId}...`)
-
       const response = await fetch(`${API_BASE_URL}/vehiculos/${vehiculoId}`, {
         method: "GET",
         headers: this.getAuthHeaders(),
       })
 
       const data = await this.handleResponse<VehiculoResponse>(response)
-      console.log("✅ Vehículo obtenido:", data)
       return data
     } catch (error) {
-      console.error("❌ Error al obtener vehículo:", error)
       throw error
     }
   }
 
-  // Crear nuevo vehículo
+  // Crear nuevo vehículo - LIMPIO
   async createVehiculo(
     vehiculoData: CreateVehiculoRequest
   ): Promise<VehiculoResponse> {
     try {
-      console.log("📡 Creando nuevo vehículo...", vehiculoData)
-
-      // ✅ Toast de loading
       toast.loading("Creando vehículo...", { id: "create-vehicle" })
 
       const response = await fetch(`${API_BASE_URL}/vehiculos`, {
@@ -182,32 +166,25 @@ class VehiculosService {
 
       const data = await this.handleResponse<VehiculoResponse>(response)
 
-      // ✅ Toast de éxito
       toast.success("Vehículo creado correctamente", {
         id: "create-vehicle",
         description: "El vehículo se ha registrado exitosamente",
         duration: 4000,
       })
 
-      console.log("✅ Vehículo creado:", data)
       return data
     } catch (error) {
-      // ✅ Dismiss loading toast si hay error
       toast.dismiss("create-vehicle")
-      console.error("❌ Error al crear vehículo:", error)
       throw error
     }
   }
 
-  // Actualizar vehículo del usuario autenticado
+  // Actualizar vehículo - LIMPIO
   async updateVehiculo(
     vehiculoId: string,
     vehiculoData: UpdateVehiculoRequest
   ): Promise<VehiculoResponse> {
     try {
-      console.log(`📡 Actualizando vehículo ${vehiculoId}...`, vehiculoData)
-
-      // ✅ Toast de loading
       toast.loading("Actualizando vehículo...", { id: "update-vehicle" })
 
       const response = await fetch(`${API_BASE_URL}/vehiculos/${vehiculoId}`, {
@@ -218,36 +195,26 @@ class VehiculosService {
 
       const data = await this.handleResponse<VehiculoResponse>(response)
 
-      // ✅ Toast de éxito
       toast.success("Vehículo actualizado correctamente", {
         id: "update-vehicle",
         description: "Los cambios se han guardado exitosamente",
         duration: 4000,
       })
 
-      console.log("✅ Vehículo actualizado:", data)
       return data
     } catch (error) {
-      // ✅ Dismiss loading toast si hay error
       toast.dismiss("update-vehicle")
-      console.error("❌ Error al actualizar vehículo:", error)
       throw error
     }
   }
 
-  // Actualizar vehículo de usuario específico (admin only)
+  // Actualizar vehículo admin - LIMPIO
   async updateVehiculoAdmin(
     userId: string,
     vehiculoId: string,
     vehiculoData: UpdateVehiculoRequest
   ): Promise<VehiculoResponse> {
     try {
-      console.log(
-        `📡 Admin actualizando vehículo ${vehiculoId} del usuario ${userId}...`,
-        vehiculoData
-      )
-
-      // ✅ Toast de loading
       toast.loading("Actualizando vehículo...", { id: "update-vehicle-admin" })
 
       const response = await fetch(
@@ -261,29 +228,22 @@ class VehiculosService {
 
       const data = await this.handleResponse<VehiculoResponse>(response)
 
-      // ✅ Toast de éxito
       toast.success("Vehículo actualizado correctamente", {
         id: "update-vehicle-admin",
         description: "Los cambios se han guardado exitosamente",
         duration: 4000,
       })
 
-      console.log("✅ Vehículo actualizado por admin:", data)
       return data
     } catch (error) {
-      // ✅ Dismiss loading toast si hay error
       toast.dismiss("update-vehicle-admin")
-      console.error("❌ Error al actualizar vehículo (admin):", error)
       throw error
     }
   }
 
-  // Eliminar vehículo del usuario autenticado
+  // Eliminar vehículo - LIMPIO
   async deleteVehiculo(vehiculoId: string): Promise<{ message: string }> {
     try {
-      console.log(`📡 Eliminando vehículo ${vehiculoId}...`)
-
-      // ✅ Toast de loading
       toast.loading("Eliminando vehículo...", { id: "delete-vehicle" })
 
       const response = await fetch(`${API_BASE_URL}/vehiculos/${vehiculoId}`, {
@@ -293,34 +253,25 @@ class VehiculosService {
 
       const data = await this.handleResponse<{ message: string }>(response)
 
-      // ✅ Toast de éxito
       toast.success("Vehículo eliminado correctamente", {
         id: "delete-vehicle",
         description: "El vehículo se ha eliminado exitosamente",
         duration: 4000,
       })
 
-      console.log("✅ Vehículo eliminado:", data)
       return data
     } catch (error) {
-      // ✅ Dismiss loading toast si hay error
       toast.dismiss("delete-vehicle")
-      console.error("❌ Error al eliminar vehículo:", error)
       throw error
     }
   }
 
-  // Eliminar vehículo de usuario específico (admin only)
+  // Eliminar vehículo admin - LIMPIO
   async deleteVehiculoAdmin(
     userId: string,
     vehiculoId: string
   ): Promise<{ message: string }> {
     try {
-      console.log(
-        `📡 Admin eliminando vehículo ${vehiculoId} del usuario ${userId}...`
-      )
-
-      // ✅ Toast de loading
       toast.loading("Eliminando vehículo...", { id: "delete-vehicle-admin" })
 
       const response = await fetch(
@@ -333,19 +284,15 @@ class VehiculosService {
 
       const data = await this.handleResponse<{ message: string }>(response)
 
-      // ✅ Toast de éxito
       toast.success("Vehículo eliminado correctamente", {
         id: "delete-vehicle-admin",
         description: "El vehículo se ha eliminado exitosamente",
         duration: 4000,
       })
 
-      console.log("✅ Vehículo eliminado por admin:", data)
       return data
     } catch (error) {
-      // ✅ Dismiss loading toast si hay error
       toast.dismiss("delete-vehicle-admin")
-      console.error("❌ Error al eliminar vehículo (admin):", error)
       throw error
     }
   }
