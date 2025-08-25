@@ -100,12 +100,6 @@ const UserPlazas: React.FC<UserPlazasProps> = ({ userId }) => {
     }
   }, [userId])
 
-  const handleEditPlaza = (plazaId: string) => {
-    console.log(`✏️ Editar plaza: ${plazaId}`)
-    toast.info("Funcionalidad de edición próximamente", {
-      description: "Esta función está en desarrollo",
-    })
-  }
 
   // ✅ Implementar función de eliminar plaza
   const handleDeletePlaza = async (plazaId: string, plazaNombre: string) => {
@@ -310,13 +304,7 @@ const UserPlazas: React.FC<UserPlazasProps> = ({ userId }) => {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem
-                            onClick={() => handleEditPlaza(plaza.id)}
-                            disabled={deletingId === plaza.id}
-                          >
-                            <Edit className="h-4 w-4 mr-2" />
-                            Editar plaza
-                          </DropdownMenuItem>
+                         
                           <DropdownMenuItem
                             onClick={() =>
                               handleDeletePlaza(plaza.id, plaza.nombre)

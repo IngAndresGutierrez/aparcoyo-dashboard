@@ -72,25 +72,43 @@ const ReservationsTable = () => {
     try {
       console.log("🗑️ Eliminando reserva:", reservation.id)
 
-      const response = await fetch(`/apa/reservas/${reservation.id}`, {
-        method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-          // 'Authorization': `Bearer ${token}` // Agregar si necesitas auth
-        },
-      })
+      const token =
+        localStorage.getItem("authToken") || localStorage.getItem("token")
+
+      if (!token) {
+        alert("No estás autenticado. Por favor, inicia sesión nuevamente.")
+        return
+      }
+
+      // ✅ URL del backend de producción + endpoint del Swagger
+      const response = await fetch(
+        `https://aparcoyo-back.onrender.com/apa/reservas/${reservation.id}`,
+        {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      )
 
       console.log("📡 DELETE Response status:", response.status)
 
       if (response.ok) {
         console.log("✅ Reserva eliminada exitosamente")
-        // Refrescar la tabla
         getAllReservas()
+        alert("Reserva eliminada correctamente")
+      } else if (response.status === 401) {
+        alert("Tu sesión ha expirado. Por favor, inicia sesión nuevamente.")
+        localStorage.removeItem("authToken")
+        localStorage.removeItem("token")
       } else {
-        const errorText = await response.text()
-        console.error("❌ Error eliminando reserva:", errorText)
+        const errorData = await response.json()
+        console.error("❌ Error eliminando reserva:", errorData)
         alert(
-          `Error eliminando reserva: ${response.status} ${response.statusText}`
+          `Error eliminando reserva: ${
+            errorData.message || response.statusText
+          }`
         )
       }
     } catch (error) {

@@ -1,92 +1,186 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
+// ✅ SOLUCIÓN PERFECTA - Modal con plazas reales del backend
 
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select';
-import { Edit3, User } from 'lucide-react';
-import { ReservaTable } from '../../types';
+import React, { useState, useEffect } from "react"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { Button } from "@/components/ui/button"
+import { Label } from "@/components/ui/label"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+} from "@/components/ui/select"
+import { Edit3, User, MapPin, Loader2 } from "lucide-react"
+import { ReservaTable } from "../../types"
+
+interface Plaza {
+  id: string
+  nombre: string
+  direccion: string
+  descripcion: string
+  tipo: string
+}
 
 interface EditReservationModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  reservationData: ReservaTable | null;
-  onUpdate?: (updatedReservation: any) => void;
+  isOpen: boolean
+  onClose: () => void
+  reservationData: ReservaTable | null
+  onUpdate?: (updatedReservation: any) => void
 }
 
 const EditReservationModal: React.FC<EditReservationModalProps> = ({
   isOpen,
   onClose,
   reservationData,
-  onUpdate
+  onUpdate,
 }) => {
-  const [reservedSpace, setReservedSpace] = useState('');
-  const [reservedBy, setReservedBy] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [selectedPlazaId, setSelectedPlazaId] = useState("")
+  const [plazasDisponibles, setPlazasDisponibles] = useState<Plaza[]>([])
+  const [isLoading, setIsLoading] = useState(false)
+  const [isLoadingPlazas, setIsLoadingPlazas] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  const updateReservation = async () => {
-    if (!reservationData?.id) return;
-
-    setIsLoading(true);
-    setError(null);
-    
-    try {
-      const response = await fetch(`/apa/reservas/${reservationData.id}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          // 'Authorization': `Bearer ${token}` // Agregar si necesitas auth
-        },
-        body: JSON.stringify({
-          plazaReservada: reservedSpace,
-          reservadoPor: reservedBy
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error(`Error ${response.status}: ${response.statusText}`);
-      }
-
-      const updatedReservation = await response.json();
-      console.log('Reserva actualizada:', updatedReservation);
-      
-      onUpdate?.(updatedReservation);
-      onClose();
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Error desconocido';
-      setError(errorMessage);
-      console.error('Error actualizando reserva:', err);
-    } finally {
-      setIsLoading(false);
+  // Cargar plazas disponibles cuando se abre el modal
+  useEffect(() => {
+    if (isOpen) {
+      cargarPlazas()
     }
-  };
+  }, [isOpen])
 
-  // Reset form when modal opens/closes
+  // Inicializar datos cuando se abre el modal
   useEffect(() => {
     if (isOpen && reservationData) {
-      // Extraer nombres de los objetos
-      const plazaNombre = (reservationData.plaza as any)?.nombre || 
-                         (reservationData.plaza as any)?.direccion || 
-                         'Sin plaza';
-      const userEmail = (reservationData.usuario as any)?.email || 
-                        (reservationData.usuario as any)?.correo || 
-                        'Sin email';
-      
-      setReservedSpace(plazaNombre);
-      setReservedBy(userEmail);
-      setError(null);
+      const plaza = reservationData.plaza as any
+      setSelectedPlazaId(plaza?.id || "")
+      setError(null)
     }
-  }, [isOpen, reservationData]);
+  }, [isOpen, reservationData])
 
-  if (!reservationData) return null;
+  const cargarPlazas = async () => {
+    setIsLoadingPlazas(true)
+    try {
+      const token =
+        localStorage.getItem("authToken") || localStorage.getItem("token")
 
-  const usuario = reservationData.usuario as any;
-  const userName = usuario?.nombre || 'Sin nombre';
+      const response = await fetch(
+        "https://aparcoyo-back.onrender.com/apa/plazas",
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      )
+
+      if (response.ok) {
+        const data = await response.json()
+        setPlazasDisponibles(data.data || [])
+      } else {
+        console.error("Error cargando plazas")
+        setPlazasDisponibles([])
+      }
+    } catch (error) {
+      console.error("Error cargando plazas:", error)
+      setPlazasDisponibles([])
+    } finally {
+      setIsLoadingPlazas(false)
+    }
+  }
+
+  const updateReservation = async () => {
+    if (!reservationData?.id) return
+
+    setIsLoading(true)
+    setError(null)
+
+    try {
+      const token =
+        localStorage.getItem("authToken") || localStorage.getItem("token")
+
+      if (!token) {
+        throw new Error(
+          "No estás autenticado. Por favor, inicia sesión nuevamente."
+        )
+      }
+
+      // ✅ SOLO ENVIAR LOS CAMPOS QUE EL BACKEND ACEPTA
+      const updateData: any = {}
+
+      // Solo agregar plaza si realmente cambió
+      const plazaActual = (reservationData.plaza as any)?.id
+      if (selectedPlazaId && selectedPlazaId !== plazaActual) {
+        updateData.plaza = selectedPlazaId
+        console.log("🔄 Cambiando plaza de", plazaActual, "a", selectedPlazaId)
+      } else {
+        // Si no cambió, mantener la plaza actual
+        updateData.plaza = plazaActual
+      }
+
+      console.log("🔍 Datos que vamos a enviar:", updateData)
+
+      const response = await fetch(
+        `https://aparcoyo-back.onrender.com/apa/reservas/${reservationData.id}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(updateData),
+        }
+      )
+
+      console.log("📡 PATCH Response status:", response.status)
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        console.error("❌ Error del servidor:", errorData)
+
+        if (response.status === 401) {
+          localStorage.removeItem("authToken")
+          localStorage.removeItem("token")
+          throw new Error(
+            "Tu sesión ha expirado. Por favor, inicia sesión nuevamente."
+          )
+        }
+        throw new Error(
+          `Error ${response.status}: ${
+            errorData.message || response.statusText
+          }`
+        )
+      }
+
+      const result = await response.json()
+      console.log("✅ Reserva actualizada exitosamente:", result)
+
+      onUpdate?.(result.data)
+      onClose()
+
+      // Mostrar mensaje de éxito
+      alert("Reserva actualizada correctamente")
+    } catch (err) {
+      const errorMessage =
+        err instanceof Error ? err.message : "Error desconocido"
+      setError(errorMessage)
+      console.error("❌ Error actualizando reserva:", err)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  if (!reservationData) return null
+
+  const usuario = reservationData.usuario as any
+  const userName = usuario?.nombre || "Sin nombre"
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog
+      open={isOpen}
+      onOpenChange={onClose}
+    >
       <DialogContent className="sm:max-w-md w-full max-w-sm mx-auto bg-white rounded-lg shadow-xl">
         <DialogHeader className="pb-4">
           <div className="flex items-center gap-2">
@@ -113,57 +207,90 @@ const EditReservationModal: React.FC<EditReservationModalProps> = ({
 
           {/* Plaza reservada */}
           <div className="space-y-2">
-            <Label htmlFor="plaza" className="text-sm text-gray-600">
+            <Label
+              htmlFor="plaza"
+              className="text-sm text-gray-600"
+            >
               Plaza reservada
             </Label>
-            <Select value={reservedSpace} onValueChange={setReservedSpace}>
-              <SelectTrigger className="w-full h-10 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                <span className="text-sm text-gray-700">{reservedSpace}</span>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={reservedSpace}>
-                  {reservedSpace}
-                </SelectItem>
-                <SelectItem value="O Park Mayfair Car Park">
-                  O Park Mayfair Car Park
-                </SelectItem>
-                <SelectItem value="Plaza Central A1">
-                  Plaza Central A1
-                </SelectItem>
-                <SelectItem value="Parking Norte B2">
-                  Parking Norte B2
-                </SelectItem>
-              </SelectContent>
-            </Select>
+
+            {isLoadingPlazas ? (
+              <div className="flex items-center gap-2 p-3 border rounded-md">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span className="text-sm text-gray-500">
+                  Cargando plazas...
+                </span>
+              </div>
+            ) : (
+              <Select
+                value={selectedPlazaId}
+                onValueChange={setSelectedPlazaId}
+              >
+                <SelectTrigger className="w-full h-auto min-h-[60px] border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                  <div className="flex items-start gap-2 p-2">
+                    <MapPin className="h-4 w-4 text-gray-500 mt-1 flex-shrink-0" />
+                    <div className="flex-1 text-left">
+                      {selectedPlazaId ? (
+                        <>
+                          <div className="font-medium text-sm text-gray-700">
+                            {plazasDisponibles.find(
+                              (p) => p.id === selectedPlazaId
+                            )?.nombre || "Sin nombre"}
+                          </div>
+                          <div className="text-xs text-gray-500 mt-1">
+                            {
+                              plazasDisponibles.find(
+                                (p) => p.id === selectedPlazaId
+                              )?.direccion
+                            }
+                          </div>
+                        </>
+                      ) : (
+                        <span className="text-sm text-gray-400">
+                          Seleccionar plaza...
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </SelectTrigger>
+                <SelectContent className="max-h-60">
+                  {plazasDisponibles.map((plaza) => (
+                    <SelectItem
+                      key={plaza.id}
+                      value={plaza.id}
+                    >
+                      <div className="flex items-start gap-2 py-1">
+                        <MapPin className="h-4 w-4 text-gray-500 mt-0.5 flex-shrink-0" />
+                        <div>
+                          <div className="font-medium text-sm">
+                            {plaza.nombre || "Sin nombre"}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            {plaza.direccion}
+                          </div>
+                          <div className="text-xs text-blue-600">
+                            {plaza.tipo}
+                          </div>
+                        </div>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
           </div>
 
-          {/* Reservado por */}
+          {/* Usuario info (solo lectura) */}
           <div className="space-y-2">
-            <Label htmlFor="reservado-por" className="text-sm text-gray-600">
-              Reservado por
-            </Label>
-            <Select value={reservedBy} onValueChange={setReservedBy}>
-              <SelectTrigger className="w-full h-10 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 bg-orange-500 rounded-full flex items-center justify-center flex-shrink-0">
-                    <User className="w-3 h-3 text-white" />
-                  </div>
-                  <span className="text-sm text-gray-700">{userName}</span>
-                  <span className="text-sm text-gray-500 ml-1">{reservedBy}</span>
-                </div>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={reservedBy}>
-                  <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 bg-orange-500 rounded-full flex items-center justify-center">
-                      <User className="w-3 h-3 text-white" />
-                    </div>
-                    <span>{userName}</span>
-                    <span className="text-gray-500 ml-1">{reservedBy}</span>
-                  </div>
-                </SelectItem>
-              </SelectContent>
-            </Select>
+            <Label className="text-sm text-gray-600">Reservado por</Label>
+            <div className="flex items-center gap-2 p-3 bg-gray-50 border border-gray-200 rounded-md">
+              <div className="w-6 h-6 bg-orange-500 rounded-full flex items-center justify-center flex-shrink-0">
+                <User className="w-3 h-3 text-white" />
+              </div>
+              <span className="text-sm text-gray-700 font-medium">
+                {userName}
+              </span>
+            </div>
           </div>
         </div>
 
@@ -179,15 +306,22 @@ const EditReservationModal: React.FC<EditReservationModalProps> = ({
           </Button>
           <Button
             onClick={updateReservation}
-            disabled={isLoading}
+            disabled={isLoading || isLoadingPlazas}
             className="px-4 py-2 text-sm bg-blue-600 hover:bg-blue-700 text-white disabled:bg-blue-400"
           >
-            {isLoading ? 'Guardando...' : 'Guardar'}
+            {isLoading ? (
+              <div className="flex items-center gap-2">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Guardando...
+              </div>
+            ) : (
+              "Guardar"
+            )}
           </Button>
         </div>
       </DialogContent>
     </Dialog>
-  );
-};
+  )
+}
 
-export default EditReservationModal;
+export default EditReservationModal

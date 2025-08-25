@@ -84,7 +84,7 @@ const Welcome = () => {
 
         <Button
           variant="outline"
-          className="w-46 h-9 rounded-full"
+          className="w-46 h-11 rounded-full"
           onClick={handleDownloadReport}
           disabled={loading}
         >
