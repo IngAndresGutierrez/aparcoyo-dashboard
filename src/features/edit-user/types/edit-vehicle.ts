@@ -8,7 +8,7 @@ export interface Vehiculo {
   año: number
   placa: string
   color: string
-  tipoVehiculo: 'auto' | 'moto' | 'camion' | 'furgoneta'
+  tipoVehiculo: "auto" | "moto" | "camion" | "furgoneta"
   numeroMotor?: string
   numeroChasis?: string
   fechaRegistro: string
@@ -25,7 +25,7 @@ export interface VehiculoFormData {
   año: number
   placa: string
   color: string
-  tipoVehiculo: 'auto' | 'moto' | 'camion' | 'furgoneta'
+  tipoVehiculo: "auto" | "moto" | "camion" | "furgoneta"
   numeroMotor?: string
   numeroChasis?: string
 }
@@ -43,17 +43,16 @@ export interface VehiculoResponse {
 }
 
 export interface CreateVehiculoRequest {
-  marca: string
-  modelo: string
-  año: number
   placa: string
-  color: string
-  tipoVehiculo: string
-  numeroMotor?: string
-  numeroChasis?: string
+  modelo: string
+  // ✅ Solo estos dos campos según Figma
 }
 
-export type UpdateVehiculoRequest = Partial<CreateVehiculoRequest>
+export interface UpdateVehiculoRequest {
+  placa?: string
+  modelo?: string
+  // ✅ Solo estos dos campos según Figma
+}
 
 // Tipos para filtros y búsqueda
 export interface VehiculosFilters {
@@ -69,11 +68,11 @@ export interface VehiculosFilters {
 // Tipos para errores
 export interface VehiculosError {
   message: string
-  status?: number  // Hacer status opcional
+  status?: number // Hacer status opcional
   field?: string
 }
 
 // Tipo para errores de la API específicamente
 export interface APIError extends VehiculosError {
-  status: number  // Requerido para errores de API
+  status: number // Requerido para errores de API
 }

@@ -11,6 +11,7 @@ export interface PlazaModal {
   lng: number // Faltaba
   precio: string // Era number, debe ser string
   propietario: {
+    email: string
     uid: string // Era "id"
     nombre: string
   }

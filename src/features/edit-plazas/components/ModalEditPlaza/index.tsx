@@ -21,64 +21,70 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import useModalPlaza from "../../hooks/useEdit"
 
-// ✅ Interfaz con props correctas
-interface ModalDetallesPlazaProps {
-  isOpen: boolean
-  onClose: () => void
-  plazaId: string
-  onSuccess?: () => void
-  propietarios?: Array<{
+// ✅ Interfaces para tipado
+interface Propietario {
+  id: string
+  nombre: string
+  email: string
+}
+
+interface PlazaData {
+  id: string
+  nombre: string
+  descripcion: string
+  precio: string | number
+  propietario: {
+    uid: string
+    nombre: string
+    email?: string
+  }
+}
+
+interface FormData {
+  nombre: string
+  descripcion: string
+  precio: number
+  propietario: {
     id: string
     nombre: string
     email: string
-  }>
+  }
 }
 
-// ✅ Función que RECIBE props
+// ✅ Props del modal
+interface ModalDetallesPlazaProps {
+  isOpen: boolean
+  onClose: () => void
+
+  // Datos que vienen del padre
+  plazaData: PlazaData | null
+  loading: boolean
+  saving: boolean
+  error: string | null
+  propietarios: Propietario[]
+
+  // Funciones que ejecuta el padre
+  onSave: (formData: FormData) => Promise<void>
+  onRetry: () => void
+  onClearError: () => void
+}
+
+// ✅ Modal principal
 function ModalDetallesPlaza({
   isOpen,
   onClose,
-  plazaId,
-  onSuccess,
-  propietarios = [],
+  plazaData,
+  loading,
+  saving,
+  error,
+  propietarios,
+  onSave,
+  onRetry,
+  onClearError,
 }: ModalDetallesPlazaProps) {
-  // Hook personalizado para manejar la plaza
-  const {
-    plazaData,
-    loading,
-    saving,
-    error,
-    cargarPlaza,
-    guardarCambios,
-    clearError,
-  } = useModalPlaza(plazaId)
-
-  // Propietarios disponibles
-  const propietariosDisponibles =
-    propietarios.length > 0
-      ? propietarios
-      : [
-          {
-            id: "prop-1",
-            nombre: "Pippa Wilkinson",
-            email: "pippa@pippaw.com",
-          },
-          {
-            id: "prop-2",
-            nombre: "John Smith",
-            email: "john@example.com",
-          },
-          {
-            id: "prop-3",
-            nombre: "Maria García",
-            email: "maria@example.com",
-          },
-        ]
-
   // Estado del formulario
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<FormData>({
     nombre: "",
     descripcion: "",
     precio: 0,
@@ -92,29 +98,112 @@ function ModalDetallesPlaza({
   // Estado para errores de validación
   const [errores, setErrores] = useState<Record<string, string>>({})
 
-  // Cargar datos cuando se abre el modal
-  useEffect(() => {
-    if (isOpen && plazaId) {
-      cargarPlaza()
-      clearError()
-    }
-  }, [isOpen, plazaId, cargarPlaza, clearError])
+  // 🛠️ COMPONENTE PARA MOSTRAR PROPIETARIO - CORREGIDO PARA MANEJAR DESAJUSTE DE IDs
+  const PropietarioDisplay = () => {
+    // Buscar por ID normal primero
+    let propietarioActual = propietarios.find(
+      (p) => p.id === formData.propietario.id
+    )
 
-  // Actualizar formulario cuando llegan los datos
-  useEffect(() => {
-    if (plazaData) {
-      setFormData({
-        nombre: plazaData.nombre, // ✅ CORREGIDO
-        descripcion: plazaData.descripcion,
-        precio: parseFloat(plazaData.precio) || 0, // ✅ Convertir string a number
-        propietario: {
-          id: plazaData.propietario.uid, // ✅ uid -> id
-          nombre: plazaData.propietario.nombre,
-          email: "", // ✅ email con fallback
-        },
-      })
+    // Si no se encuentra por ID, buscar por email como fallback
+    if (!propietarioActual && formData.propietario.email) {
+      propietarioActual = propietarios.find(
+        (p) =>
+          p.email.toLowerCase() === formData.propietario.email.toLowerCase()
+      )
     }
-  }, [plazaData])
+
+    // Debug temporal (puedes quitar después)
+    console.log("🔍 DISPLAY - formData.propietario:", formData.propietario)
+    console.log("🔍 DISPLAY - propietarioActual encontrado:", propietarioActual)
+    console.log(
+      "🔍 DISPLAY - Lista propietarios:",
+      propietarios.map((p) => ({ id: p.id, email: p.email }))
+    )
+
+    // Determinar qué mostrar - priorizar datos encontrados, luego formData
+    const nombreAMostrar =
+      propietarioActual?.nombre || formData.propietario.nombre || "Sin nombre"
+    const emailAMostrar =
+      propietarioActual?.email || formData.propietario.email || ""
+
+    return (
+      <div className="flex items-center gap-2">
+        <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center">
+          <User className="w-3.5 h-3.5 text-blue-600" />
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium text-gray-900">
+            {nombreAMostrar}
+          </span>
+          <span className="text-sm text-gray-500">{emailAMostrar}</span>
+        </div>
+      </div>
+    )
+  }
+
+  // Limpiar errores cuando se abre el modal
+  useEffect(() => {
+    if (isOpen) {
+      setErrores({})
+      if (onClearError) {
+        onClearError()
+      }
+    }
+  }, [isOpen, onClearError])
+
+  // 🛠️ ACTUALIZAR FORMULARIO - MEJORADO PARA PRESERVAR DATOS
+  useEffect(() => {
+    console.log("🔍 MODAL - plazaData cambió:", plazaData)
+    console.log("🔍 MODAL - propietario en plazaData:", plazaData?.propietario)
+
+    if (plazaData) {
+      // 🛠️ BUSCAR PROPIETARIO EN LA LISTA PARA OBTENER DATOS COMPLETOS
+      let propietarioCompleto = propietarios.find(
+        (p) => p.id === plazaData.propietario.uid
+      )
+
+      // Si no se encuentra por UID, buscar por email
+      if (!propietarioCompleto && plazaData.propietario.email) {
+        propietarioCompleto = propietarios.find(
+          (p) =>
+            p.email.toLowerCase() === plazaData.propietario.email?.toLowerCase()
+        )
+      }
+
+      console.log(
+        "🔍 MODAL - propietarioCompleto encontrado:",
+        propietarioCompleto
+      )
+
+      const nuevosFormData = {
+        nombre: plazaData.nombre,
+        descripcion: plazaData.descripcion || "",
+        precio:
+          typeof plazaData.precio === "string"
+            ? parseFloat(plazaData.precio) || 0
+            : plazaData.precio || 0,
+        propietario: {
+          id: plazaData.propietario.uid,
+          // 🛠️ USAR DATOS COMPLETOS SI SE ENCUENTRAN, SINO USAR LOS DE plazaData
+          nombre:
+            propietarioCompleto?.nombre ||
+            plazaData.propietario.nombre ||
+            "Sin nombre",
+          email:
+            propietarioCompleto?.email || plazaData.propietario.email || "",
+        },
+      }
+
+      console.log("🔍 MODAL - Actualizando formData a:", nuevosFormData)
+      console.log(
+        "🔍 MODAL - Propietario en formData:",
+        nuevosFormData.propietario
+      )
+
+      setFormData(nuevosFormData)
+    }
+  }, [plazaData, propietarios]) // ← Agregar propietarios como dependencia
 
   // Función para manejar cambios en los inputs
   const handleChange = (campo: string, valor: any) => {
@@ -132,13 +221,42 @@ function ModalDetallesPlaza({
     }
   }
 
-  // Función para manejar cambio de propietario
+  // 🛠️ FUNCIÓN MEJORADA PARA MANEJAR CAMBIO DE PROPIETARIO
   const handlePropietarioChange = (propietarioId: string) => {
-    const propietarioSeleccionado = propietariosDisponibles.find(
+    console.log("🔍 MODAL - Cambiando propietario a ID:", propietarioId)
+
+    const propietarioSeleccionado = propietarios.find(
       (p) => p.id === propietarioId
     )
+
+    console.log("🔍 MODAL - Propietario encontrado:", propietarioSeleccionado)
+
     if (propietarioSeleccionado) {
-      handleChange("propietario", propietarioSeleccionado)
+      const nuevoFormData = {
+        ...formData,
+        propietario: {
+          id: propietarioSeleccionado.id,
+          nombre: propietarioSeleccionado.nombre,
+          email: propietarioSeleccionado.email,
+        },
+      }
+
+      console.log(
+        "🔍 MODAL - Actualizando formData.propietario a:",
+        nuevoFormData.propietario
+      )
+
+      setFormData(nuevoFormData)
+
+      // Limpiar error si existía
+      if (errores.propietario) {
+        setErrores((prev) => ({ ...prev, propietario: "" }))
+      }
+    } else {
+      console.warn(
+        "⚠️ MODAL - No se encontró propietario con ID:",
+        propietarioId
+      )
     }
   }
 
@@ -147,7 +265,7 @@ function ModalDetallesPlaza({
     const nuevosErrores: Record<string, string> = {}
 
     if (!formData.nombre.trim()) {
-      nuevosErrores.titulo = "El título es requerido"
+      nuevosErrores.nombre = "El nombre es requerido"
     }
 
     if (!formData.descripcion.trim()) {
@@ -166,42 +284,67 @@ function ModalDetallesPlaza({
     return Object.keys(nuevosErrores).length === 0
   }
 
-  // Función para manejar guardar
+  // 🛠️ FUNCIÓN MEJORADA PARA MANEJAR GUARDAR
   const handleGuardar = async () => {
     if (!validarFormulario()) return
 
     try {
-      await guardarCambios(formData)
+      console.log("🔍 MODAL - Guardando con formData:", formData)
+      console.log(
+        "🔍 MODAL - Propietario antes de guardar:",
+        formData.propietario
+      )
 
-      // Llamar callback de éxito si existe
-      if (onSuccess) {
-        onSuccess()
-      }
+      // ✅ Llamar función del padre
+      await onSave(formData)
 
+      console.log("✅ MODAL - Guardado exitoso")
+
+      // El modal se cierra automáticamente
       onClose()
     } catch (error) {
-      // El error ya se maneja en el hook
-      console.error("Error en el modal:", error)
+      console.error("❌ MODAL - Error en el modal:", error)
     }
   }
 
   // Función para manejar cancelar
   const handleCancelar = () => {
-    // Resetear formulario a datos del servidor
+    // Resetear formulario a datos originales
     if (plazaData) {
+      // Buscar propietario completo para el reseteo
+      let propietarioCompleto = propietarios.find(
+        (p) => p.id === plazaData.propietario.uid
+      )
+
+      if (!propietarioCompleto && plazaData.propietario.email) {
+        propietarioCompleto = propietarios.find(
+          (p) =>
+            p.email.toLowerCase() === plazaData.propietario.email?.toLowerCase()
+        )
+      }
+
       setFormData({
         nombre: plazaData.nombre,
-        descripcion: plazaData.descripcion,
-        precio: parseFloat(plazaData.precio) || 0, // ✅ Con fallback
+        descripcion: plazaData.descripcion || "",
+        precio:
+          typeof plazaData.precio === "string"
+            ? parseFloat(plazaData.precio) || 0
+            : plazaData.precio || 0,
         propietario: {
           id: plazaData.propietario.uid,
-          nombre: plazaData.propietario.nombre,
-          email: "",
+          nombre:
+            propietarioCompleto?.nombre ||
+            plazaData.propietario.nombre ||
+            "Sin nombre",
+          email:
+            propietarioCompleto?.email || plazaData.propietario.email || "",
         },
       })
     }
     setErrores({})
-    clearError()
+    if (onClearError) {
+      onClearError()
+    }
     onClose()
   }
 
@@ -210,9 +353,8 @@ function ModalDetallesPlaza({
       open={isOpen}
       onOpenChange={onClose}
     >
-      <DialogTitle>Detalles de la plaza</DialogTitle>
       <DialogContent className="max-w-[450px] p-0 gap-0 bg-white rounded-xl shadow-2xl">
-        {/* Mostrar loading */}
+        {/* Estado de loading */}
         {loading && (
           <div className="p-8 text-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-3"></div>
@@ -220,7 +362,7 @@ function ModalDetallesPlaza({
           </div>
         )}
 
-        {/* Mostrar error de carga */}
+        {/* Estado de error */}
         {error && !loading && (
           <div className="p-8 text-center">
             <div className="text-red-600 mb-4">
@@ -229,7 +371,7 @@ function ModalDetallesPlaza({
             </div>
             <div className="flex gap-2 justify-center">
               <Button
-                onClick={cargarPlaza}
+                onClick={onRetry}
                 variant="outline"
                 size="sm"
               >
@@ -246,7 +388,7 @@ function ModalDetallesPlaza({
           </div>
         )}
 
-        {/* Mostrar formulario cuando hay datos */}
+        {/* Formulario cuando hay datos */}
         {plazaData && !loading && (
           <>
             {/* Header del modal */}
@@ -273,25 +415,25 @@ function ModalDetallesPlaza({
 
             {/* Contenido del modal */}
             <div className="px-6 py-6 space-y-6">
-              {/* Título */}
+              {/* Nombre */}
               <div className="space-y-2">
                 <Label
-                  htmlFor="titulo"
+                  htmlFor="nombre"
                   className="text-sm font-medium text-gray-700"
                 >
-                  Título
+                  Nombre
                 </Label>
                 <Input
-                  id="titulo"
+                  id="nombre"
                   value={formData.nombre}
-                  onChange={(e) => handleChange("titulo", e.target.value)}
+                  onChange={(e) => handleChange("nombre", e.target.value)}
                   className={`h-11 text-gray-900 border-gray-200 focus:border-blue-500 focus:ring-blue-500 ${
-                    errores.titulo ? "border-red-300" : ""
+                    errores.nombre ? "border-red-300" : ""
                   }`}
                   disabled={saving}
                 />
-                {errores.titulo && (
-                  <p className="text-xs text-red-600">{errores.titulo}</p>
+                {errores.nombre && (
+                  <p className="text-xs text-red-600">{errores.nombre}</p>
                 )}
               </div>
 
@@ -319,7 +461,7 @@ function ModalDetallesPlaza({
                 )}
               </div>
 
-              {/* Propietario */}
+              {/* 🛠️ PROPIETARIO CORREGIDO PARA MANEJAR DESAJUSTE DE IDs */}
               <div className="space-y-2">
                 <Label className="text-sm font-medium text-gray-700">
                   Propietario
@@ -336,19 +478,7 @@ function ModalDetallesPlaza({
                   >
                     <SelectValue>
                       {formData.propietario.id ? (
-                        <div className="flex items-center gap-2">
-                          <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center">
-                            <User className="w-3.5 h-3.5 text-blue-600" />
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm font-medium text-gray-900">
-                              {formData.propietario.nombre}
-                            </span>
-                            <span className="text-sm text-gray-500">
-                              {formData.propietario.email}
-                            </span>
-                          </div>
-                        </div>
+                        <PropietarioDisplay />
                       ) : (
                         <span className="text-gray-500">
                           Seleccionar propietario
@@ -357,7 +487,7 @@ function ModalDetallesPlaza({
                     </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
-                    {propietariosDisponibles.map((propietario) => (
+                    {propietarios.map((propietario) => (
                       <SelectItem
                         key={propietario.id}
                         value={propietario.id}

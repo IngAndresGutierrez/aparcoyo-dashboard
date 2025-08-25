@@ -1,33 +1,26 @@
-// hooks/useModalPlaza.ts
+// hooks/useModalPlaza.ts - VERSIÓN CORREGIDA
 "use client"
 
 import { useState, useCallback } from "react"
 import modalPlazaService from "../services/service-edit"
 import { ActualizarPlazaModal, PlazaModal } from "../types/edit-plazas"
 
-
-// ✅ Definir FormDataModal aquí mismo
 export interface FormDataModal {
-  nombre: string        // No titulo
+  nombre: string
   descripcion: string
-  precio: number        // number para formulario
+  precio: number
   propietario: {
-    id: string         // id para formulario
+    id: string
     nombre: string
-    email: string      // email para formulario
+    email: string
   }
 }
 
 export interface UseModalPlazaReturn {
-  // Datos
   plazaData: PlazaModal | null
-  
-  // Estados
   loading: boolean
   saving: boolean
   error: string | null
-  
-  // Funciones
   cargarPlaza: () => Promise<void>
   guardarCambios: (formData: FormDataModal) => Promise<PlazaModal>
   clearError: () => void
@@ -35,7 +28,6 @@ export interface UseModalPlazaReturn {
 }
 
 export function useModalPlaza(plazaId: string): UseModalPlazaReturn {
-  // Estados principales
   const [plazaData, setPlazaData] = useState<PlazaModal | null>(null)
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -46,7 +38,7 @@ export function useModalPlaza(plazaId: string): UseModalPlazaReturn {
    */
   const cargarPlaza = useCallback(async (): Promise<void> => {
     if (!plazaId) {
-      setError('ID de plaza no válido')
+      setError("ID de plaza no válido")
       return
     }
 
@@ -55,18 +47,17 @@ export function useModalPlaza(plazaId: string): UseModalPlazaReturn {
       setError(null)
 
       console.log("🔄 Cargando plaza para modal:", plazaId)
-      
+
       const data = await modalPlazaService.obtenerPlaza(plazaId)
-      
+
       setPlazaData(data)
       console.log("✅ Plaza cargada para modal:", data)
-      
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : "Error desconocido"
+      const errorMessage =
+        err instanceof Error ? err.message : "Error desconocido"
       setError(errorMessage)
       console.error("❌ Error cargando plaza para modal:", err)
-      
-      // Limpiar datos en caso de error
+
       setPlazaData(null)
     } finally {
       setLoading(false)
@@ -74,59 +65,97 @@ export function useModalPlaza(plazaId: string): UseModalPlazaReturn {
   }, [plazaId])
 
   /**
-   * Guardar cambios en el backend
+   * 🛠️ GUARDAR CAMBIOS CORREGIDO - PRESERVA PROPIETARIO ORIGINAL
    */
-  const guardarCambios = useCallback(async (formData: FormDataModal): Promise<PlazaModal> => {
-    if (!plazaId) {
-      throw new Error('ID de plaza no válido')
-    }
-
-    try {
-      setSaving(true)
-      setError(null)
-
-      console.log("🔄 Guardando cambios en modal:", formData)
-
-      // ✅ Transformar datos del formulario al formato de la API (CORREGIDO)
-      const datosParaAPI: ActualizarPlazaModal = {
-        nombre: formData.nombre.trim(),                    // ✅ nombre, no titulo
-        descripcion: formData.descripcion.trim(),
-        precio: formData.precio.toString(),               // ✅ string para API
-        propietarioUid: formData.propietario.id,          // ✅ propietarioUid, no propietarioId
+  const guardarCambios = useCallback(
+    async (formData: FormDataModal): Promise<PlazaModal> => {
+      if (!plazaId) {
+        throw new Error("ID de plaza no válido")
       }
 
-      // ✅ Validaciones básicas antes de enviar (CORREGIDAS)
-      if (!datosParaAPI.nombre) {                          // ✅ nombre, no titulo
-        throw new Error('El nombre es requerido')
+      try {
+        setSaving(true)
+        setError(null)
+
+        console.log("🔄 Guardando cambios en modal:", formData)
+        console.log("🔍 Datos originales de la plaza:", plazaData)
+
+        // 🛠️ PRESERVAR DATOS ORIGINALES DEL PROPIETARIO ANTES DE ENVIAR
+        const propietarioOriginalParaPreservar = {
+          uid: formData.propietario.id, // Usar ID del formulario como UID
+          nombre: formData.propietario.nombre, // Nombre del formulario (correcto)
+          email: formData.propietario.email, // Email del formulario
+        }
+
+        console.log(
+          "🔍 Propietario que vamos a preservar:",
+          propietarioOriginalParaPreservar
+        )
+
+        const datosParaAPI: ActualizarPlazaModal = {
+          nombre: formData.nombre.trim(),
+          descripcion: formData.descripcion.trim(),
+          precio: formData.precio.toString(),
+          propietarioUid: formData.propietario.id,
+        }
+
+        // Validaciones básicas
+        if (!datosParaAPI.nombre) {
+          throw new Error("El nombre es requerido")
+        }
+
+        if (parseFloat(datosParaAPI.precio) <= 0) {
+          throw new Error("El precio debe ser mayor a 0")
+        }
+
+        if (!datosParaAPI.propietarioUid) {
+          throw new Error("Debe seleccionar un propietario")
+        }
+
+        console.log("📤 Datos enviados a la API:", datosParaAPI)
+
+        // Llamar al service
+        const plazaActualizada = await modalPlazaService.actualizarPlaza(
+          plazaId,
+          datosParaAPI
+        )
+
+        console.log("✅ Plaza actualizada recibida:", plazaActualizada)
+
+        // 🛠️ FORZAR PRESERVACIÓN DEL PROPIETARIO CON DATOS DEL FORMULARIO
+        const plazaConPropietarioPreservado: PlazaModal = {
+          ...plazaActualizada,
+          propietario: {
+            // 🛠️ MANTENER UID ORIGINAL DEL FORMULARIO (prop-3, no el UUID del backend)
+            uid: formData.propietario.id, // ← ESTO ES CLAVE
+            // 🛠️ MANTENER NOMBRE Y EMAIL DEL FORMULARIO
+            nombre: formData.propietario.nombre,
+            email: formData.propietario.email,
+          },
+        }
+
+        console.log(
+          "🔍 Plaza final con propietario preservado:",
+          plazaConPropietarioPreservado.propietario
+        )
+
+        // Actualizar estado local
+        setPlazaData(plazaConPropietarioPreservado)
+        console.log("✅ Plaza actualizada guardada en estado local")
+
+        return plazaConPropietarioPreservado
+      } catch (err) {
+        const errorMessage =
+          err instanceof Error ? err.message : "Error al guardar"
+        setError(errorMessage)
+        console.error("❌ Error guardando plaza:", err)
+        throw err
+      } finally {
+        setSaving(false)
       }
-      
-      if (parseFloat(datosParaAPI.precio) <= 0) {          // ✅ validar como número
-        throw new Error('El precio debe ser mayor a 0')
-      }
-      
-      if (!datosParaAPI.propietarioUid) {                  // ✅ propietarioUid
-        throw new Error('Debe seleccionar un propietario')
-      }
-
-      const plazaActualizada = await modalPlazaService.actualizarPlaza(plazaId, datosParaAPI)
-
-      // Actualizar los datos locales
-      setPlazaData(plazaActualizada)
-      console.log("✅ Plaza actualizada:", plazaActualizada)
-
-      return plazaActualizada
-
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : "Error al guardar"
-      setError(errorMessage)
-      console.error("❌ Error guardando plaza:", err)
-      
-      // Re-lanzar el error para que el modal pueda manejarlo
-      throw err
-    } finally {
-      setSaving(false)
-    }
-  }, [plazaId])
+    },
+    [plazaId, plazaData]
+  )
 
   /**
    * Limpiar errores
@@ -146,15 +175,10 @@ export function useModalPlaza(plazaId: string): UseModalPlazaReturn {
   }, [])
 
   return {
-    // Datos
     plazaData,
-    
-    // Estados
     loading,
     saving,
     error,
-    
-    // Funciones
     cargarPlaza,
     guardarCambios,
     clearError,

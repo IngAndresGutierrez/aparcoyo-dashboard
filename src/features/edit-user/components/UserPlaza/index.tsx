@@ -21,6 +21,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { MapPin, Edit, Trash2, MoreHorizontal } from "lucide-react"
+import { toast } from "sonner" // ✅ Agregar Sonner
 
 interface UserPlazasProps {
   userId: string
@@ -39,21 +40,26 @@ const UserPlazas: React.FC<UserPlazasProps> = ({ userId }) => {
   const [plazas, setPlazas] = React.useState<Plaza[]>([])
   const [loading, setLoading] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
+  const [deletingId, setDeletingId] = React.useState<string | null>(null) // ✅ Estado para loading de eliminación
 
   React.useEffect(() => {
     const fetchPlazas = async () => {
       try {
-        const token = localStorage.getItem('token') || localStorage.getItem('authToken')
-        
+        const token =
+          localStorage.getItem("token") || localStorage.getItem("authToken")
+
         console.log(`🏢 Obteniendo plazas del usuario ${userId}...`)
-        
-        // 🔄 OBTENER TODAS LAS PLAZAS Y FILTRAR POR USUARIO
-        const response = await fetch(`https://aparcoyo-back.onrender.com/apa/plazas`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
+
+        // ✅ ENFOQUE OPTIMIZADO: Usar endpoint específico para el usuario
+        const response = await fetch(
+          `https://aparcoyo-back.onrender.com/apa/plazas/usuario/${userId}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
           }
-        })
+        )
 
         console.log(`📨 UserPlazas - Response status: ${response.status}`)
 
@@ -62,36 +68,28 @@ const UserPlazas: React.FC<UserPlazasProps> = ({ userId }) => {
         }
 
         const data = await response.json()
-        console.log(`✅ UserPlazas - Todas las plazas obtenidas:`, data)
-        
-        // Obtener todas las plazas
-        const todasLasPlazas = data.data || data.plazas || data || []
-        
-        // Filtrar solo las plazas que pertenecen al usuario actual
-        const plazasDelUsuario = todasLasPlazas.filter((plaza: any) => 
-          plaza.propietario === userId
-        )
-        
-        console.log(`🎯 Plazas filtradas para usuario ${userId}:`, plazasDelUsuario)
-        
+        console.log(`✅ UserPlazas - Plazas del usuario obtenidas:`, data)
+
+        // Ya no necesitamos filtrar, el backend devuelve solo las plazas del usuario
+        const plazasDelUsuario = data.data || data.plazas || data || []
+
         // Mapear a nuestra estructura
         const plazasMapeadas = plazasDelUsuario.map((plaza: any) => ({
           id: plaza.id || plaza.uid,
-          nombre: plaza.nombre || 'Plaza sin nombre',
+          nombre: plaza.nombre || "Plaza sin nombre",
           direccion: plaza.direccion,
           descripcion: plaza.descripcion,
-          tipo: plaza.tipo || 'inmediata',
+          tipo: plaza.tipo || "inmediata",
           precio: plaza.precio,
           reservas: plaza.reservas || plaza.totalReservas || 0,
-          activa: plaza.activa !== false
+          activa: plaza.activa !== false,
         }))
-        
+
         console.log(`✅ Plazas mapeadas:`, plazasMapeadas)
         setPlazas(plazasMapeadas)
-        
       } catch (err) {
-        console.error('❌ Error al obtener plazas:', err)
-        setError(err instanceof Error ? err.message : 'Error desconocido')
+        console.error("❌ Error al obtener plazas:", err)
+        setError(err instanceof Error ? err.message : "Error desconocido")
       } finally {
         setLoading(false)
       }
@@ -102,19 +100,80 @@ const UserPlazas: React.FC<UserPlazasProps> = ({ userId }) => {
     }
   }, [userId])
 
-  const handleEditPlaza = (plazaId: string) => {
-    console.log(`✏️ Editar plaza: ${plazaId}`)
-    // Aquí iría la lógica para editar
-  }
 
-  const handleDeletePlaza = (plazaId: string, plazaNombre: string) => {
+  // ✅ Implementar función de eliminar plaza
+  const handleDeletePlaza = async (plazaId: string, plazaNombre: string) => {
     const confirmDelete = window.confirm(
       `¿Estás seguro de que quieres eliminar la plaza "${plazaNombre}"?`
     )
-    
-    if (confirmDelete) {
-      console.log(`🗑️ Eliminar plaza: ${plazaId}`)
-      // Aquí iría la lógica para eliminar
+
+    if (!confirmDelete) return
+
+    try {
+      setDeletingId(plazaId) // Mostrar loading
+
+      const token =
+        localStorage.getItem("token") || localStorage.getItem("authToken")
+
+      // ✅ Toast de loading
+      toast.loading("Eliminando plaza...", {
+        id: `delete-plaza-${plazaId}`,
+      })
+
+      console.log(`🗑️ Eliminando plaza: ${plazaId}`)
+
+      // ✅ Realizar petición DELETE a plazas (necesitamos confirmar el endpoint exacto)
+      const response = await fetch(
+        `https://aparcoyo-back.onrender.com/apa/plazas/${plazaId}`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      )
+
+      console.log(`📨 Delete response status: ${response.status}`)
+
+      if (!response.ok) {
+        const errorData = await response
+          .json()
+          .catch(() => ({ message: "Error desconocido" }))
+        throw new Error(
+          `Error ${response.status}: ${
+            errorData.message || response.statusText
+          }`
+        )
+      }
+
+      // ✅ Actualizar estado local removiendo la plaza
+      setPlazas((prevPlazas) =>
+        prevPlazas.filter((plaza) => plaza.id !== plazaId)
+      )
+
+      // ✅ Toast de éxito
+      toast.success("Plaza eliminada correctamente", {
+        id: `delete-plaza-${plazaId}`,
+        description: `La plaza "${plazaNombre}" ha sido eliminada`,
+        duration: 4000,
+      })
+
+      console.log(`✅ Plaza ${plazaId} eliminada exitosamente`)
+    } catch (err) {
+      console.error("❌ Error al eliminar plaza:", err)
+
+      // ✅ Toast de error
+      toast.error("Error al eliminar plaza", {
+        id: `delete-plaza-${plazaId}`,
+        description:
+          err instanceof Error
+            ? err.message
+            : "Ha ocurrido un error inesperado",
+        duration: 5000,
+      })
+    } finally {
+      setDeletingId(null) // Quitar loading
     }
   }
 
@@ -128,7 +187,10 @@ const UserPlazas: React.FC<UserPlazasProps> = ({ userId }) => {
         <CardContent>
           <div className="space-y-4">
             {[1, 2, 3].map((index) => (
-              <div key={index} className="flex items-center justify-between p-3 border rounded">
+              <div
+                key={index}
+                className="flex items-center justify-between p-3 border rounded"
+              >
                 <div className="flex items-center space-x-3">
                   <Skeleton className="h-10 w-10 rounded" />
                   <div className="space-y-1">
@@ -153,7 +215,11 @@ const UserPlazas: React.FC<UserPlazasProps> = ({ userId }) => {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between pb-4">
           <h2 className="text-xl font-semibold">Plazas publicadas</h2>
-          <Button variant="outline" size="sm" disabled>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled
+          >
             <Edit className="h-4 w-4 mr-2" />
             Editar
           </Button>
@@ -173,13 +239,11 @@ const UserPlazas: React.FC<UserPlazasProps> = ({ userId }) => {
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between pb-4">
-        <h2 className="text-xl font-semibold">{plazas.length} Plazas publicadas</h2>
-        <Button variant="outline" size="sm">
-          <Edit className="h-4 w-4 mr-2" />
-          Editar
-        </Button>
+        <h2 className="text-xl font-semibold">
+          {plazas.length} Plazas publicadas
+        </h2>
       </CardHeader>
-      
+
       <CardContent>
         <div className="overflow-x-auto">
           <Table>
@@ -200,13 +264,21 @@ const UserPlazas: React.FC<UserPlazasProps> = ({ userId }) => {
                           <MapPin className="h-5 w-5 text-gray-500" />
                         </div>
                         <div className="min-w-0 flex-1">
-                          <p className="font-medium text-sm truncate">{plaza.nombre}</p>
+                          <p className="font-medium text-sm truncate">
+                            {plaza.nombre}
+                          </p>
                           <div className="flex items-center space-x-2 mt-1">
-                            <Badge 
-                              variant={plaza.tipo === "privada" ? "default" : "secondary"}
+                            <Badge
+                              variant={
+                                plaza.tipo === "privada"
+                                  ? "default"
+                                  : "secondary"
+                              }
                               className="text-xs"
                             >
-                              {plaza.tipo === "privada" ? "Plaza Privada" : "Plaza Inmediata"}
+                              {plaza.tipo === "privada"
+                                ? "Plaza Privada"
+                                : "Plaza Inmediata"}
                             </Badge>
                           </div>
                         </div>
@@ -218,21 +290,32 @@ const UserPlazas: React.FC<UserPlazasProps> = ({ userId }) => {
                     <TableCell>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                            <MoreHorizontal className="h-4 w-4" />
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0"
+                            disabled={deletingId === plaza.id} // ✅ Deshabilitar durante eliminación
+                          >
+                            {deletingId === plaza.id ? (
+                              <div className="h-4 w-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
+                            ) : (
+                              <MoreHorizontal className="h-4 w-4" />
+                            )}
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => handleEditPlaza(plaza.id)}>
-                            <Edit className="h-4 w-4 mr-2" />
-                            Editar plaza
-                          </DropdownMenuItem>
-                          <DropdownMenuItem 
-                            onClick={() => handleDeletePlaza(plaza.id, plaza.nombre)}
+                         
+                          <DropdownMenuItem
+                            onClick={() =>
+                              handleDeletePlaza(plaza.id, plaza.nombre)
+                            }
                             className="text-red-600"
+                            disabled={deletingId === plaza.id}
                           >
                             <Trash2 className="h-4 w-4 mr-2" />
-                            Eliminar plaza
+                            {deletingId === plaza.id
+                              ? "Eliminando..."
+                              : "Eliminar plaza"}
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -241,7 +324,10 @@ const UserPlazas: React.FC<UserPlazasProps> = ({ userId }) => {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={3} className="text-center py-8 text-muted-foreground">
+                  <TableCell
+                    colSpan={3}
+                    className="text-center py-8 text-muted-foreground"
+                  >
                     No hay plazas publicadas
                   </TableCell>
                 </TableRow>

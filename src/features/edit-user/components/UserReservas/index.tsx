@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/table"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { MapPin, Edit, Trash2, MoreHorizontal } from "lucide-react"
+import { toast } from "sonner" // ✅ Agregar Sonner
 
 interface UserReservasProps {
   userId: string
@@ -50,6 +51,7 @@ const UserReservas: React.FC<UserReservasProps> = ({ userId }) => {
   const [reservas, setReservas] = React.useState<Reserva[]>([])
   const [loading, setLoading] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
+  const [deletingId, setDeletingId] = React.useState<string | null>(null) // ✅ Estado para loading de eliminación
 
   React.useEffect(() => {
     const fetchReservas = async () => {
@@ -59,9 +61,9 @@ const UserReservas: React.FC<UserReservasProps> = ({ userId }) => {
 
         console.log(`📅 Obteniendo reservas del usuario ${userId}...`)
 
-        // 🔄 OBTENER TODAS LAS RESERVAS Y FILTRAR POR USUARIO
+        // ✅ ENFOQUE OPTIMIZADO: Usar endpoint específico para el usuario (admin)
         const response = await fetch(
-          `https://aparcoyo-back.onrender.com/apa/reservas`,
+          `https://aparcoyo-back.onrender.com/apa/reservas/usuario/${userId}`,
           {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -77,23 +79,10 @@ const UserReservas: React.FC<UserReservasProps> = ({ userId }) => {
         }
 
         const data = await response.json()
-        console.log(`✅ UserReservas - Todas las reservas obtenidas:`, data)
+        console.log(`✅ UserReservas - Reservas del usuario obtenidas:`, data)
 
-        // Obtener todas las reservas
-        const todasLasReservas = data.data || data.reservas || data || []
-
-        // Filtrar solo las reservas que pertenecen al usuario actual
-        const reservasDelUsuario = todasLasReservas.filter(
-          (reserva: any) =>
-            reserva.usuarioId === userId ||
-            reserva.clienteId === userId ||
-            reserva.usuario === userId
-        )
-
-        console.log(
-          `🎯 Reservas filtradas para usuario ${userId}:`,
-          reservasDelUsuario
-        )
+        // Ya no necesitamos filtrar, el backend devuelve solo las reservas del usuario
+        const reservasDelUsuario = data.data || data.reservas || data || []
 
         // Mapear a nuestra estructura
         const reservasMapeadas = reservasDelUsuario.map((reserva: any) => ({
@@ -171,17 +160,91 @@ const UserReservas: React.FC<UserReservasProps> = ({ userId }) => {
 
   const handleEditReserva = (reservaId: string) => {
     console.log(`✏️ Editar reserva: ${reservaId}`)
-    // Aquí iría la lógica para editar
+    toast.info("Funcionalidad de edición próximamente", {
+      description: "Esta función está en desarrollo",
+    })
   }
 
-  const handleDeleteReserva = (reservaId: string) => {
+  // ✅ Implementar función de eliminar reserva con toasts
+  const handleDeleteReserva = async (
+    reservaId: string,
+    plazaNombre?: string
+  ) => {
     const confirmDelete = window.confirm(
-      `¿Estás seguro de que quieres eliminar esta reserva?`
+      `¿Estás seguro de que quieres eliminar esta reserva${
+        plazaNombre ? ` en ${plazaNombre}` : ""
+      }?`
     )
 
-    if (confirmDelete) {
-      console.log(`🗑️ Eliminar reserva: ${reservaId}`)
-      // Aquí iría la lógica para eliminar
+    if (!confirmDelete) return
+
+    try {
+      setDeletingId(reservaId) // Mostrar loading
+
+      const token =
+        localStorage.getItem("token") || localStorage.getItem("authToken")
+
+      // ✅ Toast de loading
+      toast.loading("Eliminando reserva...", {
+        id: `delete-reserva-${reservaId}`,
+      })
+
+      console.log(`🗑️ Eliminando reserva: ${reservaId}`)
+
+      // ✅ Usar endpoint DELETE /apa/reservas/{id}
+      const response = await fetch(
+        `https://aparcoyo-back.onrender.com/apa/reservas/${reservaId}`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      )
+
+      console.log(`📨 Delete response status: ${response.status}`)
+
+      if (!response.ok) {
+        const errorData = await response
+          .json()
+          .catch(() => ({ message: "Error desconocido" }))
+        throw new Error(
+          `Error ${response.status}: ${
+            errorData.message || response.statusText
+          }`
+        )
+      }
+
+      // ✅ Actualizar estado local removiendo la reserva
+      setReservas((prevReservas) =>
+        prevReservas.filter((reserva) => reserva.id !== reservaId)
+      )
+
+      // ✅ Toast de éxito
+      toast.success("Reserva eliminada correctamente", {
+        id: `delete-reserva-${reservaId}`,
+        description: `La reserva${
+          plazaNombre ? ` en ${plazaNombre}` : ""
+        } ha sido eliminada`,
+        duration: 4000,
+      })
+
+      console.log(`✅ Reserva ${reservaId} eliminada exitosamente`)
+    } catch (err) {
+      console.error("❌ Error al eliminar reserva:", err)
+
+      // ✅ Toast de error
+      toast.error("Error al eliminar reserva", {
+        id: `delete-reserva-${reservaId}`,
+        description:
+          err instanceof Error
+            ? err.message
+            : "Ha ocurrido un error inesperado",
+        duration: 5000,
+      })
+    } finally {
+      setDeletingId(null) // Quitar loading
     }
   }
 
@@ -250,13 +313,6 @@ const UserReservas: React.FC<UserReservasProps> = ({ userId }) => {
         <h2 className="text-xl font-semibold">
           {reservas.length} Reservas hechas
         </h2>
-        <Button
-          variant="outline"
-          size="sm"
-        >
-          <Edit className="h-4 w-4 mr-2" />
-          Editar
-        </Button>
       </CardHeader>
 
       <CardContent>
@@ -338,23 +394,37 @@ const UserReservas: React.FC<UserReservasProps> = ({ userId }) => {
                             variant="ghost"
                             size="sm"
                             className="h-8 w-8 p-0"
+                            disabled={deletingId === reserva.id} // ✅ Deshabilitar durante eliminación
                           >
-                            <MoreHorizontal className="h-4 w-4" />
+                            {deletingId === reserva.id ? (
+                              <div className="h-4 w-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
+                            ) : (
+                              <MoreHorizontal className="h-4 w-4" />
+                            )}
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem
                             onClick={() => handleEditReserva(reserva.id)}
+                            disabled={deletingId === reserva.id}
                           >
                             <Edit className="h-4 w-4 mr-2" />
                             Editar reserva
                           </DropdownMenuItem>
                           <DropdownMenuItem
-                            onClick={() => handleDeleteReserva(reserva.id)}
+                            onClick={() =>
+                              handleDeleteReserva(
+                                reserva.id,
+                                reserva.plaza.nombre
+                              )
+                            }
                             className="text-red-600"
+                            disabled={deletingId === reserva.id}
                           >
                             <Trash2 className="h-4 w-4 mr-2" />
-                            Eliminar
+                            {deletingId === reserva.id
+                              ? "Eliminando..."
+                              : "Eliminar"}
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>

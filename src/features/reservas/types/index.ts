@@ -1,5 +1,7 @@
 // types/reservas-table.ts
 export interface ReservaTable {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  id: any
   usuario: string
   plaza: string
   matricula: string

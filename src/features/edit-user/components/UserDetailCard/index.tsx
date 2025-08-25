@@ -1,15 +1,24 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client"
 
 import * as React from "react"
+
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Edit, Upload, Eye, EyeOff } from "lucide-react"
+import { toast } from "sonner"
 
 interface UserDetailsProps {
   userId: string
@@ -31,13 +40,13 @@ const UserDetails: React.FC<UserDetailsProps> = ({ userId }) => {
   const [isEditOpen, setIsEditOpen] = React.useState(false)
   const [showPassword, setShowPassword] = React.useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = React.useState(false)
-  
+
   // Estados para el formulario de edición
   const [editForm, setEditForm] = React.useState({
     nombre: "",
     email: "",
     password: "",
-    confirmPassword: ""
+    confirmPassword: "",
   })
 
   React.useEffect(() => {
@@ -46,11 +55,19 @@ const UserDetails: React.FC<UserDetailsProps> = ({ userId }) => {
         const token =
           localStorage.getItem("token") || localStorage.getItem("authToken")
 
-        console.log(`📡 Obteniendo detalles del usuario ${userId}...`)
+        console.log(
+          `📡 Obteniendo detalles del usuario ${userId} con ruta de admin...`
+        )
+        console.log(
+          `🔗 URL completa: https://aparcoyo-back.onrender.com/apa/usuarios/${userId}`
+        )
+        console.log(`🔑 Token presente:`, !!token)
 
+        // 🔄 Probando con la ruta específica de admin que debería traer fecha
         const response = await fetch(
           `https://aparcoyo-back.onrender.com/apa/usuarios/${userId}`,
           {
+            method: "GET", // Explicit GET method
             headers: {
               Authorization: `Bearer ${token}`,
               "Content-Type": "application/json",
@@ -67,15 +84,39 @@ const UserDetails: React.FC<UserDetailsProps> = ({ userId }) => {
         const data = await response.json()
         console.log(`✅ UserDetails - Usuario obtenido:`, data)
 
+        // 🔍 Debug completo del objeto usuario - buscando campos de fecha
         const userData = data.data || data
+        console.log(
+          `🔍 Estructura completa del usuario (ruta mi-perfil):`,
+          JSON.stringify(userData, null, 2)
+        )
+
+        const dateFields = {
+          fechaRegistro: userData.fechaRegistro,
+          fechaCreacion: userData.fechaCreacion,
+          createdAt: userData.createdAt,
+          created_at: userData.created_at,
+          dateCreated: userData.dateCreated,
+          registro: userData.registro,
+          timestamp: userData.timestamp,
+          fecha: userData.fecha,
+        }
+        console.log(
+          `📅 Campos de fecha encontrados:`,
+          JSON.stringify(dateFields, null, 2)
+        )
+        console.log(
+          `🗂️ Todas las propiedades del usuario:`,
+          Object.keys(userData).join(", ")
+        )
         setUsuario(userData)
-        
+
         // Inicializar el formulario con los datos actuales
         setEditForm({
           nombre: userData.nombre || "",
           email: userData.email || "",
           password: "",
-          confirmPassword: ""
+          confirmPassword: "",
         })
       } catch (err) {
         console.error("❌ Error al obtener detalles del usuario:", err)
@@ -90,77 +131,177 @@ const UserDetails: React.FC<UserDetailsProps> = ({ userId }) => {
     }
   }, [userId])
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("es-ES", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
+  // ✅ Función para verificar si existe algún campo de fecha válido
+  const hasValidDate = (usuario: UsuarioDetalle | null) => {
+    if (!usuario) return false
+
+    const possibleDateFields = [
+      usuario.fechaRegistro,
+      (usuario as any).fechaCreacion,
+      (usuario as any).createdAt,
+      (usuario as any).created_at,
+      (usuario as any).dateCreated,
+      (usuario as any).registro,
+      (usuario as any).timestamp,
+      (usuario as any).fecha,
+    ]
+
+    return possibleDateFields.some((field) => {
+      if (!field) return false
+      try {
+        const date = new Date(field)
+        return !isNaN(date.getTime()) && date.getFullYear() > 1900
+      } catch {
+        return false
+      }
     })
+  }
+
+  // ✅ Función mejorada para formatear fechas con validación robusta
+  const formatDate = (usuario: UsuarioDetalle | null) => {
+    if (!usuario) return "Usuario no disponible"
+
+    // 🔍 Intentar múltiples campos de fecha que el backend podría usar
+    const possibleDateFields = [
+      usuario.fechaRegistro,
+      (usuario as any).fechaCreacion,
+      (usuario as any).createdAt,
+      (usuario as any).created_at,
+      (usuario as any).dateCreated,
+      (usuario as any).registro,
+      (usuario as any).timestamp,
+      (usuario as any).fecha,
+    ]
+
+    console.log(`🔍 Campos de fecha disponibles:`, possibleDateFields)
+
+    for (const dateField of possibleDateFields) {
+      if (dateField) {
+        console.log(`✅ Usando campo de fecha:`, dateField)
+
+        try {
+          // Lista de posibles formatos que puede enviar el backend
+          const possibleFormats = [
+            dateField, // Formato original
+            dateField.replace?.(/\//g, "-"), // Cambiar / por -
+            dateField.split?.("T")[0], // Solo la fecha si viene con hora
+          ]
+
+          for (const format of possibleFormats) {
+            if (!format) continue
+
+            try {
+              const date = new Date(format)
+
+              // Verificar si la fecha es válida
+              if (!isNaN(date.getTime()) && date.getFullYear() > 1900) {
+                return date.toLocaleDateString("es-ES", {
+                  day: "2-digit",
+                  month: "short",
+                  year: "numeric",
+                })
+              }
+            } catch (error) {
+              continue
+            }
+          }
+        } catch (error) {
+          console.log(`❌ Error procesando fecha:`, dateField, error)
+          continue
+        }
+      }
+    }
+
+    // Si ningún campo de fecha funcionó
+    console.log("⚠️ No se encontró ninguna fecha válida en el usuario")
+    return "Fecha no disponible"
   }
 
   const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
-    // Validar que las contraseñas coincidan si se está cambiando
+
+    if (!usuario) {
+      toast.error("Error: Datos de usuario no disponibles")
+      return
+    }
+
     if (editForm.password && editForm.password !== editForm.confirmPassword) {
-      alert("Las contraseñas no coinciden")
+      toast.error("Las contraseñas no coinciden")
       return
     }
 
     try {
-      const token = localStorage.getItem("token") || localStorage.getItem("authToken")
-      
-      // Preparar datos para enviar (solo incluir password si se está cambiando)
+      const token =
+        localStorage.getItem("token") || localStorage.getItem("authToken")
+
       const updateData: any = {
         nombre: editForm.nombre,
-        email: editForm.email
+        email: editForm.email,
       }
-      
+
       if (editForm.password) {
         updateData.password = editForm.password
       }
 
-      const response = await fetch(
-        `https://aparcoyo-back.onrender.com/apa/usuarios/${userId}`,
-        {
-          method: "PUT", // o "PATCH" dependiendo de tu API
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(updateData)
-        }
-      )
+      // ✅ Toast de loading mientras se procesa
+      toast.loading("Actualizando usuario...", {
+        id: "update-user", // ID para poder actualizar este toast específico
+      })
+
+      const url = `https://aparcoyo-back.onrender.com/apa/usuarios/${usuario.uid}`
+
+      const response = await fetch(url, {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(updateData),
+      })
 
       if (!response.ok) {
-        throw new Error(`Error ${response.status}: ${response.statusText}`)
+        const errorText = await response.text()
+        throw new Error(
+          `Error ${response.status}: ${response.statusText} - ${errorText}`
+        )
       }
 
       const updatedData = await response.json()
-      
-      // Actualizar el estado local
+
       setUsuario(updatedData.data || updatedData)
       setIsEditOpen(false)
-      
-      // Limpiar campos de contraseña
-      setEditForm(prev => ({
+
+      setEditForm((prev) => ({
         ...prev,
         password: "",
-        confirmPassword: ""
+        confirmPassword: "",
       }))
-      
-      console.log("✅ Usuario actualizado correctamente")
-      
+
+      // ✅ Toast de éxito elegante
+      toast.success("Usuario actualizado correctamente", {
+        id: "update-user", // Reemplaza el toast de loading
+        description: "Los cambios se han guardado exitosamente",
+        duration: 4000,
+      })
     } catch (err) {
       console.error("❌ Error al actualizar usuario:", err)
-      alert("Error al actualizar el usuario")
+
+      // ✅ Toast de error elegante
+      toast.error("Error al actualizar usuario", {
+        id: "update-user", // Reemplaza el toast de loading
+        description:
+          err instanceof Error
+            ? err.message
+            : "Ha ocurrido un error inesperado",
+        duration: 5000,
+      })
     }
   }
 
   const handleInputChange = (field: string, value: string) => {
-    setEditForm(prev => ({
+    setEditForm((prev) => ({
       ...prev,
-      [field]: value
+      [field]: value,
     }))
   }
 
@@ -206,21 +347,30 @@ const UserDetails: React.FC<UserDetailsProps> = ({ userId }) => {
     <Card>
       <CardHeader className="flex flex-row items-center justify-between pb-4">
         <h2 className="text-xl font-semibold">Detalles del usuario</h2>
-        
-        <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+
+        <Dialog
+          open={isEditOpen}
+          onOpenChange={setIsEditOpen}
+        >
           <DialogTrigger asChild>
-            <Button variant="outline" size="sm">
+            <Button
+              variant="outline"
+              size="sm"
+            >
               <Edit className="h-4 w-4 mr-2" />
               Editar
             </Button>
           </DialogTrigger>
-          
+
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
               <DialogTitle>Detalles del usuario</DialogTitle>
             </DialogHeader>
-            
-            <form onSubmit={handleEditSubmit} className="space-y-4">
+
+            <form
+              onSubmit={handleEditSubmit}
+              className="space-y-4"
+            >
               {/* Avatar Section */}
               <div className="flex flex-col items-center space-y-2">
                 <Avatar className="h-16 w-16">
@@ -230,10 +380,19 @@ const UserDetails: React.FC<UserDetailsProps> = ({ userId }) => {
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex space-x-2">
-                  <Button type="button" variant="ghost" size="sm" className="text-xs">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="text-xs"
+                  >
                     Eliminar foto
                   </Button>
-                  <Button type="button" size="sm" className="text-xs">
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="text-xs"
+                  >
                     <Upload className="h-3 w-3 mr-1" />
                     Subir foto
                   </Button>
@@ -243,20 +402,28 @@ const UserDetails: React.FC<UserDetailsProps> = ({ userId }) => {
               {/* Form Fields */}
               <div className="space-y-4">
                 <div>
-                  <Label htmlFor="nombre" className="text-sm">
+                  <Label
+                    htmlFor="nombre"
+                    className="text-sm"
+                  >
                     Nombre
                   </Label>
                   <Input
                     id="nombre"
                     type="text"
                     value={editForm.nombre}
-                    onChange={(e) => handleInputChange("nombre", e.target.value)}
+                    onChange={(e) =>
+                      handleInputChange("nombre", e.target.value)
+                    }
                     className="mt-1"
                   />
                 </div>
 
                 <div>
-                  <Label htmlFor="email" className="text-sm">
+                  <Label
+                    htmlFor="email"
+                    className="text-sm"
+                  >
                     Email
                   </Label>
                   <Input
@@ -269,7 +436,10 @@ const UserDetails: React.FC<UserDetailsProps> = ({ userId }) => {
                 </div>
 
                 <div>
-                  <Label htmlFor="password" className="text-sm">
+                  <Label
+                    htmlFor="password"
+                    className="text-sm"
+                  >
                     Cambiar contraseña
                   </Label>
                   <div className="relative">
@@ -277,7 +447,9 @@ const UserDetails: React.FC<UserDetailsProps> = ({ userId }) => {
                       id="password"
                       type={showPassword ? "text" : "password"}
                       value={editForm.password}
-                      onChange={(e) => handleInputChange("password", e.target.value)}
+                      onChange={(e) =>
+                        handleInputChange("password", e.target.value)
+                      }
                       placeholder="Cambiar contraseña"
                       className="mt-1 pr-10"
                     />
@@ -298,7 +470,10 @@ const UserDetails: React.FC<UserDetailsProps> = ({ userId }) => {
                 </div>
 
                 <div>
-                  <Label htmlFor="confirmPassword" className="text-sm">
+                  <Label
+                    htmlFor="confirmPassword"
+                    className="text-sm"
+                  >
                     Confirmar contraseña
                   </Label>
                   <div className="relative">
@@ -306,7 +481,9 @@ const UserDetails: React.FC<UserDetailsProps> = ({ userId }) => {
                       id="confirmPassword"
                       type={showConfirmPassword ? "text" : "password"}
                       value={editForm.confirmPassword}
-                      onChange={(e) => handleInputChange("confirmPassword", e.target.value)}
+                      onChange={(e) =>
+                        handleInputChange("confirmPassword", e.target.value)
+                      }
                       placeholder="Confirmar contraseña"
                       className="mt-1 pr-10"
                     />
@@ -315,7 +492,9 @@ const UserDetails: React.FC<UserDetailsProps> = ({ userId }) => {
                       variant="ghost"
                       size="sm"
                       className="absolute right-0 top-1 h-8 w-8 p-0"
-                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      onClick={() =>
+                        setShowConfirmPassword(!showConfirmPassword)
+                      }
                     >
                       {showConfirmPassword ? (
                         <EyeOff className="h-4 w-4" />
@@ -336,9 +515,7 @@ const UserDetails: React.FC<UserDetailsProps> = ({ userId }) => {
                 >
                   Cancelar
                 </Button>
-                <Button type="submit">
-                  Guardar
-                </Button>
+                <Button type="submit">Guardar</Button>
               </div>
             </form>
           </DialogContent>
@@ -352,13 +529,6 @@ const UserDetails: React.FC<UserDetailsProps> = ({ userId }) => {
               Email
             </label>
             <p className="mt-1 text-sm">{usuario.email}</p>
-          </div>
-
-          <div>
-            <label className="text-sm font-medium text-muted-foreground">
-              Fecha de registro
-            </label>
-            <p className="mt-1 text-sm">{formatDate(usuario.fechaRegistro)}</p>
           </div>
 
           <div>
@@ -382,6 +552,16 @@ const UserDetails: React.FC<UserDetailsProps> = ({ userId }) => {
               >
                 {usuario.isActive ? "Activo" : "Inactivo"}
               </span>
+            </p>
+          </div>
+
+          {/* Siempre mostrar fecha, con fallback si no existe */}
+          <div>
+            <label className="text-sm font-medium text-muted-foreground">
+              Fecha de registro
+            </label>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {hasValidDate(usuario) ? formatDate(usuario) : "No registrada"}
             </p>
           </div>
         </div>

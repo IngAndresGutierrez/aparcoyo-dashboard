@@ -1,6 +1,8 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client"
 
 import * as React from "react"
+import { useState, useMemo } from "react"
 import {
   flexRender,
   getCoreRowModel,
@@ -23,13 +25,107 @@ import { useEffect } from "react"
 
 import { useGetAllReservas } from "../../hooks/useGetAllReservas"
 import { reservasColumns } from "./columns"
+import { ReservaTable } from "../../types"
+import EditReservationModal from "../ModalEditReservas"
 
 const ReservationsTable = () => {
   const { getAllReservas, reservas, isLoading, error } = useGetAllReservas()
 
+  // ✨ NUEVOS ESTADOS para el modal
+  const [selectedReservation, setSelectedReservation] =
+    useState<ReservaTable | null>(null)
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+
+  // ✨ HANDLER para abrir el modal de edición
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const handleEditReservation = (reservation: ReservaTable) => {
+    setSelectedReservation(reservation)
+    setIsEditModalOpen(true)
+  }
+
+  // ✨ HANDLER para cerrar el modal
+  const handleCloseModal = () => {
+    setIsEditModalOpen(false)
+    setSelectedReservation(null)
+  }
+
+  // ✨ HANDLER para cuando se actualiza una reserva
+  const handleUpdateReservation = (updatedReservation: any) => {
+    console.log("Reserva actualizada:", updatedReservation)
+    // Aquí podrías:
+    // 1. Refrescar toda la tabla: getAllReservas()
+    // 2. O actualizar solo esa reserva en el estado local
+    getAllReservas() // Por simplicidad, refrescamos todo
+  }
+
+  // ✨ HANDLER para eliminar reserva
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const handleDeleteReservation = async (reservation: ReservaTable) => {
+    const confirmDelete = window.confirm(
+      `¿Estás seguro de que quieres eliminar la reserva de ${
+        (reservation.usuario as any)?.nombre || "este usuario"
+      }?`
+    )
+
+    if (!confirmDelete) return
+
+    try {
+      console.log("🗑️ Eliminando reserva:", reservation.id)
+
+      const token =
+        localStorage.getItem("authToken") || localStorage.getItem("token")
+
+      if (!token) {
+        alert("No estás autenticado. Por favor, inicia sesión nuevamente.")
+        return
+      }
+
+      // ✅ URL del backend de producción + endpoint del Swagger
+      const response = await fetch(
+        `https://aparcoyo-back.onrender.com/apa/reservas/${reservation.id}`,
+        {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      )
+
+      console.log("📡 DELETE Response status:", response.status)
+
+      if (response.ok) {
+        console.log("✅ Reserva eliminada exitosamente")
+        getAllReservas()
+        alert("Reserva eliminada correctamente")
+      } else if (response.status === 401) {
+        alert("Tu sesión ha expirado. Por favor, inicia sesión nuevamente.")
+        localStorage.removeItem("authToken")
+        localStorage.removeItem("token")
+      } else {
+        const errorData = await response.json()
+        console.error("❌ Error eliminando reserva:", errorData)
+        alert(
+          `Error eliminando reserva: ${
+            errorData.message || response.statusText
+          }`
+        )
+      }
+    } catch (error) {
+      console.error("❌ Error de red eliminando reserva:", error)
+      alert("Error de conexión eliminando la reserva")
+    }
+  }
+
+  // ✨ MEMORIZAR las columnas con los callbacks
+  const columns = useMemo(
+    () => reservasColumns(handleEditReservation, handleDeleteReservation),
+    [handleEditReservation, handleDeleteReservation]
+  )
+
   const table = useReactTable({
     data: reservas,
-    columns: reservasColumns,
+    columns: columns, // ← Usar las columnas memorizadas
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
   })
@@ -63,11 +159,13 @@ const ReservationsTable = () => {
           <div className="text-center space-y-4">
             <AlertCircle className="h-12 w-12 text-red-500 mx-auto" />
             <div>
-              <h3 className="text-lg font-medium text-red-500">Error al cargar reservas</h3>
+              <h3 className="text-lg font-medium text-red-500">
+                Error al cargar reservas
+              </h3>
               <p className="text-sm text-muted-foreground mt-1">{error}</p>
             </div>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={() => getAllReservas()}
               className="mt-4"
             >
@@ -87,16 +185,19 @@ const ReservationsTable = () => {
         <div>
           <h2 className="text-lg font-semibold">Reservas</h2>
           <p className="text-sm text-muted-foreground">
-            {reservas.length} reserva{reservas.length !== 1 ? 's' : ''} encontrada{reservas.length !== 1 ? 's' : ''}
+            {reservas.length} reserva{reservas.length !== 1 ? "s" : ""}{" "}
+            encontrada{reservas.length !== 1 ? "s" : ""}
           </p>
         </div>
-        <Button 
-          variant="outline" 
+        <Button
+          variant="outline"
           size="sm"
           onClick={() => getAllReservas()}
           disabled={isLoading}
         >
-          <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+          <RefreshCw
+            className={`h-4 w-4 mr-2 ${isLoading ? "animate-spin" : ""}`}
+          />
           Actualizar
         </Button>
       </div>
@@ -153,9 +254,11 @@ const ReservationsTable = () => {
                   className="h-24 text-center"
                 >
                   <div className="flex flex-col items-center justify-center space-y-2">
-                    <p className="text-muted-foreground">No hay reservas disponibles</p>
-                    <Button 
-                      variant="outline" 
+                    <p className="text-muted-foreground">
+                      No hay reservas disponibles
+                    </p>
+                    <Button
+                      variant="outline"
                       size="sm"
                       onClick={() => getAllReservas()}
                     >
@@ -196,6 +299,14 @@ const ReservationsTable = () => {
           </div>
         </div>
       )}
+
+      {/* ✨ MODAL DE EDITAR RESERVA */}
+      <EditReservationModal
+        isOpen={isEditModalOpen}
+        onClose={handleCloseModal}
+        reservationData={selectedReservation}
+        onUpdate={handleUpdateReservation}
+      />
     </div>
   )
 }
