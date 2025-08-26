@@ -1,6 +1,4 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-// services/reportesService.ts
-
 import {
   ReportesCategoriasResponse,
   ReportesResponse,
@@ -70,15 +68,24 @@ export class ReportesService {
     }
   }
 
-  // Endpoint principal - obtiene métricas y lista de reportes CON FILTRO
-  static async getSummary(filtroFecha?: string): Promise<ReportesResponse> {
+  // ✨ FUNCIÓN ACTUALIZADA - ahora acepta tipoReporte
+  static async getSummary(
+    filtroFecha?: string,
+    tipoReporte?: string
+  ): Promise<ReportesResponse> {
     const params = new URLSearchParams()
+    
     if (filtroFecha) params.append("periodo", filtroFecha)
+    
+    // ✨ NUEVO: Agregar tipoReporte si se proporciona
+    if (tipoReporte) params.append("tipoReporte", tipoReporte)
 
     const queryString = params.toString()
     const endpoint = `/apa/reportes/summary${
       queryString ? `?${queryString}` : ""
     }`
+
+    console.log("🔍 Llamando endpoint:", endpoint) // Para debug
 
     return this.makeRequest<ReportesResponse>(endpoint, {
       method: "GET",

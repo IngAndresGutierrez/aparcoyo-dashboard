@@ -71,8 +71,8 @@ export function GraphicsHome({ rango = "mes" }: TotalUsersGraphProps) {
   if (loading) {
     return (
       <Card className="">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm text-muted-foreground font-medium">
+        <CardHeader className="pb-2 ">
+          <CardTitle className="text-sm text-muted-foreground font-medium ">
             Usuarios totales
           </CardTitle>
           <div className="flex items-center gap-2 pt-1">
@@ -80,8 +80,8 @@ export function GraphicsHome({ rango = "mes" }: TotalUsersGraphProps) {
             <Skeleton className="h-4 w-16" />
           </div>
         </CardHeader>
-        <CardContent>
-          <div className="h-[200px] flex items-center justify-center">
+        <CardContent className="">
+          <div className=" flex items-center justify-center">
             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
           </div>
         </CardContent>
@@ -96,7 +96,7 @@ export function GraphicsHome({ rango = "mes" }: TotalUsersGraphProps) {
   if (error) {
     return (
       <Card className="">
-        <CardHeader className="pb-2">
+        <CardHeader className="pb-2 ">
           <CardTitle className="text-sm text-muted-foreground font-medium">
             Usuarios totales
           </CardTitle>
@@ -151,7 +151,7 @@ export function GraphicsHome({ rango = "mes" }: TotalUsersGraphProps) {
         </div>
       </CardHeader>
 
-      <CardContent>
+      <CardContent className="">
         <ChartContainer config={chartConfig}>
           <AreaChart
             accessibilityLayer
