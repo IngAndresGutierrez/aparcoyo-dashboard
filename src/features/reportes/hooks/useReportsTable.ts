@@ -1,5 +1,3 @@
-// hooks/useReportes.ts
-
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
@@ -23,40 +21,46 @@ export const useReportes = () => {
     error: null,
   })
 
-  // Función principal para obtener summary (métricas + reportes) CON FILTRO
-  const getSummary = useCallback(async (filtroFecha?: string) => {
-    setState((prev) => ({ ...prev, loading: true, error: null }))
+  // ✨ FUNCIÓN ACTUALIZADA - ahora acepta tipoReporte
+  const getSummary = useCallback(
+    async (filtroFecha?: string, tipoReporte?: string) => {
+      setState((prev) => ({ ...prev, loading: true, error: null }))
 
-    try {
-      const response = await ReportesService.getSummary(filtroFecha)
+      try {
+        const response = await ReportesService.getSummary(
+          filtroFecha,
+          tipoReporte
+        )
 
-      if (response.ok) {
+        if (response.ok) {
+          setState((prev) => ({
+            ...prev,
+            data: response.data,
+            loading: false,
+            error: null,
+          }))
+        } else {
+          setState((prev) => ({
+            ...prev,
+            loading: false,
+            error: response.msg || "Error al obtener los reportes",
+          }))
+        }
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error
+            ? error.message
+            : "Error inesperado al cargar los reportes"
+
         setState((prev) => ({
           ...prev,
-          data: response.data,
           loading: false,
-          error: null,
-        }))
-      } else {
-        setState((prev) => ({
-          ...prev,
-          loading: false,
-          error: response.msg || "Error al obtener los reportes",
+          error: errorMessage,
         }))
       }
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error
-          ? error.message
-          : "Error inesperado al cargar los reportes"
-
-      setState((prev) => ({
-        ...prev,
-        loading: false,
-        error: errorMessage,
-      }))
-    }
-  }, [])
+    },
+    []
+  )
 
   // Función para obtener categorías
   const getCategorias = useCallback(async () => {
@@ -74,50 +78,53 @@ export const useReportes = () => {
     }
   }, [])
 
-  // Función para cargar todos los datos CON FILTRO
-  const loadAll = useCallback(async (filtroFecha?: string) => {
-    setState((prev) => ({ ...prev, loading: true, error: null }))
+  // ✨ FUNCIÓN ACTUALIZADA - ahora acepta tipoReporte
+  const loadAll = useCallback(
+    async (filtroFecha?: string, tipoReporte?: string) => {
+      setState((prev) => ({ ...prev, loading: true, error: null }))
 
-    try {
-      // Hacer ambas peticiones en paralelo
-      const [summaryResponse, categoriasResponse] = await Promise.all([
-        ReportesService.getSummary(filtroFecha),
-        ReportesService.getCategorias(),
-      ])
+      try {
+        // Hacer ambas peticiones en paralelo
+        const [summaryResponse, categoriasResponse] = await Promise.all([
+          ReportesService.getSummary(filtroFecha, tipoReporte),
+          ReportesService.getCategorias(),
+        ])
 
-      if (summaryResponse.ok && categoriasResponse.ok) {
+        if (summaryResponse.ok && categoriasResponse.ok) {
+          setState({
+            data: summaryResponse.data,
+            categorias: categoriasResponse.data,
+            loading: false,
+            error: null,
+          })
+        } else {
+          setState((prev) => ({
+            ...prev,
+            loading: false,
+            error: summaryResponse.msg || "Error al cargar los datos",
+          }))
+        }
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error
+            ? error.message
+            : "Error inesperado al cargar los datos"
+
         setState({
-          data: summaryResponse.data,
-          categorias: categoriasResponse.data,
+          data: null,
+          categorias: [],
           loading: false,
-          error: null,
+          error: errorMessage,
         })
-      } else {
-        setState((prev) => ({
-          ...prev,
-          loading: false,
-          error: summaryResponse.msg || "Error al cargar los datos",
-        }))
       }
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error
-          ? error.message
-          : "Error inesperado al cargar los datos"
+    },
+    []
+  )
 
-      setState({
-        data: null,
-        categorias: [],
-        loading: false,
-        error: errorMessage,
-      })
-    }
-  }, [])
-
-  // Función para refrescar los datos CON FILTRO
+  // ✨ FUNCIÓN ACTUALIZADA - ahora acepta tipoReporte
   const refresh = useCallback(
-    (filtroFecha?: string) => {
-      loadAll(filtroFecha)
+    (filtroFecha?: string, tipoReporte?: string) => {
+      loadAll(filtroFecha, tipoReporte)
     },
     [loadAll]
   )
@@ -136,7 +143,7 @@ export const useReportes = () => {
     loading: state.loading,
     error: state.error,
 
-    // Actions
+    // Actions - ✨ ACTUALIZADAS
     getSummary,
     getCategorias,
     loadAll,
