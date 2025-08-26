@@ -8,7 +8,8 @@ import {
   useReactTable,
   getPaginationRowModel,
 } from "@tanstack/react-table"
-import { useRouter } from "next/navigation" // ← AGREGAR: import del router
+import { useRouter } from "next/navigation"
+import { toast } from "sonner" // ✨ IMPORTAR SONNER
 
 import { Button } from "@/components/ui/button"
 import {
@@ -27,29 +28,50 @@ import { createColumns } from "./columns"
 import { eliminarPlazaService } from "../../services/plazas"
 
 const UsersTablePlazas = () => {
-  const router = useRouter() // ← AGREGAR: inicializar el router
+  const router = useRouter()
   const { getAllPlazas, plazas, isLoading } = useGetAllPlazas()
 
   // Estado para controlar qué plaza se está eliminando
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
-  // Función para eliminar plaza
+  // ✨ FUNCIÓN ACTUALIZADA CON SONNER
   const handleEliminarPlaza = async (id: string, direccion: string) => {
     // Validar que tengamos un ID válido
     if (!id) {
-      alert("Error: ID de plaza no válido")
+      toast.error("Error", {
+        description: "ID de plaza no válido",
+      })
       return
     }
 
-    // Confirmación del usuario
-    const confirmed = window.confirm(
-      `¿Estás seguro de que quieres eliminar la plaza "${direccion}"?\n\nEsta acción no se puede deshacer.`
-    )
+    // ✨ CONFIRMACIÓN ELEGANTE CON SONNER
+    toast("¿Eliminar plaza?", {
+      description: `¿Estás seguro de que quieres eliminar "${direccion}"? Esta acción no se puede deshacer.`,
+      action: {
+        label: "Eliminar",
+        onClick: async () => {
+          await executeDelete(id, direccion)
+        },
+      },
+      cancel: {
+        label: "Cancelar",
+        onClick: () => {
+          // No hacer nada, el toast se cierra automáticamente
+        },
+      },
+      duration: 10000, // 10 segundos para que el usuario tenga tiempo de leer
+    })
+  }
 
-    if (!confirmed) return
-
+  // ✨ FUNCIÓN SEPARADA PARA EJECUTAR LA ELIMINACIÓN
+  const executeDelete = async (id: string, direccion: string) => {
     try {
       setDeletingId(id) // Mostrar loading en esta plaza específica
+
+      // ✨ TOAST DE LOADING
+      const loadingToast = toast.loading("Eliminando plaza...", {
+        description: `Eliminando "${direccion}"`,
+      })
 
       console.log(`🗑️ Iniciando eliminación de plaza:`, { id, direccion })
 
@@ -58,15 +80,20 @@ const UsersTablePlazas = () => {
 
       console.log(`✅ Plaza eliminada exitosamente:`, response.data)
 
-      // Mostrar mensaje de éxito
-      alert("Plaza eliminada exitosamente")
+      // ✨ CERRAR LOADING TOAST
+      toast.dismiss(loadingToast)
+
+      // ✨ TOAST DE ÉXITO
+      toast.success("Plaza eliminada", {
+        description: `"${direccion}" ha sido eliminada exitosamente`,
+      })
 
       // Recargar la lista de plazas
       await getAllPlazas()
     } catch (error: any) {
       console.error("❌ Error completo al eliminar plaza:", error)
 
-      // Manejo de errores específicos con más detalle
+      // ✨ MANEJO DE ERRORES CON SONNER
       if (error.response) {
         // El servidor respondió con un código de error
         const status = error.response.status
@@ -85,59 +112,83 @@ const UsersTablePlazas = () => {
               data?.message || data?.msg || data?.error || "Petición inválida"
             console.error(`❌ Mensaje del servidor (400):`, serverMessage)
 
-            // Mostrar mensaje más específico según el contenido
+            // ✨ MENSAJES ESPECÍFICOS CON SONNER
             if (serverMessage.includes("reservas activas")) {
-              alert(
-                `No se puede eliminar la plaza "${direccion}" porque tiene reservas activas. Cancela las reservas primero.`
-              )
+              toast.error("No se puede eliminar", {
+                description: `La plaza "${direccion}" tiene reservas activas. Cancela las reservas primero.`,
+                duration: 6000,
+              })
             } else if (serverMessage.includes("dependencias")) {
-              alert(
-                `No se puede eliminar la plaza "${direccion}" porque tiene datos relacionados.`
-              )
+              toast.error("No se puede eliminar", {
+                description: `La plaza "${direccion}" tiene datos relacionados.`,
+                duration: 6000,
+              })
             } else {
-              alert(`Error: ${serverMessage}`)
+              toast.error("Error al eliminar", {
+                description: serverMessage,
+                duration: 5000,
+              })
             }
             break
+
           case 401:
-            alert(
-              "Error 401 - No tienes autorización para eliminar plazas. Verifica tu sesión."
-            )
+            toast.error("Sin autorización", {
+              description:
+                "No tienes autorización para eliminar plazas. Verifica tu sesión.",
+              duration: 5000,
+            })
             break
+
           case 403:
-            alert("Error 403 - No tienes permisos para eliminar esta plaza.")
+            toast.error("Sin permisos", {
+              description: "No tienes permisos para eliminar esta plaza.",
+              duration: 5000,
+            })
             break
+
           case 404:
-            alert("Error 404 - La plaza no existe o ya fue eliminada.")
+            toast.error("Plaza no encontrada", {
+              description: "La plaza no existe o ya fue eliminada.",
+              duration: 5000,
+            })
             break
+
           case 500:
-            alert(
-              "Error 500 - Error interno del servidor. Inténtalo más tarde."
-            )
+            toast.error("Error del servidor", {
+              description: "Error interno del servidor. Inténtalo más tarde.",
+              duration: 5000,
+            })
             break
+
           default:
-            alert(
-              `Error ${status}: ${
-                data?.message || data?.msg || "Error desconocido del servidor"
-              }`
-            )
+            toast.error(`Error ${status}`, {
+              description:
+                data?.message || data?.msg || "Error desconocido del servidor",
+              duration: 5000,
+            })
         }
       } else if (error.request) {
         // La petición se hizo pero no hubo respuesta
         console.error(`❌ Sin respuesta del servidor:`, error.request)
-        alert(
-          "Error de conexión: No se pudo conectar con el servidor. Verifica tu conexión a internet."
-        )
+        toast.error("Error de conexión", {
+          description:
+            "No se pudo conectar con el servidor. Verifica tu conexión a internet.",
+          duration: 5000,
+        })
       } else {
         // Algo más pasó
         console.error(`❌ Error de configuración:`, error.message)
-        alert(`Error: ${error.message}`)
+        toast.error("Error", {
+          description: error.message,
+          duration: 5000,
+        })
       }
     } finally {
       setDeletingId(null) // Quitar loading
     }
   }
 
-  // ← AGREGAR: Función para manejar la navegación a editar
+  // Función para manejar la navegación a editar
   const handleEditarPlaza = (id: string) => {
     console.log("🔄 Navegando a editar plaza con ID:", id)
     console.log("🔄 URL destino:", `/plazas/${id}`)
@@ -146,11 +197,11 @@ const UsersTablePlazas = () => {
     router.push(`/plazas/${id}`)
   }
 
-  // ← MODIFICAR: Crear columnas con AMBAS funciones (eliminar Y editar)
+  // Crear columnas con AMBAS funciones (eliminar Y editar)
   const columns = createColumns({
     onEliminarPlaza: handleEliminarPlaza,
     deletingId,
-    onEditarPlaza: handleEditarPlaza, // ← AGREGAR esta línea
+    onEditarPlaza: handleEditarPlaza,
   })
 
   const table = useReactTable({
@@ -164,7 +215,7 @@ const UsersTablePlazas = () => {
     getAllPlazas()
   }, [])
 
-  // ← AGREGAR: Debug para verificar que las funciones están conectadas
+  // Debug para verificar que las funciones están conectadas
   useEffect(() => {
     console.log("🔍 Componente UsersTablePlazas montado")
     console.log("🔍 Función handleEditarPlaza:", handleEditarPlaza)
