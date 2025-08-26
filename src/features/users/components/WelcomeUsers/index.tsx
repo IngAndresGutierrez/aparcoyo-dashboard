@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/select"
 import Image from "next/image"
 import React, { useEffect } from "react" // Agregar useEffect
-import { Calendar } from "lucide-react"
+
 import { toast } from "sonner" // Importar Sonner
 
 import { UsuarioTabla } from "../../types/table" // Ajustar ruta
@@ -285,11 +285,16 @@ const WelcomeUsers = ({ rango, onRangoChange }: WelcomeUsersProps) => {
           value={rango}
           onValueChange={onRangoChange}
         >
-          <SelectTrigger className="w-46 h-9 rounded-full border border-input bg-background hover:bg-accent hover:text-accent-foreground">
+          <SelectTrigger className="w-46 h-9 rounded-full border border-input bg-background hover:bg-accent hover:text-accent-foreground [&>svg]:hidden">
             <div className="flex items-center gap-2">
-              <Calendar className="h-4 w-4" />
+              <Image
+                src="/home/calendar.svg"
+                alt="calendar"
+                width={20}
+                height={20}
+              />
               <SelectValue placeholder="Seleccionar período">
-                {currentRangoLabel}
+                <span className="font-semibold">{currentRangoLabel}</span>
               </SelectValue>
             </div>
           </SelectTrigger>
