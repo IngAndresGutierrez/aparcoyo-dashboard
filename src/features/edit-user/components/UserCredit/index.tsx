@@ -4,8 +4,9 @@ import * as React from "react"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
-import { CreditCard, Edit } from "lucide-react"
+import { CreditCard, Edit, RefreshCw } from "lucide-react"
 import EditCreditosModal from "../ModalEditCredits"
+import { useBalance } from "../../hooks/useCredits"
 
 interface UserCreditosProps {
   userId: string
@@ -16,77 +17,30 @@ interface CreditosInfo {
   disponibles: number
   gastados?: number
   total?: number
-  moneda?: string
+  moneda: string
 }
 
 const UserCredits: React.FC<UserCreditosProps> = ({
   userId,
   isAdmin = false,
 }) => {
-  const [creditos, setCreditos] = React.useState<CreditosInfo | null>(null)
-  const [loading, setLoading] = React.useState(true)
-  const [error, setError] = React.useState<string | null>(null)
   const [isEditModalOpen, setIsEditModalOpen] = React.useState(false)
 
-  const fetchCreditos = React.useCallback(async () => {
-    try {
-      setLoading(true)
-      setError(null)
+  // Usar el hook para obtener el balance
+  const { balance, loading, error, refetch } = useBalance(userId)
 
-      const token =
-        localStorage.getItem("token") || localStorage.getItem("authToken")
+  // Procesar los datos del balance para el formato que espera el componente
+  const creditos: CreditosInfo | null = React.useMemo(() => {
+    if (!balance) return null
 
-      console.log(`💰 Obteniendo créditos del usuario ${userId}...`)
-
-      // Intentar obtener desde el endpoint principal del usuario
-      const response = await fetch(
-        `https://aparcoyo-back.onrender.com/apa/usuarios/${userId}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        }
-      )
-
-      console.log(`📨 UserCreditos - Response status: ${response.status}`)
-
-      if (!response.ok) {
-        throw new Error(`Error ${response.status}: ${response.statusText}`)
-      }
-
-      const data = await response.json()
-      console.log(`✅ UserCreditos - Datos del usuario:`, data)
-
-      const usuario = data.data || data
-
-      // Buscar información de créditos en la respuesta
-      const creditosData: CreditosInfo = {
-        disponibles:
-          usuario.creditos ||
-          usuario.creditosDisponibles ||
-          usuario.saldo ||
-          35, // Default €35
-        gastados: usuario.creditosGastados || 0,
-        total: usuario.creditosTotal || usuario.creditos || 35,
-        moneda: usuario.moneda || "€",
-      }
-
-      console.log(`💰 Créditos procesados:`, creditosData)
-      setCreditos(creditosData)
-    } catch (err) {
-      console.error("❌ Error al obtener créditos:", err)
-      setError(err instanceof Error ? err.message : "Error desconocido")
-    } finally {
-      setLoading(false)
+    return {
+      disponibles: parseFloat(balance.data.balance),
+      moneda: "€", // Puedes ajustar esto según tu lógica
+      // Opcional: si tienes más datos en el futuro
+      // gastados: balance.data.gastados,
+      // total: balance.data.total,
     }
-  }, [userId])
-
-  React.useEffect(() => {
-    if (userId) {
-      fetchCreditos()
-    }
-  }, [userId, fetchCreditos])
+  }, [balance])
 
   // Manejar apertura del modal
   const handleEditClick = () => {
@@ -108,13 +62,8 @@ const UserCredits: React.FC<UserCreditosProps> = ({
   const handleSaveSuccess = async (nuevoCredito: number) => {
     console.log("✅ UserCredits - Créditos actualizados:", nuevoCredito)
 
-    // Actualizar el estado local inmediatamente
-    setCreditos((prev) =>
-      prev ? { ...prev, disponibles: nuevoCredito } : null
-    )
-
-    // Opcional: Recargar desde el servidor para obtener datos frescos
-    await fetchCreditos()
+    // Refrescar los datos desde el servidor
+    await refetch()
   }
 
   if (loading) {
@@ -138,6 +87,9 @@ const UserCredits: React.FC<UserCreditosProps> = ({
   }
 
   if (error || !creditos) {
+    const is401Error =
+      error?.includes("401") || error?.includes("Sin autorización")
+
     return (
       <Card>
         <CardHeader className="flex flex-row items-center justify-between pb-4">
@@ -153,18 +105,30 @@ const UserCredits: React.FC<UserCreditosProps> = ({
         </CardHeader>
         <CardContent>
           <div className="text-center py-4">
-            <div className="text-red-500 text-sm font-medium mb-2">
-              Error al cargar créditos
-            </div>
-            <div className="text-muted-foreground text-xs">{error}</div>
-            <Button
-              variant="outline"
-              size="sm"
-              className="mt-2"
-              onClick={fetchCreditos}
+            <div
+              className={`text-sm font-medium mb-2 ${
+                is401Error ? "text-amber-500" : "text-red-500"
+              }`}
             >
-              Reintentar
-            </Button>
+              {is401Error
+                ? "Sin permisos para ver créditos"
+                : "Error al cargar créditos"}
+            </div>
+            <div className="text-muted-foreground text-xs mb-3">
+              {is401Error
+                ? "Necesitas permisos de administrador para acceder a esta función"
+                : error}
+            </div>
+            {!is401Error && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={refetch}
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Reintentar
+              </Button>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -176,15 +140,28 @@ const UserCredits: React.FC<UserCreditosProps> = ({
       <Card>
         <CardHeader className="flex flex-row items-center justify-between pb-4">
           <h3 className="text-lg font-semibold">Créditos disponibles</h3>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleEditClick}
-            disabled={loading}
-          >
-            <Edit className="h-4 w-4 mr-2" />
-            Editar
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={refetch}
+              disabled={loading}
+              title="Actualizar balance"
+            >
+              <RefreshCw
+                className={`h-4 w-4 ${loading ? "animate-spin" : ""}`}
+              />
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleEditClick}
+              disabled={loading}
+            >
+              <Edit className="h-4 w-4 mr-2" />
+              Editar
+            </Button>
+          </div>
         </CardHeader>
 
         <CardContent>
@@ -194,7 +171,7 @@ const UserCredits: React.FC<UserCreditosProps> = ({
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-2xl font-bold">
-                {creditos.moneda || "€"}
+                {creditos.moneda}
                 {creditos.disponibles}
               </p>
               {creditos.gastados !== undefined &&
@@ -203,6 +180,10 @@ const UserCredits: React.FC<UserCreditosProps> = ({
                     {creditos.gastados} gastados de {creditos.total} total
                   </p>
                 )}
+              <p className="text-xs text-muted-foreground mt-1">
+                Balance actualizado:{" "}
+                {balance ? new Date().toLocaleTimeString() : ""}
+              </p>
             </div>
           </div>
         </CardContent>
@@ -214,7 +195,7 @@ const UserCredits: React.FC<UserCreditosProps> = ({
         onClose={handleModalClose}
         creditosActuales={creditos?.disponibles || 0}
         moneda={creditos?.moneda || "€"}
-        userId={isAdmin ? userId : undefined} // Solo pasar userId si es admin
+        userId={userId} // Siempre pasar el userId (el modal ya maneja la lógica)
         onSuccess={handleSaveSuccess}
       />
     </>

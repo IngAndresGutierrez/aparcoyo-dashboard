@@ -160,6 +160,8 @@ const UserHeader: React.FC<UserHeaderProps> = ({ userId }) => {
     if (photoUrl) {
       return (
         <Image
+          width={20}
+          height={20}
           src={photoUrl}
           alt={`Foto de ${usuario.nombre || usuario.email}`}
           className="h-16 w-16 rounded-full object-cover border-2 border-gray-200"
