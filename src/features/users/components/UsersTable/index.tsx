@@ -34,74 +34,12 @@ import { UsuarioTabla } from "../../types/table"
 import { useUsuariosTabla } from "../../hooks/useTable"
 import { useUserActions } from "../../hooks/useChange"
 import { useRouter } from "next/navigation"
-import Image from "next/image"
 
-// 🖼️ COMPONENTE: Avatar con foto real
+// Avatar simple sin fotos - solo con iniciales o ícono
 const UserAvatar: React.FC<{
-  userId: string
   userName?: string
   userEmail: string
-}> = ({ userId, userName, userEmail }) => {
-  const [photoUrl, setPhotoUrl] = React.useState<string | null>(null)
-  const [loading, setLoading] = React.useState(true)
-
-  React.useEffect(() => {
-    const fetchPhoto = async () => {
-      try {
-        const token =
-          localStorage.getItem("token") || localStorage.getItem("authToken")
-
-        const url = `https://aparcoyo-back.onrender.com/apa/archivos/perfil/foto/${userId}`
-
-        const response = await fetch(url, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        })
-
-        if (response.ok) {
-          const blob = await response.blob()
-          const imageUrl = URL.createObjectURL(blob)
-          setPhotoUrl(imageUrl)
-        }
-      } catch (error) {
-        console.error(`Error fetching photo for user ${userId}:`, error)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    if (userId) {
-      fetchPhoto()
-    } else {
-      setLoading(false)
-    }
-
-    // Cleanup function
-    return () => {
-      if (photoUrl) {
-        URL.revokeObjectURL(photoUrl)
-      }
-    }
-  }, [userId, photoUrl])
-
-  if (loading) {
-    return <Skeleton className="w-6 h-6 rounded-full" />
-  }
-
-  if (photoUrl) {
-    return (
-      <Image
-        src={photoUrl}
-        alt={`Foto de ${userName || userEmail}`}
-        width={24}
-        height={24}
-        className="w-6 h-6 rounded-full object-cover border border-gray-200"
-        onError={() => setPhotoUrl(null)}
-      />
-    )
-  }
-
+}> = ({ userName, userEmail }) => {
   // Fallback con inicial o ícono
   return (
     <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
@@ -121,9 +59,9 @@ declare module "@tanstack/react-table" {
   }
 }
 
-// 🛠️ FUNCIÓN ROBUSTA PARA FORMATEAR FECHA
+// FUNCIÓN ROBUSTA PARA FORMATEAR FECHA
 const formatDate = (dateString: string | null | undefined): string => {
-  console.log("📅 Formateando fecha:", dateString, typeof dateString)
+  console.log("Formateando fecha:", dateString, typeof dateString)
 
   if (!dateString) {
     return "Sin fecha"
@@ -143,11 +81,11 @@ const formatDate = (dateString: string | null | undefined): string => {
       date = new Date(cleanDateString)
     }
 
-    console.log("📅 Fecha parseada:", date, "isValid:", !isNaN(date.getTime()))
+    console.log("Fecha parseada:", date, "isValid:", !isNaN(date.getTime()))
 
     // Verificar si es válida
     if (isNaN(date.getTime())) {
-      console.warn("⚠️ Fecha inválida después del parsing:", dateString)
+      console.warn("Fecha inválida después del parsing:", dateString)
       return "Fecha inválida"
     }
 
@@ -158,10 +96,10 @@ const formatDate = (dateString: string | null | undefined): string => {
       year: "numeric",
     })
 
-    console.log("📅 Fecha formateada:", formatted)
+    console.log("Fecha formateada:", formatted)
     return formatted
   } catch (error) {
-    console.error("❌ Error formateando fecha:", dateString, error)
+    console.error("Error formateando fecha:", dateString, error)
     return "Error fecha"
   }
 }
@@ -202,10 +140,10 @@ const UsersTable = ({
       sortOrder: "desc",
     })
 
-  // 🔍 DEBUG: Ver datos de usuarios cuando carguen
+  // DEBUG: Ver datos de usuarios cuando carguen
   React.useEffect(() => {
     if (usuarios.length > 0) {
-      console.log("🔍 DEBUG: Analizando fechas de usuarios:")
+      console.log("DEBUG: Analizando fechas de usuarios:")
 
       usuarios.forEach((usuario, index) => {
         console.log(`Usuario ${index + 1}:`, {
@@ -282,7 +220,7 @@ const UsersTable = ({
     }
   }
 
-  // 🛠️ COLUMNAS CORREGIDAS
+  // COLUMNAS CORREGIDAS
   const columns: ColumnDef<UsuarioTabla>[] = [
     {
       id: "select",
@@ -295,7 +233,6 @@ const UsersTable = ({
       cell: ({ row }) => (
         <div className="flex items-center gap-2">
           <UserAvatar
-            userId={row.original.uid}
             userName={row.original.nombre}
             userEmail={row.original.email}
           />
@@ -344,7 +281,7 @@ const UsersTable = ({
       meta: { responsive: true },
     },
     {
-      // 🛠️ CORREGIDO: usar reservasHechas (del endpoint de estadísticas)
+      // CORREGIDO: usar reservasHechas (del endpoint de estadísticas)
       accessorKey: "reservasHechas",
       header: "Reservas hechas",
       cell: ({ row }) => {
@@ -356,7 +293,7 @@ const UsersTable = ({
       meta: { responsive: true },
     },
     {
-      // 🛠️ CORREGIDO: usar plazasPublicadas (del endpoint de estadísticas)
+      // CORREGIDO: usar plazasPublicadas (del endpoint de estadísticas)
       accessorKey: "plazasPublicadas",
       header: "Plazas publicadas",
       cell: ({ row }) => {

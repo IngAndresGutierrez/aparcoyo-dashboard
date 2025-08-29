@@ -11,13 +11,14 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { CreditCard, CheckCircle } from "lucide-react"
+import { creditosService } from "../../services/credits-service"
 
 interface EditCreditosModalProps {
   isOpen: boolean
   onClose: () => void
   creditosActuales: number
   moneda?: string
-  userId?: string // Para modo admin
+  userId: string
   onSuccess?: (nuevoCredito: number) => void
 }
 
@@ -26,113 +27,95 @@ const EditCreditosModal: React.FC<EditCreditosModalProps> = ({
   onClose,
   creditosActuales,
   moneda = "€",
-
+  userId,
   onSuccess,
 }) => {
   const [creditos, setCreditos] = React.useState<string>("")
   const [loading, setLoading] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
   const [showSuccess, setShowSuccess] = React.useState(false)
+  const [successData, setSuccessData] = React.useState<{
+    montoAplicado: number
+    nuevoBalance: string
+  } | null>(null)
 
-  // Inicializar el valor cuando se abre el modal
+  // Inicializar solo cuando se abre el modal - SIN dependencias problemáticas
   React.useEffect(() => {
     if (isOpen) {
+      console.log("🔄 Modal abierto, inicializando con:", creditosActuales)
       setCreditos(creditosActuales.toString())
       setError(null)
       setShowSuccess(false)
+      setSuccessData(null)
+      setLoading(false)
     }
-  }, [isOpen, creditosActuales])
+  }, [isOpen]) // Solo depende de isOpen
 
-  // Manejar cambio en el input
+  // Manejar cambio en el input - SUPER SIMPLE
   const handleCreditosChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value
-
-    // Solo permitir números y decimales
-    if (value === "" || /^\d*\.?\d*$/.test(value)) {
-      setCreditos(value)
-      setError(null)
-    }
+    console.log("📝 Escribiendo:", value)
+    setCreditos(value)
+    if (error) setError(null) // Limpiar error directamente
   }
 
-  // Validar el valor
-  const validateCreditos = (value: string): boolean => {
+  // Validación simple
+  const getValidationError = (value: string): string | null => {
+    if (!value || value.trim() === "") return null
+
     const num = parseFloat(value)
-    if (isNaN(num) || num < 0) {
-      setError("El valor debe ser un número positivo")
-      return false
-    }
-    if (num > 9999) {
-      setError("El valor no puede exceder 9999")
-      return false
-    }
-    return true
+    if (isNaN(num) || num < 0) return "El valor debe ser un número positivo"
+    if (num > 9999) return "El valor no puede exceder 9999"
+    return null
   }
 
-  // Guardar cambios (SIMULADO CON DATOS MOCK)
+  const validationError = getValidationError(creditos)
+
+  // Guardar cambios
   const handleSave = async () => {
-    if (!validateCreditos(creditos)) {
-      return
-    }
+    if (validationError) return
 
     const nuevosCreditos = parseFloat(creditos)
-
-    // Si no hay cambios, cerrar modal
     if (nuevosCreditos === creditosActuales) {
       onClose()
       return
     }
 
+    const montoAplicar = nuevosCreditos - creditosActuales
+    console.log(
+      `💳 Actualizando créditos: ${creditosActuales} → ${nuevosCreditos} (monto: ${montoAplicar})`
+    )
+
     setLoading(true)
     setError(null)
 
     try {
-      console.log(
-        `💳 [MOCK] Actualizando créditos: ${creditosActuales} → ${nuevosCreditos}`
-      )
+      const response = await creditosService.editarBalance(userId, montoAplicar)
+      console.log(`✅ Créditos actualizados:`, response)
 
-      // 🎭 SIMULACIÓN: Esperar 1.5 segundos para simular petición al servidor
-      await new Promise((resolve) => setTimeout(resolve, 1500))
+      setSuccessData({
+        montoAplicado: response.data.monto,
+        nuevoBalance: response.data.nuevoBalance,
+      })
 
-      // 🎭 SIMULACIÓN: 90% probabilidad de éxito
-      const success = Math.random() > 0.1
-
-      if (!success) {
-        throw new Error(
-          "Error de conexión simulado (esto es solo para demostración)"
-        )
-      }
-
-      console.log(`✅ [MOCK] Créditos actualizados exitosamente`)
-
-      // Mostrar mensaje de éxito
       setShowSuccess(true)
 
-      // Esperar un poco antes de cerrar
       setTimeout(() => {
-        // Llamar callback de éxito
         if (onSuccess) {
-          onSuccess(nuevosCreditos)
+          onSuccess(parseFloat(response.data.nuevoBalance))
         }
         onClose()
-      }, 1500)
+      }, 2000)
     } catch (err) {
-      console.error("❌ [MOCK] Error simulado:", err)
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Error simulado al actualizar créditos"
-      )
+      console.error("❌ Error al actualizar créditos:", err)
+      setError(err instanceof Error ? err.message : "Error desconocido")
     } finally {
-      // Solo quitar loading si no fue exitoso (para mostrar el mensaje de éxito)
-      if (!showSuccess) {
-        setLoading(false)
-      }
+      setLoading(false)
     }
   }
 
-  // Manejar Enter en el input
   const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !loading) {
+    if (e.key === "Enter" && !loading && !validationError) {
       handleSave()
     }
   }
@@ -152,7 +135,6 @@ const EditCreditosModal: React.FC<EditCreditosModalProps> = ({
           </DialogTitle>
         </DialogHeader>
 
-        {/* Mostrar mensaje de éxito */}
         {showSuccess ? (
           <div className="text-center py-8">
             <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
@@ -161,19 +143,27 @@ const EditCreditosModal: React.FC<EditCreditosModalProps> = ({
             <h3 className="text-lg font-semibold text-green-800 mb-2">
               ¡Créditos actualizados!
             </h3>
-            <p className="text-sm text-green-600">
+            <p className="text-sm text-green-600 mb-2">
               Los nuevos créditos se han guardado correctamente
             </p>
+            {successData && (
+              <div className="text-xs text-gray-600 space-y-1">
+                <p>
+                  Monto aplicado: {successData.montoAplicado > 0 ? "+" : ""}
+                  {successData.montoAplicado} {moneda}
+                </p>
+                <p>
+                  Nuevo balance: {successData.nuevoBalance} {moneda}
+                </p>
+              </div>
+            )}
           </div>
         ) : (
           <div className="space-y-4">
-            {/* Banner informativo para demo */}
-
             <div>
               <h3 className="font-semibold text-lg mb-4">
                 Créditos disponibles
               </h3>
-
               <div>
                 <Label
                   htmlFor="creditos"
@@ -187,7 +177,10 @@ const EditCreditosModal: React.FC<EditCreditosModalProps> = ({
                   </span>
                   <Input
                     id="creditos"
-                    type="text"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max="9999"
                     value={creditos}
                     onChange={handleCreditosChange}
                     onKeyPress={handleKeyPress}
@@ -200,12 +193,24 @@ const EditCreditosModal: React.FC<EditCreditosModalProps> = ({
 
                 {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
 
+                {!error && validationError && (
+                  <p className="text-red-500 text-xs mt-1">{validationError}</p>
+                )}
+
                 {!error &&
+                  !validationError &&
                   creditos &&
                   creditos !== creditosActuales.toString() && (
-                    <p className="text-muted-foreground text-xs mt-1">
-                      Cambio: {creditosActuales} → {creditos} {moneda}
-                    </p>
+                    <div className="text-muted-foreground text-xs mt-1 space-y-1">
+                      <p>
+                        Cambio: {creditosActuales} → {creditos} {moneda}
+                      </p>
+                      <p>
+                        Monto a aplicar:{" "}
+                        {parseFloat(creditos) - creditosActuales > 0 ? "+" : ""}
+                        {parseFloat(creditos) - creditosActuales} {moneda}
+                      </p>
+                    </div>
                   )}
               </div>
             </div>
@@ -225,7 +230,12 @@ const EditCreditosModal: React.FC<EditCreditosModalProps> = ({
           {!showSuccess && (
             <Button
               onClick={handleSave}
-              disabled={loading || !!error}
+              disabled={
+                loading ||
+                !!error ||
+                !!validationError ||
+                creditos === creditosActuales.toString()
+              }
               className="bg-blue-600 hover:bg-blue-700"
             >
               {loading ? (
