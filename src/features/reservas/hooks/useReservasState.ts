@@ -2,9 +2,9 @@
 import { useEffect, useState, useCallback, useRef } from "react"
 import { getReservasStatsByRangeService } from "../services/reservas"
 import { ReservasChartDataPoint } from "../types/reservas-range"
-import { 
-  EstadisticasReservasResponse, 
-  ReservaDetalle 
+import {
+  EstadisticasReservasResponse,
+  ReservaDetalle,
 } from "../types/reservas-range"
 
 export const useReservasEstadoStats = (rango: "dia" | "semana" | "mes") => {
@@ -38,14 +38,14 @@ export const useReservasEstadoStats = (rango: "dia" | "semana" | "mes") => {
       // Mapeo de estados para mostrar nombres más amigables
       const estadoLabels: Record<string, string> = {
         pendiente: "Pendiente",
-        confirmado: "Confirmado", 
+        confirmado: "Confirmado",
         confirmada: "Confirmado",
         cancelado: "Cancelado",
         cancelada: "Cancelado",
         activo: "Activo",
         activa: "Activo",
         finalizado: "Finalizado",
-        finalizada: "Finalizado"
+        finalizada: "Finalizado",
       }
 
       // Convertir a formato del gráfico
@@ -53,7 +53,9 @@ export const useReservasEstadoStats = (rango: "dia" | "semana" | "mes") => {
         .map(([estado, cantidad]) => ({
           estado: estado,
           cantidad: cantidad,
-          displayName: estadoLabels[estado.toLowerCase()] || estado.charAt(0).toUpperCase() + estado.slice(1),
+          displayName:
+            estadoLabels[estado.toLowerCase()] ||
+            estado.charAt(0).toUpperCase() + estado.slice(1),
         }))
         .filter((item) => item.cantidad > 0) // Solo estados con reservas
         .sort((a, b) => b.cantidad - a.cantidad) // Ordenar por cantidad descendente
@@ -85,9 +87,12 @@ export const useReservasEstadoStats = (rango: "dia" | "semana" | "mes") => {
           res.data
         )
 
-        if (res.data && typeof res.data === "object") {
-          // Procesar estados desde reservasDetalle
-          const processedEstadoData = processEstadoData(res.data.reservasDetalle)
+        if (res.data?.data) {
+          const estadisticas = res.data
+            .data as unknown as EstadisticasReservasResponse
+          const processedEstadoData = processEstadoData(
+            estadisticas.reservasDetalle
+          )
 
           console.log(`📊 Datos de estados procesados:`, {
             totalEstados: processedEstadoData.length,
@@ -95,7 +100,7 @@ export const useReservasEstadoStats = (rango: "dia" | "semana" | "mes") => {
             topEstadoCantidad: processedEstadoData[0]?.cantidad,
           })
 
-          setData(res.data)
+          setData(estadisticas)
           setEstadoData(processedEstadoData)
           setError(null)
         } else {
@@ -158,8 +163,10 @@ export const useReservasEstadoStats = (rango: "dia" | "semana" | "mes") => {
           totalEstados: estadoData.length,
           topEstado: estadoData[0]?.estado || "N/A",
           topEstadoCantidad: estadoData[0]?.cantidad || 0,
-          totalReservas: estadoData.reduce((sum, estado) => sum + estado.cantidad, 0),
-          // Stats específicas del backend real
+          totalReservas: estadoData.reduce(
+            (sum, estado) => sum + estado.cantidad,
+            0
+          ),
           reservasTotal: data.reservasTotal || 0,
           reservasCanceladas: data.reservasCanceladas || 0,
           plazasConReservaActiva: data.plazasConReservaActiva || 0,
