@@ -21,8 +21,8 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { MapPin, Edit, Trash2, MoreHorizontal } from "lucide-react"
-import { toast } from "sonner" // ✅ Agregar Sonner
+import { MapPin, Trash2, MoreHorizontal, Calendar, Clock } from "lucide-react"
+import { toast } from "sonner"
 
 interface UserReservasProps {
   userId: string
@@ -33,25 +33,32 @@ interface Reserva {
   plaza: {
     id: string
     nombre: string
+    direccion?: string
     tipo: "privada" | "inmediata"
   }
   propietario: {
     id: string
     nombre: string
-    email: string
+    email?: string
     avatar?: string
   }
-  fechaConfirmacion: string
-  estado: "programado" | "concluida" | "cancelada" | "activa"
+  fechaInicio: string
+  fechaFin: string
+  estado: "pendiente" | "concluida" | "cancelada" | "activa"
   precio: number
-  moneda?: string
+  moneda: string
+  matricula?: string
+  vehiculo?: {
+    id: string
+    placa: string
+  }
 }
 
 const UserReservas: React.FC<UserReservasProps> = ({ userId }) => {
   const [reservas, setReservas] = React.useState<Reserva[]>([])
   const [loading, setLoading] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
-  const [deletingId, setDeletingId] = React.useState<string | null>(null) // ✅ Estado para loading de eliminación
+  const [deletingId, setDeletingId] = React.useState<string | null>(null)
 
   React.useEffect(() => {
     const fetchReservas = async () => {
@@ -61,7 +68,6 @@ const UserReservas: React.FC<UserReservasProps> = ({ userId }) => {
 
         console.log(`📅 Obteniendo reservas del usuario ${userId}...`)
 
-        // ✅ ENFOQUE OPTIMIZADO: Usar endpoint específico para el usuario (admin)
         const response = await fetch(
           `https://aparcoyo-back.onrender.com/apa/reservas/usuario/${userId}`,
           {
@@ -81,36 +87,30 @@ const UserReservas: React.FC<UserReservasProps> = ({ userId }) => {
         const data = await response.json()
         console.log(`✅ UserReservas - Reservas del usuario obtenidas:`, data)
 
-        // Ya no necesitamos filtrar, el backend devuelve solo las reservas del usuario
         const reservasDelUsuario = data.data || data.reservas || data || []
 
-        // Mapear a nuestra estructura
+        // Mapeo corregido con la estructura real del backend
         const reservasMapeadas = reservasDelUsuario.map((reserva: any) => ({
-          id: reserva.id || reserva.uid,
+          id: reserva.id,
           plaza: {
-            id: reserva.plazaId || reserva.plaza?.id,
-            nombre:
-              reserva.plaza?.nombre ||
-              reserva.nombrePlaza ||
-              "Plaza sin nombre",
-            tipo: reserva.plaza?.tipo || reserva.tipoPlaza || "privada",
+            id: reserva.plaza?.id,
+            nombre: reserva.plaza?.nombre || "Plaza sin nombre",
+            direccion: reserva.plaza?.direccion,
+            tipo: reserva.plaza?.tipo || "privada",
           },
           propietario: {
-            id: reserva.propietarioId || reserva.propietario?.id,
-            nombre:
-              reserva.propietario?.nombre ||
-              reserva.nombrePropietario ||
-              "Propietario",
-            email: reserva.propietario?.email || reserva.emailPropietario || "",
-            avatar: reserva.propietario?.avatar,
+            id: reserva.plaza?.propietario?.uid,
+            nombre: reserva.plaza?.propietario?.nombre || "Propietario",
+            email: reserva.plaza?.propietario?.email || "",
+            avatar: reserva.plaza?.propietario?.avatar,
           },
-          fechaConfirmacion:
-            reserva.fechaConfirmacion ||
-            reserva.fechaCreacion ||
-            reserva.createdAt,
-          estado: reserva.estado || "programado",
-          precio: reserva.precio || reserva.total || 12,
-          moneda: reserva.moneda || "€",
+          fechaInicio: reserva.fechaInicio,
+          fechaFin: reserva.fechaFin,
+          estado: reserva.estado || "pendiente",
+          precio: parseFloat(reserva.plaza?.precio) || 0,
+          moneda: "$",
+          matricula: reserva.matricula,
+          vehiculo: reserva.vehiculo,
         }))
 
         console.log(`✅ Reservas mapeadas:`, reservasMapeadas)
@@ -129,24 +129,49 @@ const UserReservas: React.FC<UserReservasProps> = ({ userId }) => {
   }, [userId])
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("es-ES", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    })
+    if (!dateString) return "Sin fecha"
+
+    try {
+      const date = new Date(dateString)
+      if (isNaN(date.getTime())) return "Fecha inválida"
+
+      return date.toLocaleDateString("es-ES", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      })
+    } catch {
+      return "Error en fecha"
+    }
+  }
+
+  const formatTime = (dateString: string) => {
+    if (!dateString) return ""
+
+    try {
+      const date = new Date(dateString)
+      if (isNaN(date.getTime())) return ""
+
+      return date.toLocaleTimeString("es-ES", {
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    } catch {
+      return ""
+    }
   }
 
   const getEstadoBadge = (estado: string) => {
     const estadoConfig = {
-      programado: { label: "Programado", variant: "default" as const },
-      concluida: { label: "Concluida", variant: "secondary" as const },
+      pendiente: { label: "Pendiente", variant: "default" as const },
+      concluida: { label: "Concluida", variant: "outline" as const },
       cancelada: { label: "Cancelada", variant: "destructive" as const },
       activa: { label: "Activa", variant: "default" as const },
     }
 
     const config =
       estadoConfig[estado as keyof typeof estadoConfig] ||
-      estadoConfig.programado
+      estadoConfig.pendiente
 
     return (
       <Badge
@@ -158,42 +183,41 @@ const UserReservas: React.FC<UserReservasProps> = ({ userId }) => {
     )
   }
 
-  const handleEditReserva = (reservaId: string) => {
-    console.log(`✏️ Editar reserva: ${reservaId}`)
-    toast.info("Funcionalidad de edición próximamente", {
-      description: "Esta función está en desarrollo",
+  const handleDeleteReserva = async (reserva: Reserva) => {
+    // Mostrar toast de confirmación con Sonner
+    toast(`¿Eliminar reserva en ${reserva.plaza.nombre}?`, {
+      description: "Esta acción no se puede deshacer",
+      action: {
+        label: "Eliminar",
+        onClick: async () => {
+          await executeDelete(reserva)
+        },
+      },
+      cancel: {
+        label: "Cancelar",
+        onClick: () => {
+          toast.dismiss()
+        },
+      },
+      duration: 10000,
     })
   }
 
-  // ✅ Implementar función de eliminar reserva con toasts
-  const handleDeleteReserva = async (
-    reservaId: string,
-    plazaNombre?: string
-  ) => {
-    const confirmDelete = window.confirm(
-      `¿Estás seguro de que quieres eliminar esta reserva${
-        plazaNombre ? ` en ${plazaNombre}` : ""
-      }?`
-    )
-
-    if (!confirmDelete) return
-
+  const executeDelete = async (reserva: Reserva) => {
     try {
-      setDeletingId(reservaId) // Mostrar loading
+      setDeletingId(reserva.id)
 
       const token =
         localStorage.getItem("token") || localStorage.getItem("authToken")
 
-      // ✅ Toast de loading
-      toast.loading("Eliminando reserva...", {
-        id: `delete-reserva-${reservaId}`,
+      const loadingToastId = toast.loading("Eliminando reserva...", {
+        description: `Eliminando reserva en ${reserva.plaza.nombre}`,
       })
 
-      console.log(`🗑️ Eliminando reserva: ${reservaId}`)
+      console.log(`🗑️ Eliminando reserva: ${reserva.id}`)
 
-      // ✅ Usar endpoint DELETE /apa/reservas/{id}
       const response = await fetch(
-        `https://aparcoyo-back.onrender.com/apa/reservas/${reservaId}`,
+        `https://aparcoyo-back.onrender.com/apa/reservas/${reserva.id}`,
         {
           method: "DELETE",
           headers: {
@@ -204,6 +228,8 @@ const UserReservas: React.FC<UserReservasProps> = ({ userId }) => {
       )
 
       console.log(`📨 Delete response status: ${response.status}`)
+
+      toast.dismiss(loadingToastId)
 
       if (!response.ok) {
         const errorData = await response
@@ -216,27 +242,22 @@ const UserReservas: React.FC<UserReservasProps> = ({ userId }) => {
         )
       }
 
-      // ✅ Actualizar estado local removiendo la reserva
+      // Actualizar estado local removiendo la reserva
       setReservas((prevReservas) =>
-        prevReservas.filter((reserva) => reserva.id !== reservaId)
+        prevReservas.filter((r) => r.id !== reserva.id)
       )
 
-      // ✅ Toast de éxito
+      // Toast de éxito elegante
       toast.success("Reserva eliminada correctamente", {
-        id: `delete-reserva-${reservaId}`,
-        description: `La reserva${
-          plazaNombre ? ` en ${plazaNombre}` : ""
-        } ha sido eliminada`,
+        description: `La reserva en ${reserva.plaza.nombre} ha sido eliminada`,
         duration: 4000,
       })
 
-      console.log(`✅ Reserva ${reservaId} eliminada exitosamente`)
+      console.log(`✅ Reserva ${reserva.id} eliminada exitosamente`)
     } catch (err) {
       console.error("❌ Error al eliminar reserva:", err)
 
-      // ✅ Toast de error
       toast.error("Error al eliminar reserva", {
-        id: `delete-reserva-${reservaId}`,
         description:
           err instanceof Error
             ? err.message
@@ -244,7 +265,7 @@ const UserReservas: React.FC<UserReservasProps> = ({ userId }) => {
         duration: 5000,
       })
     } finally {
-      setDeletingId(null) // Quitar loading
+      setDeletingId(null)
     }
   }
 
@@ -283,17 +304,9 @@ const UserReservas: React.FC<UserReservasProps> = ({ userId }) => {
 
   if (error) {
     return (
-      <Card>
+      <Card className="">
         <CardHeader className="flex flex-row items-center justify-between pb-4">
           <h2 className="text-xl font-semibold">Reservas hechas</h2>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled
-          >
-            <Edit className="h-4 w-4 mr-2" />
-            Editar
-          </Button>
         </CardHeader>
         <CardContent>
           <div className="text-center py-8">
@@ -308,7 +321,7 @@ const UserReservas: React.FC<UserReservasProps> = ({ userId }) => {
   }
 
   return (
-    <Card className="w-330">
+    <Card className="lg:w-310 -mt-5">
       <CardHeader className="flex flex-row items-center justify-between pb-4">
         <h2 className="text-xl font-semibold">
           {reservas.length} Reservas hechas
@@ -322,10 +335,14 @@ const UserReservas: React.FC<UserReservasProps> = ({ userId }) => {
               <TableRow>
                 <TableHead>Plaza</TableHead>
                 <TableHead>Propietario</TableHead>
-                <TableHead>Fecha de confirmación</TableHead>
-                <TableHead>Estado</TableHead>
-                <TableHead>Precio</TableHead>
-                <TableHead className="w-[50px]"></TableHead>
+                <TableHead className="hidden md:table-cell">
+                  Fecha y hora
+                </TableHead>
+                <TableHead className="hidden md:table-cell">Estado</TableHead>
+                <TableHead className="hidden md:table-cell">Precio</TableHead>
+                <TableHead className="hidden md:table-cell w-[50px]">
+                  Acciones
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -334,8 +351,8 @@ const UserReservas: React.FC<UserReservasProps> = ({ userId }) => {
                   <TableRow key={reserva.id}>
                     <TableCell>
                       <div className="flex items-center space-x-3">
-                        <div className="h-10 w-10 bg-gray-200 rounded flex items-center justify-center flex-shrink-0">
-                          <MapPin className="h-5 w-5 text-gray-500" />
+                        <div className="h-10 w-10 bg-blue-50 rounded flex items-center justify-center flex-shrink-0">
+                          <MapPin className="h-5 w-5 text-blue-600" />
                         </div>
                         <div className="min-w-0 flex-1">
                           <p className="font-medium text-sm truncate">
@@ -355,13 +372,37 @@ const UserReservas: React.FC<UserReservasProps> = ({ userId }) => {
                                 : "Plaza Inmediata"}
                             </Badge>
                           </div>
+                          {reserva.matricula && (
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Vehículo: {reserva.matricula}
+                            </p>
+                          )}
+                          {/* Mostrar información adicional en mobile */}
+                          <div className="md:hidden mt-2 space-y-1">
+                            <div className="flex items-center justify-between">
+                              {getEstadoBadge(reserva.estado)}
+                            </div>
+                            <div className="flex items-center space-x-1">
+                              <Calendar className="h-3 w-3 text-muted-foreground" />
+                              <span className="text-xs text-muted-foreground">
+                                {formatDate(reserva.fechaInicio)}
+                              </span>
+                              {reserva.fechaInicio && reserva.fechaFin && (
+                                <span className="text-xs text-muted-foreground">
+                                  {formatTime(reserva.fechaInicio)} -{" "}
+                                  {formatTime(reserva.fechaFin)}
+                                </span>
+                              )}
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </TableCell>
+
                     <TableCell>
                       <div className="flex items-center space-x-2">
                         <Avatar className="h-8 w-8">
-                          <AvatarFallback className="bg-blue-100 text-blue-600 text-xs">
+                          <AvatarFallback className="bg-green-100 text-green-600 text-xs">
                             {reserva.propietario.nombre.charAt(0).toUpperCase()}
                           </AvatarFallback>
                         </Avatar>
@@ -369,32 +410,54 @@ const UserReservas: React.FC<UserReservasProps> = ({ userId }) => {
                           <p className="text-sm font-medium truncate">
                             {reserva.propietario.nombre}
                           </p>
-                          <p className="text-xs text-muted-foreground truncate">
-                            {reserva.propietario.email}
-                          </p>
+                          {reserva.propietario.email && (
+                            <p className="text-xs text-muted-foreground truncate">
+                              {reserva.propietario.email}
+                            </p>
+                          )}
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell>
-                      <span className="text-sm">
-                        {formatDate(reserva.fechaConfirmacion)}
-                      </span>
+
+                    <TableCell className="hidden md:table-cell">
+                      <div className="text-sm space-y-1">
+                        <div className="flex items-center space-x-1">
+                          <Calendar className="h-3 w-3 text-muted-foreground" />
+                          <span className="font-medium">
+                            {formatDate(reserva.fechaInicio)}
+                          </span>
+                        </div>
+                        {reserva.fechaInicio && reserva.fechaFin && (
+                          <div className="flex items-center space-x-1">
+                            <Clock className="h-3 w-3 text-muted-foreground" />
+                            <span className="text-xs text-muted-foreground">
+                              {formatTime(reserva.fechaInicio)} -{" "}
+                              {formatTime(reserva.fechaFin)}
+                            </span>
+                          </div>
+                        )}
+                      </div>
                     </TableCell>
-                    <TableCell>{getEstadoBadge(reserva.estado)}</TableCell>
-                    <TableCell>
+
+                    <TableCell className="hidden md:table-cell">
+                      {getEstadoBadge(reserva.estado)}
+                    </TableCell>
+
+                    <TableCell className="hidden md:table-cell">
                       <span className="font-medium">
                         {reserva.moneda}
-                        {reserva.precio}
+                        {reserva.precio.toFixed(2)}
                       </span>
                     </TableCell>
-                    <TableCell>
+
+                    <TableCell className="hidden md:table-cell">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button
                             variant="ghost"
                             size="sm"
                             className="h-8 w-8 p-0"
-                            disabled={deletingId === reserva.id} // ✅ Deshabilitar durante eliminación
+                            disabled={deletingId === reserva.id}
                           >
                             {deletingId === reserva.id ? (
                               <div className="h-4 w-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
@@ -405,19 +468,7 @@ const UserReservas: React.FC<UserReservasProps> = ({ userId }) => {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem
-                            onClick={() => handleEditReserva(reserva.id)}
-                            disabled={deletingId === reserva.id}
-                          >
-                            <Edit className="h-4 w-4 mr-2" />
-                            Editar reserva
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() =>
-                              handleDeleteReserva(
-                                reserva.id,
-                                reserva.plaza.nombre
-                              )
-                            }
+                            onClick={() => handleDeleteReserva(reserva)}
                             className="text-red-600"
                             disabled={deletingId === reserva.id}
                           >
@@ -434,8 +485,14 @@ const UserReservas: React.FC<UserReservasProps> = ({ userId }) => {
               ) : (
                 <TableRow>
                   <TableCell
+                    colSpan={2}
+                    className="text-center py-8 text-muted-foreground md:hidden"
+                  >
+                    No hay reservas hechas
+                  </TableCell>
+                  <TableCell
                     colSpan={6}
-                    className="text-center py-8 text-muted-foreground"
+                    className="text-center py-8 text-muted-foreground hidden md:table-cell"
                   >
                     No hay reservas hechas
                   </TableCell>
