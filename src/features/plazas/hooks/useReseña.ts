@@ -110,6 +110,7 @@ export const usePlazaReviews = (): UsePlazaReviewsReturn => {
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Error actualizando reseña';
       setState(prev => ({ 
+        
         ...prev, 
         error: errorMessage, 
         loading: false 

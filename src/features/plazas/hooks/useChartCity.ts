@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useState, useCallback, useRef } from "react"
 import { getPlazasStatsByRangeServiceAlt } from "../services/range"
 import { CityChartDataPoint } from "../types/chart-city"
@@ -11,11 +12,10 @@ export const usePlazasCityStats = (rango: "dia" | "semana" | "mes") => {
 
   // Ref para cancelar peticiones pendientes
   const abortControllerRef = useRef<AbortController | null>(null)
+  const isMountedRef = useRef(true)
 
   // Función para procesar datos por ciudad
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const processCityData = useCallback(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (plazasDetalle: any[]): CityChartDataPoint[] => {
       if (!plazasDetalle || !Array.isArray(plazasDetalle)) {
         return []
@@ -60,8 +60,8 @@ export const usePlazasCityStats = (rango: "dia" | "semana" | "mes") => {
               typedGroup.city.slice(1),
           }
         })
-        .sort((a, b) => b.averagePrice - a.averagePrice) // Ordenar por precio promedio descendente
-        .slice(0, 10) // Top 10 ciudades
+        .sort((a, b) => b.averagePrice - a.averagePrice)
+        .slice(0, 10)
 
       return cityDataArray
     },
@@ -69,7 +69,9 @@ export const usePlazasCityStats = (rango: "dia" | "semana" | "mes") => {
   )
 
   // Función para hacer refetch manual
-  const refetch = useCallback(() => {
+  const refetch = useCallback(async () => {
+    if (!isMountedRef.current) return
+
     setError(null)
     setLoading(true)
 
@@ -81,80 +83,100 @@ export const usePlazasCityStats = (rango: "dia" | "semana" | "mes") => {
     // Crear nuevo AbortController
     abortControllerRef.current = new AbortController()
 
-    getPlazasStatsByRangeServiceAlt(rango, abortControllerRef.current.signal)
-      .then((res) => {
-        console.log(
-          `✅ Respuesta del backend para ciudades (${rango}):`,
-          res.data
-        )
+    try {
+      const res = await getPlazasStatsByRangeServiceAlt(
+        rango,
+        abortControllerRef.current.signal
+      )
 
-        if (res.data && typeof res.data === "object") {
-          const processedCityData = processCityData(res.data.plazasDetalle)
+      if (!isMountedRef.current) return
 
-          console.log(`📊 Datos de ciudades procesados:`, {
-            totalCities: processedCityData.length,
-            topCity: processedCityData[0]?.city,
-            topCityPrice: processedCityData[0]?.averagePrice,
-          })
+      console.log(
+        `✅ Respuesta del backend para ciudades (${rango}):`,
+        res.data
+      )
 
-          setData(res.data)
-          setCityData(processedCityData)
-          setError(null)
-        } else {
-          setError("Respuesta inválida del servidor")
-          setData(null)
-          setCityData([])
-        }
-      })
-      .catch((err) => {
-        // No mostrar error si la petición fue cancelada
-        if (err.name === "AbortError") {
-          console.log(`🚫 Petición de ciudades cancelada para rango: ${rango}`)
-          return
-        }
+      if (res.data && typeof res.data === "object") {
+        const processedCityData = processCityData(res.data.plazasDetalle)
 
-        console.error(`❌ Error en el hook de ciudades (${rango}):`, err)
+        console.log(`📊 Datos de ciudades procesados:`, {
+          totalCities: processedCityData.length,
+          topCity: processedCityData[0]?.city,
+          topCityPrice: processedCityData[0]?.averagePrice,
+        })
 
-        let errorMessage = "Error al obtener las estadísticas de ciudades"
-
-        if (err.response?.status === 401) {
-          errorMessage = "No autorizado - verifica tu sesión"
-        } else if (err.response?.status === 404) {
-          errorMessage = "Endpoint no encontrado"
-        } else if (err.response?.status === 500) {
-          errorMessage = "Error interno del servidor"
-        } else if (err.response?.data?.message) {
-          errorMessage = err.response.data.message
-        } else if (err.message) {
-          errorMessage = err.message
-        }
-
-        setError(errorMessage)
+        setData(res.data)
+        setCityData(processedCityData)
+        setError(null)
+      } else {
+        setError("Respuesta inválida del servidor")
         setData(null)
         setCityData([])
-      })
-      .finally(() => {
+      }
+    } catch (err: any) {
+      if (!isMountedRef.current) return
+
+      // ✨ MANEJO SILENCIOSO DE CANCELACIÓN AL INICIO
+      if (
+        err.name === "AbortError" ||
+        err.name === "CanceledError" ||
+        err.message === "canceled" ||
+        err.code === "ERR_CANCELED"
+      ) {
+        console.log(`🚫 Petición de ciudades cancelada para rango: ${rango}`)
+        return
+      }
+
+      console.error(`❌ Error en el hook de ciudades (${rango}):`, err)
+
+      let errorMessage = "Error al obtener las estadísticas de ciudades"
+
+      if (err.response?.status === 401) {
+        errorMessage = "No autorizado - verifica tu sesión"
+      } else if (err.response?.status === 404) {
+        errorMessage = "Endpoint no encontrado"
+      } else if (err.response?.status === 500) {
+        errorMessage = "Error interno del servidor"
+      } else if (err.response?.data?.message) {
+        errorMessage = err.response.data.message
+      } else if (err.message) {
+        errorMessage = err.message
+      }
+
+      setError(errorMessage)
+      setData(null)
+      setCityData([])
+    } finally {
+      if (isMountedRef.current) {
         setLoading(false)
-      })
+      }
+    }
   }, [rango, processCityData])
 
   useEffect(() => {
     refetch()
 
-    // Cleanup: cancelar petición al desmontar o cambiar rango
     return () => {
+      isMountedRef.current = false
       if (abortControllerRef.current) {
         abortControllerRef.current.abort()
       }
     }
   }, [refetch])
 
+  useEffect(() => {
+    isMountedRef.current = true
+    return () => {
+      isMountedRef.current = false
+    }
+  }, [])
+
   return {
     data,
     loading,
     error,
     refetch,
-    cityData, // Datos procesados para el gráfico
+    cityData,
 
     // Stats adicionales
     stats: data

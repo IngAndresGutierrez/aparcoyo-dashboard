@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client"
 
 import * as React from "react"
@@ -9,7 +10,14 @@ import {
   getPaginationRowModel,
   RowData,
 } from "@tanstack/react-table"
-import { MoreHorizontal, Loader2, RefreshCw } from "lucide-react"
+import {
+  MoreHorizontal,
+  Loader2,
+  RefreshCw,
+  Settings,
+  Trash2,
+} from "lucide-react" // ✨ AGREGADOS Settings y Trash2
+import { toast } from "sonner" // ✨ IMPORTAR SONNER
 
 import { Button } from "@/components/ui/button"
 import {
@@ -113,50 +121,80 @@ const UsersTableReports: React.FC<UsersTableReportsProps> = ({
     refresh(filtroFecha)
   }
 
-  // ✨ NUEVA FUNCIÓN para eliminar reporte
-  // ✨ FUNCIÓN CORREGIDA para eliminar reporte
-  // ✅ SOLUCIÓN 1: Conectar directamente al backend
-  // ✅ FUNCIÓN CON TOKEN DINÁMICO
+  // ✨ FUNCIÓN ACTUALIZADA CON SONNER
   const handleDeleteReporte = async (
     reporteId: string,
     descripcion: string
   ) => {
-    const confirmDelete = window.confirm(
-      `¿Estás seguro de que quieres eliminar este reporte?\n\n"${descripcion.substring(
+    // Validar que tengamos un ID válido
+    if (!reporteId) {
+      toast.error("Error", {
+        description: "ID de reporte no válido",
+      })
+      return
+    }
+
+    // ✨ CONFIRMACIÓN ELEGANTE CON SONNER
+    toast("¿Eliminar reporte?", {
+      description: `¿Estás seguro de que quieres eliminar este reporte?\n\n"${descripcion.substring(
         0,
-        100
+        80
       )}${
-        descripcion.length > 100 ? "..." : ""
-      }"\n\nEsta acción no se puede deshacer.`
-    )
+        descripcion.length > 80 ? "..." : ""
+      }"\n\nEsta acción no se puede deshacer.`,
+      action: {
+        label: "Eliminar",
+        onClick: async () => {
+          await executeDeleteReporte(reporteId, descripcion)
+        },
+      },
+      cancel: {
+        label: "Cancelar",
+        onClick: () => {
+          // No hacer nada, el toast se cierra automáticamente
+        },
+      },
+      duration: 10000, // 10 segundos para que el usuario tenga tiempo de leer
+    })
+  }
 
-    if (!confirmDelete) return
-
-    setDeletingReportId(reporteId)
-
+  // ✨ FUNCIÓN SEPARADA PARA EJECUTAR LA ELIMINACIÓN
+  const executeDeleteReporte = async (
+    reporteId: string,
+    descripcion: string
+  ) => {
     try {
-      console.log("🗑️ Eliminando reporte:", reporteId)
+      setDeletingReportId(reporteId) // Mostrar loading en este reporte específico
+
+      // ✨ TOAST DE LOADING
+      const loadingToast = toast.loading("Eliminando reporte...", {
+        description: `Eliminando "${descripcion.substring(0, 50)}${
+          descripcion.length > 50 ? "..." : ""
+        }"`,
+      })
+
+      console.log(`🗑️ Iniciando eliminación de reporte:`, {
+        reporteId,
+        descripcion,
+      })
 
       // 🔑 OBTENER TOKEN DINÁMICAMENTE
-      // Opción 1: Desde localStorage
       const token =
         localStorage.getItem("authToken") || localStorage.getItem("token")
 
-      // Opción 2: Desde cookies
-      // const token = document.cookie.split('; ').find(row => row.startsWith('token='))?.split('=')[1];
-
-      // Opción 3: Desde un contexto de autenticación
-      // const { token } = useAuth(); // Si tienes un hook de auth
-
       if (!token) {
-        alert("No estás autenticado. Por favor, inicia sesión nuevamente.")
-        // Redirigir al login si es necesario
-        // router.push('/login');
+        toast.dismiss(loadingToast)
+        toast.error("Sin autenticación", {
+          description:
+            "No estás autenticado. Por favor, inicia sesión nuevamente.",
+          duration: 5000,
+        })
         return
       }
 
       console.log("🔑 Usando token:", token.substring(0, 20) + "...")
 
+      // Llamar al servicio de eliminación
       const response = await fetch(
         `https://aparcoyo-back.onrender.com/apa/reportes/${reporteId}`,
         {
@@ -170,32 +208,61 @@ const UsersTableReports: React.FC<UsersTableReportsProps> = ({
 
       console.log("📡 DELETE Response status:", response.status)
 
+      // ✨ CERRAR LOADING TOAST
+      toast.dismiss(loadingToast)
+
       if (response.ok) {
         console.log("✅ Reporte eliminado exitosamente")
+
+        // ✨ TOAST DE ÉXITO
+        toast.success("Reporte eliminado", {
+          description: `El reporte ha sido eliminado exitosamente`,
+        })
+
+        // Recargar la lista de reportes
         refresh(filtroFecha)
-        alert("Reporte eliminado correctamente")
       } else if (response.status === 401) {
         // Token expirado o inválido
-        alert("Tu sesión ha expirado. Por favor, inicia sesión nuevamente.")
+        toast.error("Sin autorización", {
+          description:
+            "Tu sesión ha expirado. Por favor, inicia sesión nuevamente.",
+          duration: 5000,
+        })
         // Limpiar token inválido
         localStorage.removeItem("authToken")
         localStorage.removeItem("token")
-        // Redirigir al login
-        // router.push('/login');
+      } else if (response.status === 403) {
+        toast.error("Sin permisos", {
+          description: "No tienes permisos para eliminar este reporte.",
+          duration: 5000,
+        })
+      } else if (response.status === 404) {
+        toast.error("Reporte no encontrado", {
+          description: "El reporte no existe o ya fue eliminado.",
+          duration: 5000,
+        })
       } else {
         const errorData = await response.json()
         console.error("❌ Error eliminando reporte:", errorData)
-        alert(
-          `Error eliminando reporte: ${
-            errorData.message || response.statusText
-          }`
-        )
+
+        toast.error(`Error ${response.status}`, {
+          description:
+            errorData?.message ||
+            errorData?.msg ||
+            "Error desconocido del servidor",
+          duration: 5000,
+        })
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("❌ Error de red eliminando reporte:", error)
-      alert("Error de conexión eliminando el reporte")
+
+      toast.error("Error de conexión", {
+        description:
+          "No se pudo conectar con el servidor. Verifica tu conexión a internet.",
+        duration: 5000,
+      })
     } finally {
-      setDeletingReportId(null)
+      setDeletingReportId(null) // Quitar loading
     }
   }
 
@@ -290,20 +357,35 @@ const UsersTableReports: React.FC<UsersTableReportsProps> = ({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+              {/* ✨ ITEM RESOLVER REPORTE CON ICONO */}
               <DropdownMenuItem
                 onClick={() => handleOpenModal(row.original.id)}
                 disabled={isDeleting}
+                className="flex items-center gap-2"
               >
-                Resolver reporte
+                <Settings className="h-4 w-4 text-gray-600" />
+                <span className="text-gray-700">Resolver reporte</span>
               </DropdownMenuItem>
+
+              {/* ✨ ITEM ELIMINAR CON ICONO */}
               <DropdownMenuItem
-                className="text-red-600 focus:text-red-600"
+                className="flex items-center gap-2 text-red-600 focus:text-red-600"
                 onClick={() =>
                   handleDeleteReporte(row.original.id, row.original.descripcion)
                 }
                 disabled={isDeleting}
               >
-                {isDeleting ? "Eliminando..." : "Eliminar reporte"}
+                {isDeleting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>Eliminando...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="h-4 w-4" />
+                    <span>Eliminar reporte</span>
+                  </>
+                )}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
