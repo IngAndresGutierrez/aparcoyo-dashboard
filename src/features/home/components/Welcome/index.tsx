@@ -9,11 +9,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { toast } from "sonner" // Importar Sonner
+import { toast } from "sonner"
 
 import Image from "next/image"
 import React from "react"
 import { TimeFilter, useMetrics } from "../../hooks/useMetrics"
+import { useUser } from "@/features/login/hooks/useLoggoutUsers"
 
 // Opciones del selector con labels amigables
 const timeFilterOptions = [
@@ -40,17 +41,13 @@ const generateCSV = (data: any[]): string => {
     throw new Error("No hay datos para exportar")
   }
 
-  // Obtener headers de las claves del primer objeto
   const headers = Object.keys(data[0])
-
-  // Crear filas CSV
   const csvRows = [
-    headers.join(","), // Header row
+    headers.join(","),
     ...data.map((row) =>
       headers
         .map((header) => {
           const value = row[header]
-          // Escapar valores que contienen comas o comillas
           if (
             typeof value === "string" &&
             (value.includes(",") || value.includes('"'))
@@ -80,13 +77,37 @@ const downloadFile = (
   document.body.appendChild(link)
   link.click()
 
-  // Cleanup
   document.body.removeChild(link)
   window.URL.revokeObjectURL(url)
 }
 
 const Welcome = () => {
   const { timeFilter, setTimeFilter, loading, metrics } = useMetrics()
+  const { user, loading: userLoading, error: userError } = useUser() // Usar el hook completo
+
+  // Obtener el nombre del usuario o mostrar un fallback apropiado
+  const getUserName = () => {
+    if (userLoading) return "Cargando..."
+    if (userError && !user) return "Usuario"
+    if (!user) return "Usuario"
+
+    // Extraer el primer nombre si es un nombre completo
+    const firstName = user.name.split(" ")[0]
+    return firstName
+  }
+
+  // Obtener un saludo apropiado basado en el estado del usuario
+  const getUserGreeting = () => {
+    const name = getUserName()
+    const hour = new Date().getHours()
+
+    let greeting = "Bienvenida"
+    if (hour < 12) greeting = "Buenos días"
+    else if (hour < 18) greeting = "Buenas tardes"
+    else greeting = "Buenas noches"
+
+    return `${greeting}, ${name}`
+  }
 
   // Obtener el label actual basado en el filtro seleccionado
   const getCurrentLabel = () => {
@@ -94,7 +115,7 @@ const Welcome = () => {
     return option?.label || "Últimos 30 días"
   }
 
-  // Función de descarga de reportes
+  // Función de descarga de reportes actualizada con datos del usuario
   const handleDownloadReport = () => {
     if (!metrics || loading) {
       toast.error("No hay datos", {
@@ -106,14 +127,18 @@ const Welcome = () => {
     }
 
     try {
-      // Mostrar loading mientras se genera el reporte
       const loadingToast = toast.loading("Generando reporte...", {
         description: "Preparando datos para descarga",
       })
 
-      // Crear un objeto con las métricas reales del hook
+      // Incluir información del usuario en el reporte
       const reportData = {
         Período: getCurrentLabel(),
+        "Generado por": user?.name || "Usuario no identificado",
+        "Email del administrador": user?.email || "No disponible",
+        "ID de usuario": user?.id || "No disponible",
+        Rol: user?.role || "No especificado",
+        "Estado del perfil": userError ? `Error: ${userError}` : "OK",
         "Fecha de generación": new Date().toLocaleDateString("es-ES", {
           year: "numeric",
           month: "long",
@@ -137,7 +162,6 @@ const Welcome = () => {
         "Estado total reservas": metrics.totalReservas.error
           ? `Error: ${metrics.totalReservas.error}`
           : "OK",
-        // Calcular algunos insights adicionales
         "Porcentaje de plazas ocupadas":
           metrics.plazas.value > 0
             ? `${(
@@ -151,36 +175,32 @@ const Welcome = () => {
             : "0",
       }
 
-      // Convertir a array para CSV
       const dataArray = Object.entries(reportData).map(([key, value]) => ({
         Métrica: key,
         Valor: value,
       }))
 
-      // Generar nombre de archivo con timestamp
       const timestamp = new Date()
         .toISOString()
         .slice(0, 19)
         .replace(/[:-]/g, "")
       const filename = `reporte_aparcoyo_${timeFilter}_${timestamp}.csv`
 
-      // Generar y descargar CSV
       const csvContent = generateCSV(dataArray)
       downloadFile(csvContent, filename, "text/csv")
 
-      // Cerrar loading toast
       toast.dismiss(loadingToast)
 
-      // Mostrar éxito
       toast.success("Reporte descargado", {
         description: `Se ha descargado "${filename}" con las métricas para ${getCurrentLabel().toLowerCase()}`,
         duration: 5000,
       })
 
-      // Log para debug
-      console.log("Reporte generado:", {
+      console.log("📊 Reporte generado:", {
         filename,
         period: timeFilter,
+        generatedBy: user?.name,
+        userStatus: userError ? "error" : "ok",
         data: reportData,
       })
     } catch (error) {
@@ -197,7 +217,14 @@ const Welcome = () => {
 
   return (
     <div className="-mt-14">
-      <h1 className="font-semibold text-2xl">Bienvenida, Kate</h1>
+      <h1 className="font-semibold text-2xl">
+        {getUserGreeting()}
+        {userError && !user && (
+          <span className="text-sm text-muted-foreground block mt-1">
+            (Problema cargando perfil)
+          </span>
+        )}
+      </h1>
 
       <div className="flex flex-row gap-3 mt-4">
         <Select
@@ -260,11 +287,12 @@ const Welcome = () => {
         </div>
       )}
 
-      {/* Mostrar preview de métricas disponibles (opcional) */}
+      {/* Mostrar preview de métricas disponibles */}
       {!loading && metrics && (
         <div className="mt-4 text-xs text-muted-foreground">
           Datos listos: {metrics.users.value} usuarios • {metrics.plazas.value}{" "}
           plazas • {metrics.totalReservas.value} reservas
+          {userError && " • Perfil: datos parciales"}
         </div>
       )}
     </div>
