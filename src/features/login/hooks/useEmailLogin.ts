@@ -1,32 +1,3 @@
-// /* eslint-disable @typescript-eslint/no-explicit-any */
-// import { useState } from "react"
-// import { useRouter } from "next/navigation"
-// import { emailLoginService } from "../services/login"
-
-// export const useEmailLogin = (email: string, password: string) => {
-//   const router = useRouter()
-//   const [isLoading, setIsLoading] = useState(false)
-//   const [error, setError] = useState(false)
-
-//   const onClickEmailButtonLogin = async () => {
-//     setError(false)
-
-//     try {
-//       setIsLoading(true)
-//       const response = await emailLoginService(email, password)
-//       console.log(response)
-//       router.push("/home")
-//     } catch (error: any) {
-//       console.log(error?.response?.data?.ok)
-//       setError(true)
-//     } finally {
-//       setIsLoading(false)
-//     }
-//   }
-
-//   return { onClickEmailButtonLogin, isLoading, error }
-// }
-
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState } from "react"
 import { useRouter } from "next/navigation"
@@ -44,13 +15,7 @@ export const useEmailLogin = (email: string, password: string) => {
       setIsLoading(true)
       const response = await emailLoginService(email, password)
 
-      // 🔍 DEBUGGING: Ver qué devuelve el backend
-      console.log("=== RESPUESTA DEL LOGIN ===")
-      console.log("Respuesta completa:", response.data)
-      console.log("¿Hay token?:", response.data.token ? "SÍ" : "NO")
-      console.log("¿Hay accessToken?:", response.data.accessToken ? "SÍ" : "NO")
-      console.log("¿Hay data.token?:", response.data.data?.token ? "SÍ" : "NO")
-      console.log("============================")
+      
 
       // 💾 GUARDAR EL TOKEN - Ajusta según la estructura de tu respuesta
       const token =
