@@ -308,7 +308,7 @@ const UserReservas: React.FC<UserReservasProps> = ({ userId }) => {
   }
 
   return (
-    <Card>
+    <Card className="w-330">
       <CardHeader className="flex flex-row items-center justify-between pb-4">
         <h2 className="text-xl font-semibold">
           {reservas.length} Reservas hechas

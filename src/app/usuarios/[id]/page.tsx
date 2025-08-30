@@ -16,12 +16,14 @@ const page = async ({ params }: UserPageProps) => {
 
   return (
     <AppSidebarDashboard>
-      <div className="p-6 max-w-6xl mx-auto space-y-6">
+      <div className="p-6 max-w-6xl mx-auto space-y-6 ml-10">
         {/* Header del usuario - queda arriba solo */}
-        <UserHeader userId={id} />
+        <div className=" -mt-16">
+          <UserHeader userId={id} />
+        </div>
 
         {/* Grid principal: columna izquierda (detalles) y columna derecha (plazas) */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 ">
           {/* Columna izquierda: Detalles, Vehículos, Créditos */}
           <div className="lg:col-span-2 space-y-6">
             {/* Detalles del usuario */}
@@ -42,7 +44,7 @@ const page = async ({ params }: UserPageProps) => {
       </div>
 
       {/* Tabla de reservas - abajo de todo, separada */}
-      <div className="p-6 max-w-6xl mx-auto">
+      <div className="p-6 max-w-6xl mx-auto ml-10">
         <UserReservas userId={id} />
       </div>
     </AppSidebarDashboard>

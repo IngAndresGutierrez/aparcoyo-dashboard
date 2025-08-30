@@ -179,12 +179,12 @@ const UserPlazas: React.FC<UserPlazasProps> = ({ userId }) => {
 
   if (loading) {
     return (
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between pb-4">
+      <Card className="">
+        <CardHeader className="flex flex-row items-center justify-between pb-4 ">
           <Skeleton className="h-6 w-40" />
           <Skeleton className="h-8 w-16" />
         </CardHeader>
-        <CardContent>
+        <CardContent className="">
           <div className="space-y-4">
             {[1, 2, 3].map((index) => (
               <div
@@ -213,7 +213,7 @@ const UserPlazas: React.FC<UserPlazasProps> = ({ userId }) => {
   if (error) {
     return (
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between pb-4">
+        <CardHeader className="flex flex-row items-center justify-between pb-4 ">
           <h2 className="text-xl font-semibold">Plazas publicadas</h2>
           <Button
             variant="outline"
@@ -237,14 +237,14 @@ const UserPlazas: React.FC<UserPlazasProps> = ({ userId }) => {
   }
 
   return (
-    <Card>
+    <Card className="w-140">
       <CardHeader className="flex flex-row items-center justify-between pb-4">
         <h2 className="text-xl font-semibold">
           {plazas.length} Plazas publicadas
         </h2>
       </CardHeader>
 
-      <CardContent>
+      <CardContent className="">
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
