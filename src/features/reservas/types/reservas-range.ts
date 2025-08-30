@@ -1,6 +1,7 @@
 // types/reservas-range.ts
 
 export interface ReservaDetalle {
+  ubicacion: string
   id: string
   plaza: string
   precio: number
@@ -13,11 +14,19 @@ export interface ReservaDetalle {
 }
 
 export interface PlazaMasReservada {
+  count: number
+  cantidad: number
+  plaza: string
+  name: any
   nombre: string
   totalReservas: number
 }
 
 export interface ReservasPorCiudad {
+  cantidad: number
+  count: any
+  ubicacion: string
+  name: string
   ciudad: string
   totalReservas: number
 }

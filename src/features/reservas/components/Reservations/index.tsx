@@ -24,7 +24,7 @@ export const description =
   "Gráfico de barras horizontales para plazas más reservadas"
 
 const chartConfig = {
-  cantidad: {
+  reservas: {
     label: "Reservas",
     color: "var(--chart-1)",
   },
@@ -51,12 +51,23 @@ const ReservationsChart = ({ rango = "mes" }: ReservationsChartProps) => {
   const { plazasData, loading, error, refetch, stats } =
     useReservasPlazasStats(rango)
 
-  // Transformar datos para el gráfico
-  const chartData = plazasData.map((plaza) => ({
-    month: plaza.displayName,
-    desktop: plaza.cantidad,
-    fullName: plaza.plaza,
-  }))
+  console.log("🏛️ Debug datos del hook de plazas:", {
+    plazasData,
+    loading,
+    error,
+    stats,
+  })
+
+  // Transformar datos para el gráfico - NOMBRES MÁS CLAROS
+  const chartData =
+    plazasData?.map((plaza, index) => ({
+      plaza: plaza.displayName || plaza.plaza,
+      reservas: Number(plaza.cantidad) || 0,
+      plazaCompleta: plaza.plaza,
+      index,
+    })) || []
+
+  console.log("📊 Datos transformados para el gráfico de plazas:", chartData)
 
   // Estado de carga
   if (loading) {
@@ -108,8 +119,12 @@ const ReservationsChart = ({ rango = "mes" }: ReservationsChartProps) => {
     )
   }
 
-  // Sin datos
-  if (!chartData.length) {
+  // Sin datos - VERIFICACIÓN MEJORADA
+  if (!Array.isArray(plazasData) || plazasData.length === 0) {
+    console.log("⚠️ No hay datos de plazas para mostrar:", {
+      plazasData,
+      isArray: Array.isArray(plazasData),
+    })
     return (
       <Card>
         <CardHeader>
@@ -146,8 +161,9 @@ const ReservationsChart = ({ rango = "mes" }: ReservationsChartProps) => {
       <CardHeader>
         <CardTitle>Plazas más reservadas</CardTitle>
         <CardDescription>
-          {stats?.totalPlazas} plaza{stats?.totalPlazas !== 1 ? "s" : ""} •
-          Rango: {rangeLabels[rango]}
+          {stats?.totalPlazas || chartData.length} plaza
+          {(stats?.totalPlazas || chartData.length) !== 1 ? "s" : ""} • Rango:{" "}
+          {rangeLabels[rango]}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -157,34 +173,46 @@ const ReservationsChart = ({ rango = "mes" }: ReservationsChartProps) => {
             data={chartData}
             layout="vertical"
             margin={{
-              left: -20,
+              left: 10,
+              right: 10,
+              top: 5,
+              bottom: 5,
             }}
+            height={Math.max(200, chartData.length * 50)} // Altura dinámica
           >
             <XAxis
               type="number"
-              dataKey="desktop"
+              dataKey="reservas"
               hide
+              domain={[0, "dataMax"]}
             />
             <YAxis
-              dataKey="month"
+              dataKey="plaza"
               type="category"
               tickLine={false}
               tickMargin={10}
               axisLine={false}
-              tickFormatter={(value) =>
-                value.length > 12 ? value.slice(0, 12) + "..." : value
-              }
+              width={100}
+              tickFormatter={(value) => {
+                if (typeof value === "string") {
+                  return value.length > 12 ? value.slice(0, 12) + "..." : value
+                }
+                return String(value)
+              }}
             />
             <ChartTooltip
-              cursor={false}
+              cursor={{ fill: "rgba(0, 0, 0, 0.1)" }}
               content={({ payload, label }) => {
-                if (payload && payload.length) {
+                if (payload && payload.length > 0) {
                   const data = payload[0].payload
                   return (
                     <div className="bg-background border border-border rounded-lg shadow-lg p-3">
-                      <p className="font-medium">{data.fullName}</p>
+                      <p className="font-medium">
+                        {data.plazaCompleta || data.plaza}
+                      </p>
                       <p className="text-sm text-muted-foreground">
-                        Total reservas: {data.desktop}
+                        Total reservas:{" "}
+                        <span className="font-semibold">{data.reservas}</span>
                       </p>
                     </div>
                   )
@@ -193,8 +221,9 @@ const ReservationsChart = ({ rango = "mes" }: ReservationsChartProps) => {
               }}
             />
             <Bar
-              dataKey="desktop"
-              radius={5}
+              dataKey="reservas"
+              radius={[0, 4, 4, 0]}
+              minPointSize={2} // Asegura que las barras pequeñas sean visibles
             >
               {chartData.map((entry, index) => (
                 <Cell
@@ -207,12 +236,21 @@ const ReservationsChart = ({ rango = "mes" }: ReservationsChartProps) => {
         </ChartContainer>
       </CardContent>
       <CardFooter className="flex-col items-start gap-2 text-sm">
-        <div className="flex gap-2 leading-none font-medium">
-          Plaza líder: {stats?.topPlaza} <TrendingUp className="h-4 w-4" />
-        </div>
+        {stats?.topPlaza && (
+          <div className="flex gap-2 leading-none font-medium">
+            Plaza líder: {stats.topPlaza} <TrendingUp className="h-4 w-4" />
+          </div>
+        )}
         <div className="text-muted-foreground leading-none">
-          Total reservas: {stats?.totalReservas} • Promedio por plaza:{" "}
-          {stats?.averageCantidad}
+          Total reservas:{" "}
+          {stats?.totalReservas ||
+            chartData.reduce((sum, item) => sum + item.reservas, 0)}{" "}
+          • Promedio por plaza:{" "}
+          {stats?.averageCantidad ||
+            Math.round(
+              chartData.reduce((sum, item) => sum + item.reservas, 0) /
+                chartData.length
+            )}
         </div>
       </CardFooter>
     </Card>
