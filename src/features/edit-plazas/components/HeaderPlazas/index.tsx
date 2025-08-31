@@ -92,26 +92,87 @@ function PlazaHeader({
       action: {
         label: "Eliminar",
         onClick: async () => {
-          // Ejecutar la eliminación usando toast.promise
-          toast.promise(deletePlazaService(plaza.id), {
-            loading: "Eliminando plaza...",
-            success: () => {
-              // Éxito - ejecutar callback si existe
+          // Mostrar toast de loading inmediatamente
+          const loadingToastId = toast.loading("Eliminando plaza...")
+
+          try {
+            // Llamar al servicio mejorado
+            const result = await deletePlazaService(plaza.id)
+
+            // Dismiss el toast de loading
+            toast.dismiss(loadingToastId)
+
+            if (result.success) {
+              // Éxito
+              toast.success(`Plaza "${plaza.nombre}" eliminada exitosamente`, {
+                description: "La plaza ha sido eliminada correctamente",
+              })
+
+              // Ejecutar callback si existe
               if (onEliminar) {
                 onEliminar(plaza.id)
               } else {
                 // Comportamiento por defecto: regresar a la página anterior
                 setTimeout(() => window.history.back(), 1000)
               }
-              return `Plaza "${plaza.nombre}" eliminada exitosamente`
-            },
-            error: (error) => {
-              console.error("Error eliminando plaza:", error)
-              return `Error al eliminar: ${
-                error.message || "Error desconocido"
-              }`
-            },
-          })
+            } else {
+              // Manejar diferentes tipos de errores SIN LANZAR EXCEPCIONES
+              let errorDescription = ""
+
+              if (result.error === "HAS_ACTIVE_RESERVATIONS") {
+                // Error específico: plaza con reservas activas
+                errorDescription =
+                  "Cancela las reservas activas primero o contacta soporte para más ayuda."
+                toast.warning("Plaza con reservas activas", {
+                  description: errorDescription,
+                })
+              } else if (result.error === "UNAUTHORIZED") {
+                // Token expirado
+                toast.error("Sesión expirada", {
+                  description:
+                    "Tu sesión ha expirado. Redirigiendo al login...",
+                })
+                // Redirigir al login después del toast
+                setTimeout(() => {
+                  window.location.href = "/login"
+                }, 2000)
+              } else if (result.error === "FORBIDDEN") {
+                // Sin permisos
+                toast.error("Sin permisos", {
+                  description:
+                    "No tienes permisos suficientes para eliminar esta plaza.",
+                })
+              } else if (result.error === "NOT_FOUND") {
+                // Plaza no existe
+                toast.error("Plaza no encontrada", {
+                  description: "La plaza que intentas eliminar no existe.",
+                })
+              } else if (result.error === "CONNECTION_ERROR") {
+                // Error de conexión
+                toast.error("Error de conexión", {
+                  description:
+                    "Verifica tu conexión a internet e intenta nuevamente.",
+                })
+              } else {
+                // Error genérico
+                toast.error("Error al eliminar", {
+                  description:
+                    result.message || "Error inesperado al eliminar la plaza.",
+                })
+              }
+            }
+          } catch (unexpectedError) {
+            // Este catch solo se ejecutará en casos muy excepcionales
+            // porque nuestro servicio nunca lanza errores
+            console.error(
+              "Error inesperado en handleEliminar:",
+              unexpectedError
+            )
+            toast.dismiss(loadingToastId)
+            toast.error("Error inesperado", {
+              description: "Ocurrió un error inesperado. Intenta nuevamente.",
+            })
+          }
         },
       },
       cancel: {

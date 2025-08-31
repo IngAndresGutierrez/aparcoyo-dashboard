@@ -231,7 +231,7 @@ const Welcome = () => {
           value={timeFilter}
           onValueChange={(value: TimeFilter) => setTimeFilter(value)}
         >
-          <SelectTrigger className="w-48 h-9 rounded-full border border-border [&>svg]:hidden">
+          <SelectTrigger className="w-48 h-9 rounded-full border border-border">
             <div className="flex items-center gap-2">
               <Image
                 src="/home/calendar.svg"

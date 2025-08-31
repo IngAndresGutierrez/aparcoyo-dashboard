@@ -16,17 +16,34 @@ interface PlazaByIdResponse {
   status: number
 }
 
-// En services/header-service.ts - agregar esta función
+// Interfaz para el resultado de eliminación
+interface DeletePlazaResponse {
+  success: boolean
+  message: string
+  canDelete: boolean
+  error?: string
+}
 
-export const deletePlazaService = async (plazaId: string) => {
+export const deletePlazaService = async (
+  plazaId: string
+): Promise<DeletePlazaResponse> => {
+  console.log("🗑️ Iniciando eliminación de plaza:", plazaId)
+
   const token =
     localStorage.getItem("authToken") || localStorage.getItem("token")
 
   if (!token) {
-    throw new Error("Token de autenticación no encontrado")
+    console.log("❌ Token no encontrado")
+    return {
+      success: false,
+      message: "Token de autenticación no encontrado",
+      canDelete: false,
+      error: "NO_TOKEN",
+    }
   }
 
   const url = `${BASE_URL}/apa/plazas/${plazaId}`
+  console.log("🌐 URL de eliminación:", url)
 
   try {
     const response = await fetch(url, {
@@ -37,16 +54,139 @@ export const deletePlazaService = async (plazaId: string) => {
       },
     })
 
+    console.log("📡 Response status:", response.status, response.ok)
+
     if (!response.ok) {
-      const errorData = await response.text()
-      throw new Error(`Error ${response.status}: ${errorData}`)
+      const errorText = await response.text()
+      console.log("📄 Error text completo:", errorText)
+
+      // Intentar parsear el error como JSON
+      let errorData: any = null
+      try {
+        errorData = JSON.parse(errorText)
+        console.log("🔍 Error parseado:", errorData)
+      } catch {
+        errorData = { message: errorText }
+        console.log("⚠️ Error no es JSON válido, usando texto directo")
+      }
+
+      // Log detallado del error
+      console.log("❌ Error eliminando plaza:", {
+        status: response.status,
+        errorData,
+        plazaId,
+        url,
+      })
+
+      // Manejar diferentes tipos de errores
+      switch (response.status) {
+        case 400:
+          // Error específico: plaza con reservas activas
+          if (errorData.message?.includes("reservas activas")) {
+            console.log("🚫 Plaza tiene reservas activas")
+            return {
+              success: false,
+              message:
+                "No se puede eliminar la plaza porque tiene reservas activas",
+              canDelete: false,
+              error: "HAS_ACTIVE_RESERVATIONS",
+            }
+          }
+          // Otros errores 400
+          console.log("⚠️ Error 400 genérico")
+          return {
+            success: false,
+            message: errorData.message || "Solicitud inválida",
+            canDelete: false,
+            error: "BAD_REQUEST",
+          }
+
+        case 401:
+          console.log("🔐 Error de autenticación")
+          return {
+            success: false,
+            message: "No autorizado - verifica tu sesión",
+            canDelete: false,
+            error: "UNAUTHORIZED",
+          }
+
+        case 403:
+          console.log("🚫 Sin permisos")
+          return {
+            success: false,
+            message: "No tienes permisos para eliminar esta plaza",
+            canDelete: false,
+            error: "FORBIDDEN",
+          }
+
+        case 404:
+          console.log("🔍 Plaza no encontrada")
+          return {
+            success: false,
+            message: "Plaza no encontrada",
+            canDelete: false,
+            error: "NOT_FOUND",
+          }
+
+        case 500:
+          console.log("🔥 Error del servidor")
+          return {
+            success: false,
+            message: "Error interno del servidor. Intenta más tarde",
+            canDelete: false,
+            error: "SERVER_ERROR",
+          }
+
+        default:
+          console.log("❓ Error desconocido:", response.status)
+          return {
+            success: false,
+            message: `Error inesperado: ${errorData.message || errorText}`,
+            canDelete: false,
+            error: "UNKNOWN_ERROR",
+          }
+      }
     }
 
-    const result = await response.json()
-    return result
+    // Si llegamos aquí, la eliminación fue exitosa
+    console.log("✅ Plaza eliminada exitosamente")
+
+    // Intentar parsear la respuesta (opcional)
+    try {
+      const result = await response.json()
+      console.log("📄 Respuesta del servidor:", result)
+    } catch {
+      // Si no hay JSON válido en la respuesta, no importa
+      console.log("ℹ️ Respuesta sin JSON válido (normal para DELETE)")
+    }
+
+    return {
+      success: true,
+      message: "Plaza eliminada exitosamente",
+      canDelete: true,
+    }
   } catch (error: any) {
-    console.error("Error eliminando plaza:", error)
-    throw error
+    console.error("💥 Error inesperado en deletePlazaService:", error)
+
+    // Manejar errores de conexión
+    if (error.name === "TypeError" && error.message.includes("fetch")) {
+      console.log("🌐 Error de conexión")
+      return {
+        success: false,
+        message: "Error de conexión. Verifica tu internet",
+        canDelete: false,
+        error: "CONNECTION_ERROR",
+      }
+    }
+
+    // Error genérico - NUNCA lanzar errores, siempre devolver objeto
+    console.log("❓ Error genérico capturado")
+    return {
+      success: false,
+      message: "Error inesperado al eliminar la plaza",
+      canDelete: false,
+      error: "UNEXPECTED_ERROR",
+    }
   }
 }
 
