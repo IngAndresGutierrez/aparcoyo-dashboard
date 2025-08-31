@@ -382,18 +382,7 @@ function PlazaDetails({
               </div>
 
               {/* Debug info mejorado */}
-              <div className="mt-4 p-3 bg-gray-50 rounded-md text-xs text-gray-600">
-                <strong>Debug:</strong>
-                <br />• Plaza ID: {plaza.id}
-                <br />• Precio: {formatearPrecio(plaza.precio)}
-                <br />• Modal: {modalAbierto ? "Abierto" : "Cerrado"}
-                <br />• Backend data: {plazaDataBackend ? "✅" : "❌"}
-                <br />•{" "}
-                <strong>
-                  Propietario mostrado: {plaza.propietario.nombre}
-                </strong>
-                <br />• Propietario UID: {plaza.propietario.id}
-              </div>
+             
             </>
           )}
         </CardContent>

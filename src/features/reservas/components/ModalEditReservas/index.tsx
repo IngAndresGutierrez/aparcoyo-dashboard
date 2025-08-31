@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-// ✅ SOLUCIÓN PERFECTA - Modal con plazas reales del backend
+// Modal con plazas reales del backend y Sonner
 
 import React, { useState, useEffect } from "react"
 import {
@@ -17,6 +17,7 @@ import {
   SelectTrigger,
 } from "@/components/ui/select"
 import { Edit3, User, MapPin, Loader2 } from "lucide-react"
+import { toast } from "sonner"
 import { ReservaTable } from "../../types"
 
 interface Plaza {
@@ -44,7 +45,6 @@ const EditReservationModal: React.FC<EditReservationModalProps> = ({
   const [plazasDisponibles, setPlazasDisponibles] = useState<Plaza[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [isLoadingPlazas, setIsLoadingPlazas] = useState(false)
-  const [error, setError] = useState<string | null>(null)
 
   // Cargar plazas disponibles cuando se abre el modal
   useEffect(() => {
@@ -58,7 +58,6 @@ const EditReservationModal: React.FC<EditReservationModalProps> = ({
     if (isOpen && reservationData) {
       const plaza = reservationData.plaza as any
       setSelectedPlazaId(plaza?.id || "")
-      setError(null)
     }
   }, [isOpen, reservationData])
 
@@ -81,10 +80,12 @@ const EditReservationModal: React.FC<EditReservationModalProps> = ({
       } else {
         console.error("Error cargando plazas")
         setPlazasDisponibles([])
+        toast.error("Error cargando las plazas disponibles")
       }
     } catch (error) {
       console.error("Error cargando plazas:", error)
       setPlazasDisponibles([])
+      toast.error("Error de conexión al cargar plazas")
     } finally {
       setIsLoadingPlazas(false)
     }
@@ -93,79 +94,91 @@ const EditReservationModal: React.FC<EditReservationModalProps> = ({
   const updateReservation = async () => {
     if (!reservationData?.id) return
 
+    const usuario = reservationData.usuario as any
+    const userName = usuario?.nombre || "Usuario"
+
     setIsLoading(true)
-    setError(null)
 
+    // Usar toast.promise para manejar todo el proceso
     try {
-      const token =
-        localStorage.getItem("authToken") || localStorage.getItem("token")
+      await toast.promise(
+        async () => {
+          const token =
+            localStorage.getItem("authToken") || localStorage.getItem("token")
 
-      if (!token) {
-        throw new Error(
-          "No estás autenticado. Por favor, inicia sesión nuevamente."
-        )
-      }
+          if (!token) {
+            throw new Error(
+              "No estás autenticado. Por favor, inicia sesión nuevamente."
+            )
+          }
 
-      // ✅ SOLO ENVIAR LOS CAMPOS QUE EL BACKEND ACEPTA
-      const updateData: any = {}
+          // Preparar datos de actualización
+          const updateData: any = {}
 
-      // Solo agregar plaza si realmente cambió
-      const plazaActual = (reservationData.plaza as any)?.id
-      if (selectedPlazaId && selectedPlazaId !== plazaActual) {
-        updateData.plaza = selectedPlazaId
-        console.log("🔄 Cambiando plaza de", plazaActual, "a", selectedPlazaId)
-      } else {
-        // Si no cambió, mantener la plaza actual
-        updateData.plaza = plazaActual
-      }
+          // Solo agregar plaza si realmente cambió
+          const plazaActual = (reservationData.plaza as any)?.id
+          if (selectedPlazaId && selectedPlazaId !== plazaActual) {
+            updateData.plaza = selectedPlazaId
+            console.log(
+              "🔄 Cambiando plaza de",
+              plazaActual,
+              "a",
+              selectedPlazaId
+            )
+          } else {
+            // Si no cambió, mantener la plaza actual
+            updateData.plaza = plazaActual
+          }
 
-      console.log("🔍 Datos que vamos a enviar:", updateData)
+          console.log("🔍 Datos que vamos a enviar:", updateData)
 
-      const response = await fetch(
-        `https://aparcoyo-back.onrender.com/apa/reservas/${reservationData.id}`,
+          const response = await fetch(
+            `https://aparcoyo-back.onrender.com/apa/reservas/${reservationData.id}`,
+            {
+              method: "PATCH",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify(updateData),
+            }
+          )
+
+          console.log("📡 PATCH Response status:", response.status)
+
+          if (!response.ok) {
+            const errorData = await response.json()
+            console.error("❌ Error del servidor:", errorData)
+
+            if (response.status === 401) {
+              localStorage.removeItem("authToken")
+              localStorage.removeItem("token")
+              throw new Error(
+                "Tu sesión ha expirado. Por favor, inicia sesión nuevamente."
+              )
+            }
+            throw new Error(
+              `Error ${response.status}: ${
+                errorData.message || response.statusText
+              }`
+            )
+          }
+
+          const result = await response.json()
+          console.log("✅ Reserva actualizada exitosamente:", result)
+
+          // Llamar callback y cerrar modal
+          onUpdate?.(result.data)
+          onClose()
+
+          return `Reserva de ${userName} actualizada correctamente`
+        },
         {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify(updateData),
+          loading: `Actualizando reserva de ${userName}...`,
+          success: (message) => message,
+          error: (error) => `Error: ${error.message}`,
         }
       )
-
-      console.log("📡 PATCH Response status:", response.status)
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        console.error("❌ Error del servidor:", errorData)
-
-        if (response.status === 401) {
-          localStorage.removeItem("authToken")
-          localStorage.removeItem("token")
-          throw new Error(
-            "Tu sesión ha expirado. Por favor, inicia sesión nuevamente."
-          )
-        }
-        throw new Error(
-          `Error ${response.status}: ${
-            errorData.message || response.statusText
-          }`
-        )
-      }
-
-      const result = await response.json()
-      console.log("✅ Reserva actualizada exitosamente:", result)
-
-      onUpdate?.(result.data)
-      onClose()
-
-      // Mostrar mensaje de éxito
-      alert("Reserva actualizada correctamente")
-    } catch (err) {
-      const errorMessage =
-        err instanceof Error ? err.message : "Error desconocido"
-      setError(errorMessage)
-      console.error("❌ Error actualizando reserva:", err)
     } finally {
       setIsLoading(false)
     }
@@ -197,13 +210,6 @@ const EditReservationModal: React.FC<EditReservationModalProps> = ({
           <div className="text-sm font-medium text-gray-900 mb-4">
             Detalles de la reserva
           </div>
-
-          {/* Error message */}
-          {error && (
-            <div className="p-3 bg-red-50 border border-red-200 rounded-md">
-              <p className="text-sm text-red-600">{error}</p>
-            </div>
-          )}
 
           {/* Plaza reservada */}
           <div className="space-y-2">

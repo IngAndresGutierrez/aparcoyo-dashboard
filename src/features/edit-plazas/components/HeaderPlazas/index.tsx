@@ -2,46 +2,131 @@
 "use client"
 
 import Image from "next/image"
-import { Building2, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
-// Tipo para los datos de la plaza
+import { Building2, Loader2, Trash2 } from "lucide-react"
+import { usePlazaById } from "../../hooks/useHeader"
+import { deletePlazaService } from "../../services/header-service"
+import { toast } from "sonner" // Importar toast de Sonner
+
+// Tipo para los datos de la plaza (manteniendo compatibilidad)
 interface PlazaData {
   id: string
   nombre: string
-  tipo: "privada" | "publica" | "cubierta" | "descubierta" | "techada"
+  tipo:
+    | "privada"
+    | "publica"
+    | "inmediata"
+    | "cubierta"
+    | "descubierta"
+    | "techada"
   imagen?: string
+  precio?: number
+  ciudad?: string
+  ubicacion?: string
+  disponible?: boolean
+  descripcion?: string
+  reservas?: number
 }
 
 interface PlazaHeaderProps {
-  // Props para cuando se conecte al backend
-  plazaId?: string
+  plazaId: string
+  // Props opcionales para override
   plazaData?: PlazaData
   onEliminar?: (id: string) => void
+  showEliminar?: boolean
 }
 
-function PlazaHeader({ plazaId, plazaData, onEliminar }: PlazaHeaderProps) {
-  // Datos hardcodeados por ahora - se reemplazarán con props del backend
-  const plaza: PlazaData = plazaData || {
-    id: plazaId || "plaza-001",
-    nombre: "Q Park Mayfair Car Park",
-    tipo: "privada",
-    imagen: "/placeholder-parking.jpg", // Imagen placeholder
-  }
+function PlazaHeader({
+  plazaId,
+  plazaData,
+  onEliminar,
+  showEliminar = true,
+}: PlazaHeaderProps) {
+  // Hook para obtener la plaza específica por ID
+  const {
+    data: plazaFromBackend,
+    loading,
+    error,
+    getPlazaForHeader,
+  } = usePlazaById({
+    plazaId,
+    autoFetch: true,
+  })
+
+  // Obtener la plaza adaptada para el header
+  const plazaForHeader = getPlazaForHeader()
+
+  // Determinar qué datos usar
+  const plaza: PlazaData =
+    plazaData ||
+    (plazaForHeader
+      ? {
+          id: plazaForHeader.id,
+          nombre: plazaForHeader.nombre,
+          tipo: plazaForHeader.tipo,
+          imagen: plazaForHeader.imagen,
+          precio: plazaForHeader.precio,
+          ciudad: plazaForHeader.ciudad,
+          ubicacion: plazaForHeader.ubicacion,
+          disponible: plazaForHeader.disponible,
+          descripcion: plazaFromBackend?.descripcion,
+          reservas: plazaFromBackend?.reservas?.length || 0,
+        }
+      : {
+          id: plazaId,
+          nombre: loading
+            ? "Cargando plaza..."
+            : error
+            ? "Error al cargar plaza"
+            : "Plaza no encontrada",
+          tipo: "privada",
+          imagen: undefined,
+        })
 
   // Función para manejar la eliminación
   const handleEliminar = () => {
-    if (onEliminar) {
-      onEliminar(plaza.id)
-    }
-    console.log("Eliminar plaza:", plaza.nombre)
+    // Toast de confirmación con Sonner
+    toast(`¿Eliminar "${plaza.nombre}"?`, {
+      description: "Esta acción no se puede deshacer.",
+      action: {
+        label: "Eliminar",
+        onClick: async () => {
+          // Ejecutar la eliminación usando toast.promise
+          toast.promise(deletePlazaService(plaza.id), {
+            loading: "Eliminando plaza...",
+            success: () => {
+              // Éxito - ejecutar callback si existe
+              if (onEliminar) {
+                onEliminar(plaza.id)
+              } else {
+                // Comportamiento por defecto: regresar a la página anterior
+                setTimeout(() => window.history.back(), 1000)
+              }
+              return `Plaza "${plaza.nombre}" eliminada exitosamente`
+            },
+            error: (error) => {
+              console.error("Error eliminando plaza:", error)
+              return `Error al eliminar: ${
+                error.message || "Error desconocido"
+              }`
+            },
+          })
+        },
+      },
+      cancel: {
+        label: "Cancelar",
+        onClick: () => {},
+      },
+    })
   }
 
-  // Función para formatear el tipo para mostrar
+  // Función para formatear el tipo
   const formatTipo = (tipo: string) => {
     const tipos = {
       privada: "Plaza Privada",
       publica: "Plaza Pública",
+      inmediata: "Plaza Inmediata",
       cubierta: "Plaza Cubierta",
       descubierta: "Plaza Descubierta",
       techada: "Plaza Techada",
@@ -57,7 +142,9 @@ function PlazaHeader({ plazaId, plazaData, onEliminar }: PlazaHeaderProps) {
           <div className="flex items-center gap-4">
             {/* Imagen de la plaza */}
             <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden flex-shrink-0">
-              {plaza.imagen ? (
+              {loading ? (
+                <Loader2 className="w-6 h-6 text-gray-400 animate-spin" />
+              ) : plaza.imagen ? (
                 <Image
                   src={plaza.imagen}
                   alt={plaza.nombre}
@@ -65,13 +152,11 @@ function PlazaHeader({ plazaId, plazaData, onEliminar }: PlazaHeaderProps) {
                   height={64}
                   className="w-full h-full object-cover"
                   onError={(e) => {
-                    // Fallback si la imagen no carga
                     const target = e.target as HTMLImageElement
                     target.style.display = "none"
                   }}
                 />
               ) : (
-                // Placeholder cuando no hay imagen
                 <div className="w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
                   <Building2 className="w-8 h-8 text-gray-400" />
                 </div>
@@ -81,25 +166,71 @@ function PlazaHeader({ plazaId, plazaData, onEliminar }: PlazaHeaderProps) {
             {/* Información de la plaza */}
             <div>
               <h1 className="text-xl font-semibold text-gray-900 mb-1">
-                {plaza.nombre}
+                {loading ? (
+                  <div className="flex items-center gap-2">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Cargando...
+                  </div>
+                ) : (
+                  plaza.nombre
+                )}
               </h1>
+
               <div className="flex items-center gap-2 text-sm text-gray-600">
                 <Building2 className="w-4 h-4" />
                 <span>{formatTipo(plaza.tipo)}</span>
+                {(plaza.ciudad || plaza.ubicacion) && (
+                  <>
+                    <span>•</span>
+                    <span>{plaza.ciudad || plaza.ubicacion}</span>
+                  </>
+                )}
+                {plaza.disponible !== undefined && (
+                  <>
+                    <span>•</span>
+                    <span
+                      className={
+                        plaza.disponible ? "text-green-600" : "text-red-600"
+                      }
+                    >
+                      {plaza.disponible ? "Disponible" : "No disponible"}
+                    </span>
+                  </>
+                )}
               </div>
+
+              {/* Info adicional del backend */}
+              {(plazaFromBackend || plaza.reservas !== undefined) && (
+                <div className="text-xs text-gray-500 mt-1">
+                  {plaza.reservas !== undefined && plaza.reservas > 0 && (
+                    <span>{plaza.reservas} reserva(s) • </span>
+                  )}
+                  {plazaFromBackend?.createdAt && (
+                    <span>
+                      Creada:{" "}
+                      {new Date(
+                        plazaFromBackend.createdAt
+                      ).toLocaleDateString()}
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
           {/* Lado derecho - Botón eliminar */}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleEliminar}
-            className="text-red-600 hover:text-red-700 hover:bg-red-50"
-          >
-            <Trash2 className="w-4 h-4 mr-2" />
-            Eliminar
-          </Button>
+          {showEliminar && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleEliminar}
+              disabled={loading}
+              className="text-red-600 hover:text-red-700 hover:bg-red-50 disabled:opacity-50"
+            >
+              <Trash2 className="w-4 h-4 mr-2" />
+              Eliminar
+            </Button>
+          )}
         </div>
       </div>
     </div>

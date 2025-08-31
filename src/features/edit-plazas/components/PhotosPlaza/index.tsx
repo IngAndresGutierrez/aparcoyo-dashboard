@@ -167,7 +167,7 @@ function PlazaPhotos({
 
   return (
     <>
-      <Card className="w-132">
+      <Card className="lg:w-157">
         <CardHeader className="pb-4">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold text-gray-900">
@@ -184,7 +184,7 @@ function PlazaPhotos({
           </div>
         </CardHeader>
 
-        <CardContent>
+        <CardContent className="">
           {plazaPhotos.fotos.length === 0 ? (
             // Estado vacío
             <div className="text-center py-8">
@@ -365,14 +365,7 @@ function PlazaPhotos({
           )}
 
           {/* Debug info - Solo mostrar en cliente */}
-          {isClient && (
-            <div className="mt-4 p-3 bg-gray-50 rounded-md text-xs text-gray-600">
-              <strong>Debug:</strong> Plaza ID: {plazaPhotos.id} | 
-              Total: {plazaPhotos.fotos.length} | 
-              Guardadas: {fotos.filter(f => isFotoLocal(f)).length} | 
-              Temporales: {fotos.filter(f => isFotoTemporal(f)).length}
-            </div>
-          )}
+         
         </CardContent>
       </Card>
 

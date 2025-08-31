@@ -80,17 +80,15 @@ export const modalPlazaService = {
         lat: data.lat || 0,
         lng: data.lng || 0,
         precio: data.precio || "0",
-        
+
         propietario: {
           uid: data.propietario?.uid || "",
           nombre: data.propietario?.nombre || "Sin nombre",
           email: data.propietario?.email || "",
-          
         },
         resenas: data.resenas || [],
         cantidadResenas: data.cantidadResenas || 0,
         rating: data.rating || 0,
-        
       }
 
       return plazaData

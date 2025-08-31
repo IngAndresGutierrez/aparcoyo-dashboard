@@ -2,7 +2,14 @@
 "use client"
 
 import { TrendingUp, Loader2, AlertCircle } from "lucide-react"
-import { Bar, BarChart, XAxis, YAxis, Cell } from "recharts"
+import {
+  Bar,
+  BarChart,
+  XAxis,
+  YAxis,
+  Cell,
+  ResponsiveContainer,
+} from "recharts"
 
 import {
   Card,
@@ -16,16 +23,15 @@ import {
   ChartConfig,
   ChartContainer,
   ChartTooltip,
- 
 } from "@/components/ui/chart"
 import { Button } from "@/components/ui/button"
 import { useReservasCityStats } from "../../hooks/useReservasCity"
 
-
-export const description = "Gráfico de barras horizontales para reservas por ciudad"
+export const description =
+  "Gráfico de barras horizontales para reservas por ciudad"
 
 const chartConfig = {
-  cantidad: {
+  reservas: {
     label: "Reservas",
     color: "var(--chart-1)",
   },
@@ -48,15 +54,24 @@ interface ReservationsChartCityProps {
   rango?: "dia" | "semana" | "mes"
 }
 
-const ReservationsChartCity = ({ rango = "mes" }: ReservationsChartCityProps) => {
-  const { cityData, loading, error, refetch, stats } = useReservasCityStats(rango)
+const ReservationsChartCity = ({
+  rango = "mes",
+}: ReservationsChartCityProps) => {
+  const { cityData, loading, error, refetch, stats } =
+    useReservasCityStats(rango)
 
-  // Transformar datos para el gráfico
-  const chartData = cityData.map(city => ({
-    month: city.displayName,
-    desktop: city.cantidad,
-    fullName: city.ciudad
-  }))
+  console.log("🔍 Debug datos del hook:", { cityData, loading, error, stats })
+
+  // Transformar datos para el gráfico - NOMBRES MÁS CLAROS
+  const chartData =
+    cityData?.map((city, index) => ({
+      ciudad: city.displayName || city.ciudad,
+      reservas: Number(city.cantidad) || 0,
+      ciudadCompleta: city.ciudad,
+      index,
+    })) || []
+
+  console.log("📊 Datos transformados para el gráfico:", chartData)
 
   // Estado de carga
   if (loading) {
@@ -69,7 +84,9 @@ const ReservationsChartCity = ({ rango = "mes" }: ReservationsChartCityProps) =>
         <CardContent className="flex items-center justify-center h-64">
           <div className="flex items-center gap-2">
             <Loader2 className="h-4 w-4 animate-spin" />
-            <span className="text-sm text-muted-foreground">Cargando estadísticas de ciudades...</span>
+            <span className="text-sm text-muted-foreground">
+              Cargando estadísticas de ciudades...
+            </span>
           </div>
         </CardContent>
       </Card>
@@ -88,12 +105,14 @@ const ReservationsChartCity = ({ rango = "mes" }: ReservationsChartCityProps) =>
           <div className="text-center space-y-3">
             <AlertCircle className="h-8 w-8 text-red-500 mx-auto" />
             <div>
-              <p className="text-sm text-red-500 font-medium">Error al cargar los datos</p>
+              <p className="text-sm text-red-500 font-medium">
+                Error al cargar los datos
+              </p>
               <p className="text-xs text-muted-foreground mt-1">{error}</p>
             </div>
-            <Button 
-              variant="outline" 
-              size="sm" 
+            <Button
+              variant="outline"
+              size="sm"
               onClick={refetch}
             >
               Reintentar
@@ -104,8 +123,12 @@ const ReservationsChartCity = ({ rango = "mes" }: ReservationsChartCityProps) =>
     )
   }
 
-  // Sin datos
-  if (!chartData.length) {
+  // Sin datos - VERIFICACIÓN MEJORADA
+  if (!Array.isArray(cityData) || cityData.length === 0) {
+    console.log("⚠️ No hay datos para mostrar:", {
+      cityData,
+      isArray: Array.isArray(cityData),
+    })
     return (
       <Card>
         <CardHeader>
@@ -114,10 +137,12 @@ const ReservationsChartCity = ({ rango = "mes" }: ReservationsChartCityProps) =>
         </CardHeader>
         <CardContent className="flex items-center justify-center h-64">
           <div className="text-center">
-            <p className="text-sm text-muted-foreground">No hay reservas por ciudad para mostrar</p>
-            <Button 
-              variant="outline" 
-              size="sm" 
+            <p className="text-sm text-muted-foreground">
+              No hay reservas por ciudad para mostrar
+            </p>
+            <Button
+              variant="outline"
+              size="sm"
               onClick={refetch}
               className="mt-2"
             >
@@ -131,8 +156,8 @@ const ReservationsChartCity = ({ rango = "mes" }: ReservationsChartCityProps) =>
 
   const rangeLabels = {
     dia: "hoy",
-    semana: "esta semana", 
-    mes: "este mes"
+    semana: "esta semana",
+    mes: "este mes",
   }
 
   return (
@@ -140,7 +165,9 @@ const ReservationsChartCity = ({ rango = "mes" }: ReservationsChartCityProps) =>
       <CardHeader>
         <CardTitle>Reservas por zona o ciudad</CardTitle>
         <CardDescription>
-          {stats?.totalCities} ciudad{stats?.totalCities !== 1 ? 'es' : ''} • Rango: {rangeLabels[rango]}
+          {stats?.totalCities || chartData.length} ciudad
+          {(stats?.totalCities || chartData.length) !== 1 ? "es" : ""} • Rango:{" "}
+          {rangeLabels[rango]}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -150,28 +177,46 @@ const ReservationsChartCity = ({ rango = "mes" }: ReservationsChartCityProps) =>
             data={chartData}
             layout="vertical"
             margin={{
-              left: -20,
+              left: 10,
+              right: 10,
+              top: 5,
+              bottom: 5,
             }}
+            height={Math.max(200, chartData.length * 50)} // Altura dinámica
           >
-            <XAxis type="number" dataKey="desktop" hide />
+            <XAxis
+              type="number"
+              dataKey="reservas"
+              hide
+              domain={[0, "dataMax"]}
+            />
             <YAxis
-              dataKey="month"
+              dataKey="ciudad"
               type="category"
               tickLine={false}
               tickMargin={10}
               axisLine={false}
-              tickFormatter={(value) => value.length > 10 ? value.slice(0, 10) + "..." : value}
+              width={100}
+              tickFormatter={(value) => {
+                if (typeof value === "string") {
+                  return value.length > 12 ? value.slice(0, 12) + "..." : value
+                }
+                return String(value)
+              }}
             />
             <ChartTooltip
-              cursor={false}
+              cursor={{ fill: "rgba(0, 0, 0, 0.1)" }}
               content={({ payload, label }) => {
-                if (payload && payload.length) {
+                if (payload && payload.length > 0) {
                   const data = payload[0].payload
                   return (
                     <div className="bg-background border border-border rounded-lg shadow-lg p-3">
-                      <p className="font-medium">{data.fullName}</p>
+                      <p className="font-medium">
+                        {data.ciudadCompleta || data.ciudad}
+                      </p>
                       <p className="text-sm text-muted-foreground">
-                        Total reservas: {data.desktop}
+                        Total reservas:{" "}
+                        <span className="font-semibold">{data.reservas}</span>
                       </p>
                     </div>
                   )
@@ -179,7 +224,11 @@ const ReservationsChartCity = ({ rango = "mes" }: ReservationsChartCityProps) =>
                 return null
               }}
             />
-            <Bar dataKey="desktop" radius={5}>
+            <Bar
+              dataKey="reservas"
+              radius={[0, 4, 4, 0]}
+              minPointSize={2} // Asegura que las barras pequeñas sean visibles
+            >
               {chartData.map((entry, index) => (
                 <Cell
                   key={`cell-${index}`}
@@ -191,11 +240,21 @@ const ReservationsChartCity = ({ rango = "mes" }: ReservationsChartCityProps) =>
         </ChartContainer>
       </CardContent>
       <CardFooter className="flex-col items-start gap-2 text-sm">
-        <div className="flex gap-2 leading-none font-medium">
-          Ciudad líder: {stats?.topCity} <TrendingUp className="h-4 w-4" />
-        </div>
+        {stats?.topCity && (
+          <div className="flex gap-2 leading-none font-medium">
+            Ciudad líder: {stats.topCity} <TrendingUp className="h-4 w-4" />
+          </div>
+        )}
         <div className="text-muted-foreground leading-none">
-          Total reservas: {stats?.totalReservas} • Promedio por ciudad: {stats?.averageCantidad}
+          Total reservas:{" "}
+          {stats?.totalReservas ||
+            chartData.reduce((sum, item) => sum + item.reservas, 0)}{" "}
+          • Promedio por ciudad:{" "}
+          {stats?.averageCantidad ||
+            Math.round(
+              chartData.reduce((sum, item) => sum + item.reservas, 0) /
+                chartData.length
+            )}
         </div>
       </CardFooter>
     </Card>

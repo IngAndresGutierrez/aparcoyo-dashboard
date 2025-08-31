@@ -1,4 +1,4 @@
-// hooks/useChartType.ts
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useState, useCallback, useRef } from "react"
 import { getPlazasStatsByRangeServiceAlt } from "../services/range"
 import {
@@ -7,7 +7,6 @@ import {
   PlazaDetalle,
 } from "../types/range"
 
-// Definir el tipo aquí mismo o importarlo desde un archivo separado
 interface TypeChartDataPoint {
   tipo: string
   averagePrice: number
@@ -23,6 +22,7 @@ export const usePlazasTypeStats = (rango: "dia" | "semana" | "mes") => {
 
   // Ref para cancelar peticiones pendientes
   const abortControllerRef = useRef<AbortController | null>(null)
+  const isMountedRef = useRef(true)
 
   // Función para procesar datos por tipo usando precioPromedioPorTipo
   const processTypeData = useCallback(
@@ -62,8 +62,8 @@ export const usePlazasTypeStats = (rango: "dia" | "semana" | "mes") => {
             displayName: tipo.charAt(0).toUpperCase() + tipo.slice(1),
           }
         })
-        .filter((item) => item.count > 0) // Solo tipos con plazas
-        .sort((a, b) => b.averagePrice - a.averagePrice) // Ordenar por precio promedio descendente
+        .filter((item) => item.count > 0)
+        .sort((a, b) => b.averagePrice - a.averagePrice)
 
       console.log("📈 Array final de tipos:", typeDataArray)
 
@@ -73,7 +73,9 @@ export const usePlazasTypeStats = (rango: "dia" | "semana" | "mes") => {
   )
 
   // Función para hacer refetch manual
-  const refetch = useCallback(() => {
+  const refetch = useCallback(async () => {
+    if (!isMountedRef.current) return
+
     setError(null)
     setLoading(true)
 
@@ -85,81 +87,100 @@ export const usePlazasTypeStats = (rango: "dia" | "semana" | "mes") => {
     // Crear nuevo AbortController
     abortControllerRef.current = new AbortController()
 
-    getPlazasStatsByRangeServiceAlt(rango, abortControllerRef.current.signal)
-      .then((res) => {
-        console.log(`✅ Respuesta del backend para tipos (${rango}):`, res.data)
+    try {
+      const res = await getPlazasStatsByRangeServiceAlt(
+        rango,
+        abortControllerRef.current.signal
+      )
 
-        if (res.data && typeof res.data === "object") {
-          // Usar precioPromedioPorTipo del backend
-          const processedTypeData = processTypeData(
-            res.data.precioPromedioPorTipo,
-            res.data.plazasDetalle
-          )
+      if (!isMountedRef.current) return
 
-          console.log(`📊 Datos de tipos procesados:`, {
-            totalTypes: processedTypeData.length,
-            topType: processedTypeData[0]?.tipo,
-            topTypePrice: processedTypeData[0]?.averagePrice,
-          })
+      console.log(`✅ Respuesta del backend para tipos (${rango}):`, res.data)
 
-          setData(res.data)
-          setTypeData(processedTypeData)
-          setError(null)
-        } else {
-          setError("Respuesta inválida del servidor")
-          setData(null)
-          setTypeData([])
-        }
-      })
-      .catch((err) => {
-        // No mostrar error si la petición fue cancelada
-        if (err.name === "AbortError") {
-          console.log(`🚫 Petición de tipos cancelada para rango: ${rango}`)
-          return
-        }
+      if (res.data && typeof res.data === "object") {
+        const processedTypeData = processTypeData(
+          res.data.precioPromedioPorTipo,
+          res.data.plazasDetalle
+        )
 
-        console.error(`❌ Error en el hook de tipos (${rango}):`, err)
+        console.log(`📊 Datos de tipos procesados:`, {
+          totalTypes: processedTypeData.length,
+          topType: processedTypeData[0]?.tipo,
+          topTypePrice: processedTypeData[0]?.averagePrice,
+        })
 
-        let errorMessage = "Error al obtener las estadísticas de tipos"
-
-        if (err.response?.status === 401) {
-          errorMessage = "No autorizado - verifica tu sesión"
-        } else if (err.response?.status === 404) {
-          errorMessage = "Endpoint no encontrado"
-        } else if (err.response?.status === 500) {
-          errorMessage = "Error interno del servidor"
-        } else if (err.response?.data?.message) {
-          errorMessage = err.response.data.message
-        } else if (err.message) {
-          errorMessage = err.message
-        }
-
-        setError(errorMessage)
+        setData(res.data)
+        setTypeData(processedTypeData)
+        setError(null)
+      } else {
+        setError("Respuesta inválida del servidor")
         setData(null)
         setTypeData([])
-      })
-      .finally(() => {
+      }
+    } catch (err: any) {
+      if (!isMountedRef.current) return
+
+      // ✨ MANEJO SILENCIOSO DE CANCELACIÓN AL INICIO
+      if (
+        err.name === "AbortError" ||
+        err.name === "CanceledError" ||
+        err.message === "canceled" ||
+        err.code === "ERR_CANCELED"
+      ) {
+        console.log(`🚫 Petición de tipos cancelada para rango: ${rango}`)
+        return
+      }
+
+      console.error(`❌ Error en el hook de tipos (${rango}):`, err)
+
+      let errorMessage = "Error al obtener las estadísticas de tipos"
+
+      if (err.response?.status === 401) {
+        errorMessage = "No autorizado - verifica tu sesión"
+      } else if (err.response?.status === 404) {
+        errorMessage = "Endpoint no encontrado"
+      } else if (err.response?.status === 500) {
+        errorMessage = "Error interno del servidor"
+      } else if (err.response?.data?.message) {
+        errorMessage = err.response.data.message
+      } else if (err.message) {
+        errorMessage = err.message
+      }
+
+      setError(errorMessage)
+      setData(null)
+      setTypeData([])
+    } finally {
+      if (isMountedRef.current) {
         setLoading(false)
-      })
+      }
+    }
   }, [rango, processTypeData])
 
   useEffect(() => {
     refetch()
 
-    // Cleanup: cancelar petición al desmontar o cambiar rango
     return () => {
+      isMountedRef.current = false
       if (abortControllerRef.current) {
         abortControllerRef.current.abort()
       }
     }
   }, [refetch])
 
+  useEffect(() => {
+    isMountedRef.current = true
+    return () => {
+      isMountedRef.current = false
+    }
+  }, [])
+
   return {
     data,
     loading,
     error,
     refetch,
-    typeData, // Datos procesados para el gráfico
+    typeData,
 
     // Stats adicionales
     stats: data
@@ -174,7 +195,6 @@ export const usePlazasTypeStats = (rango: "dia" | "semana" | "mes") => {
                     typeData.length
                 )
               : 0,
-          // Stats específicas del backend
           totalPlazas:
             (data.plazasPublicadas || 0) +
             (data.plazasPrivadas || 0) +
