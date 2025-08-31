@@ -8,9 +8,11 @@ import {
 
 class PlazaReviewsService {
   private baseURL: string
+  private resenasURL: string // ← Nueva URL para reseñas
 
   constructor() {
     this.baseURL = "https://aparcoyo-back.onrender.com/apa/plazas"
+    this.resenasURL = "https://aparcoyo-back.onrender.com/apa/resenas" // ← Nueva URL
   }
 
   private getAuthToken(): string | null {
@@ -61,7 +63,7 @@ class PlazaReviewsService {
     }
   }
 
-  // ✨ Nueva función: obtener una plaza específica por ID
+  // ✨ Función para obtener una plaza específica por ID
   async getPlazaById(plazaId: string): Promise<Plaza> {
     console.log(`📤 Obteniendo plaza específica: ${plazaId}`)
 
@@ -96,19 +98,18 @@ class PlazaReviewsService {
     }
   }
 
+  // 🔧 ACTUALIZADO: Usar endpoint correcto /apa/resenas/{id}
   async updateReview(
-    plazaId: string,
+    plazaId: string, // ← Mantenemos para compatibilidad, pero no se usa en la URL
     reviewId: string,
     updateData: UpdateReviewRequest
   ): Promise<UpdateReviewResponse> {
-    console.log(
-      `📤 Actualizando reseña ${reviewId} de plaza ${plazaId}:`,
-      updateData
-    )
+    console.log(`📤 Actualizando reseña ${reviewId}:`, updateData)
+    console.log(`🔧 Usando endpoint correcto: ${this.resenasURL}/${reviewId}`)
 
     try {
       const response = await fetch(
-        `${this.baseURL}/${plazaId}/reviews/${reviewId}`,
+        `${this.resenasURL}/${reviewId}`, // ← URL CORREGIDA
         {
           method: "PATCH",
           headers: this.getHeaders(),
@@ -116,9 +117,15 @@ class PlazaReviewsService {
         }
       )
 
+      console.log(`📥 Status response: ${response.status}`)
+
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))
-        throw new Error(errorData.message || `Error ${response.status}`)
+        console.error("❌ Error actualizando reseña:", errorData)
+        throw new Error(
+          errorData.message ||
+            `Error ${response.status}: Cannot PATCH ${this.resenasURL}/${reviewId}`
+        )
       }
 
       const data = await response.json()
@@ -130,24 +137,32 @@ class PlazaReviewsService {
     }
   }
 
+  // 🔧 ACTUALIZADO: Usar endpoint correcto /apa/resenas/{id}
   async deleteReview(
-    plazaId: string,
+    plazaId: string, // ← Mantenemos para compatibilidad, pero no se usa en la URL
     reviewId: string
   ): Promise<DeleteReviewResponse> {
-    console.log(`📤 Eliminando reseña ${reviewId} de plaza ${plazaId}`)
+    console.log(`📤 Eliminando reseña ${reviewId}`)
+    console.log(`🔧 Usando endpoint correcto: ${this.resenasURL}/${reviewId}`)
 
     try {
       const response = await fetch(
-        `${this.baseURL}/${plazaId}/reviews/${reviewId}`,
+        `${this.resenasURL}/${reviewId}`, // ← URL CORREGIDA
         {
           method: "DELETE",
           headers: this.getHeaders(),
         }
       )
 
+      console.log(`📥 Status response: ${response.status}`)
+
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))
-        throw new Error(errorData.message || `Error ${response.status}`)
+        console.error("❌ Error eliminando reseña:", errorData)
+        throw new Error(
+          errorData.message ||
+            `Error ${response.status}: Cannot DELETE ${this.resenasURL}/${reviewId}`
+        )
       }
 
       const data = await response.json()
@@ -155,6 +170,66 @@ class PlazaReviewsService {
       return data
     } catch (error) {
       console.error("❌ Error en deleteReview:", error)
+      throw error
+    }
+  }
+
+  // 🆕 NUEVA: Función para obtener todas las reseñas (para testing)
+  async getAllReviews() {
+    console.log(`📤 Obteniendo todas las reseñas desde: ${this.resenasURL}`)
+
+    try {
+      const response = await fetch(this.resenasURL, {
+        method: "GET",
+        headers: this.getHeaders(),
+      })
+
+      console.log(`📥 Status response: ${response.status}`)
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        console.error("❌ Error obteniendo reseñas:", errorData)
+        throw new Error(
+          errorData.message ||
+            `Error ${response.status}: ${response.statusText}`
+        )
+      }
+
+      const data = await response.json()
+      console.log("✅ Todas las reseñas obtenidas:", data)
+      return data
+    } catch (error) {
+      console.error("❌ Error en getAllReviews:", error)
+      throw error
+    }
+  }
+
+  // 🆕 NUEVA: Función para obtener una reseña específica (para testing)
+  async getReviewById(reviewId: string) {
+    console.log(`📤 Obteniendo reseña específica: ${reviewId}`)
+
+    try {
+      const response = await fetch(`${this.resenasURL}/${reviewId}`, {
+        method: "GET",
+        headers: this.getHeaders(),
+      })
+
+      console.log(`📥 Status response: ${response.status}`)
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        console.error("❌ Error obteniendo reseña:", errorData)
+        throw new Error(
+          errorData.message ||
+            `Error ${response.status}: ${response.statusText}`
+        )
+      }
+
+      const data = await response.json()
+      console.log("✅ Reseña específica obtenida:", data)
+      return data
+    } catch (error) {
+      console.error("❌ Error en getReviewById:", error)
       throw error
     }
   }

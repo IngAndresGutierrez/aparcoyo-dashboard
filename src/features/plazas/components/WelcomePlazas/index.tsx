@@ -13,6 +13,7 @@ import React, { useEffect } from "react" // Agregar useEffect
 import { toast } from "sonner" // Importar Sonner
 import { useGetAllPlazas } from "../../hooks/useGetAllPlazas" // Hook real
 import { Plaza } from "../../types" // Tipo Plaza
+import { ChevronDown } from "lucide-react"
 
 // Tipo para los rangos
 type RangoType = "dia" | "semana" | "mes"
@@ -285,6 +286,7 @@ const WelcomePlazas = ({
                   {rangeLabels[selectedRange]}
                 </span>
               </SelectValue>
+              <ChevronDown className="ml-auto h-4 w-4" />  {/* ← AGREGAR ESTO */}
             </div>
           </SelectTrigger>
           <SelectContent>

@@ -14,6 +14,7 @@ import { toast } from "sonner" // Importar Sonner
 
 import { useGetAllReservas } from "../../hooks/useGetAllReservas" // Ajustar ruta
 import { ReservaTable } from "../../types"
+import { ChevronDown } from "lucide-react"
 
 // Tipo para los rangos
 type RangoType = "dia" | "semana" | "mes"
@@ -325,10 +326,12 @@ const WelcomeReservas = ({
                 height={20}
               />
               <span className="font-semibold ml-2">
-              <SelectValue>{rangeLabels[selectedRange]}</SelectValue>
+                <SelectValue>{rangeLabels[selectedRange]}</SelectValue>
               </span>
+              <ChevronDown className="ml-auto h-4 w-4" /> {/* ← AGREGAR ESTO */}
             </div>
           </SelectTrigger>
+
           <SelectContent>
             {rangoOptions.map((option) => (
               <SelectItem

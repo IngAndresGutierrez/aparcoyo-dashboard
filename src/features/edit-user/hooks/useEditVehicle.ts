@@ -346,6 +346,7 @@ export const useVehiculos = (
     if (initialFilters) {
       fetchVehiculos(initialFilters)
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []) // Solo en el mount inicial
 
   return {

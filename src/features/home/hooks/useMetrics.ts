@@ -5,7 +5,7 @@ import { useState, useEffect } from "react"
 const API_BASE_URL = "https://aparcoyo-back.onrender.com"
 
 // Tipo para el filtro de tiempo
-export type TimeFilter = 'day' | 'week' | 'month'
+export type TimeFilter = "day" | "week" | "month"
 
 // Interfaces para las respuestas de la API
 interface ApiResponse {
@@ -47,10 +47,12 @@ interface UseMetricsReturn {
 
 // Función para obtener el token de autenticación
 const getAuthToken = (): string | null => {
-  if (typeof window !== 'undefined') {
-    return localStorage.getItem('authToken') || 
-           localStorage.getItem('token') || 
-           localStorage.getItem('accessToken')
+  if (typeof window !== "undefined") {
+    return (
+      localStorage.getItem("authToken") ||
+      localStorage.getItem("token") ||
+      localStorage.getItem("accessToken")
+    )
   }
   return null
 }
@@ -59,17 +61,17 @@ const getAuthToken = (): string | null => {
 const getDateParams = (filter: TimeFilter): string => {
   const now = new Date()
   let startDate: Date
-  
+
   switch (filter) {
-    case 'day':
+    case "day":
       // Últimas 24 horas
       startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000)
       break
-    case 'week':
+    case "week":
       // Últimos 7 días
       startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
       break
-    case 'month':
+    case "month":
       // Últimos 30 días
       startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
       break
@@ -77,14 +79,14 @@ const getDateParams = (filter: TimeFilter): string => {
       startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
   }
 
-  const startDateString = startDate.toISOString().split('T')[0]
-  const endDateString = now.toISOString().split('T')[0]
-  
+  const startDateString = startDate.toISOString().split("T")[0]
+  const endDateString = now.toISOString().split("T")[0]
+
   return `?startDate=${startDateString}&endDate=${endDateString}`
 }
 
 export const useMetrics = (): UseMetricsReturn => {
-  const [timeFilter, setTimeFilter] = useState<TimeFilter>('month')
+  const [timeFilter, setTimeFilter] = useState<TimeFilter>("month")
   const [metrics, setMetrics] = useState<MetricsState>({
     users: { value: 0, loading: true, error: null },
     plazas: { value: 0, loading: true, error: null },
@@ -135,15 +137,24 @@ export const useMetrics = (): UseMetricsReturn => {
       const endpoints: Endpoint[] = [
         { key: "users", url: `${API_BASE_URL}/apa/usuarios${dateParams}` },
         { key: "plazas", url: `${API_BASE_URL}/apa/plazas` }, // Las plazas no cambian por tiempo
-        { key: "activeReservas", url: `${API_BASE_URL}/apa/plazas/estadisticas?tipo=ocupadas${dateParams.replace('?', '&')}` },
-        { key: "totalReservas", url: `${API_BASE_URL}/apa/reservas${dateParams}` },
+        {
+          key: "activeReservas",
+          url: `${API_BASE_URL}/apa/plazas/estadisticas?tipo=ocupadas${dateParams.replace(
+            "?",
+            "&"
+          )}`,
+        },
+        {
+          key: "totalReservas",
+          url: `${API_BASE_URL}/apa/reservas${dateParams}`,
+        },
       ]
 
       const token = getAuthToken()
 
       const headers: Record<string, string> = {
         "Content-Type": "application/json",
-        "Accept": "application/json",
+        Accept: "application/json",
       }
 
       if (token) {
@@ -153,9 +164,9 @@ export const useMetrics = (): UseMetricsReturn => {
       const results = await Promise.allSettled(
         endpoints.map((endpoint) =>
           fetch(endpoint.url, {
-            method: 'GET',
+            method: "GET",
             headers,
-            credentials: 'omit',
+            credentials: "omit",
           })
         )
       )
@@ -258,6 +269,7 @@ export const useMetrics = (): UseMetricsReturn => {
   // Refetch cuando cambia el filtro de tiempo
   useEffect(() => {
     fetchMetrics()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timeFilter])
 
   // Función para cambiar el filtro y refrescar datos

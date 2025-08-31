@@ -73,6 +73,7 @@ export const usePlazaById = ({
       }
       currentRequestRef.current = null
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // Función para obtener plaza adaptada para PlazaHeader
@@ -95,6 +96,7 @@ export const usePlazaById = ({
       setError(null)
       fetchPlaza(plazaId)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [plazaId, autoFetch])
 
   // Cleanup minimo al desmontar
