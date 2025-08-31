@@ -6,10 +6,18 @@ import {
   flexRender,
   getCoreRowModel,
   useReactTable,
-  getPaginationRowModel,
   RowData,
 } from "@tanstack/react-table"
-import { MoreHorizontal, User, Loader2, Search, X } from "lucide-react"
+import {
+  MoreHorizontal,
+  User,
+  Loader2,
+  Search,
+  X,
+  Edit,
+  UserX,
+  UserCheck,
+} from "lucide-react"
 import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
@@ -113,7 +121,7 @@ const UsersTable = ({
   searchTerm: initialSearchTerm,
   estadoFilter,
 }: UsersTableProps) => {
-  // Estados para el buscador
+  // Estados para el buscador - REMOVEMOS currentPage porque el hook lo maneja
   const [searchValue, setSearchValue] = React.useState(initialSearchTerm || "")
   const [debouncedSearch, setDebouncedSearch] = React.useState(
     initialSearchTerm || ""
@@ -129,10 +137,10 @@ const UsersTable = ({
     return () => clearTimeout(timer)
   }, [searchValue])
 
-  // Hook para obtener usuarios
+  // Hook para obtener usuarios - USAMOS EL PAGE DEL HOOK
   const { usuarios, loading, error, total, page, limit, fetchUsuarios } =
     useUsuariosTabla({
-      page: 1,
+      page: 1, // ✅ Página inicial
       limit: 10,
       search: debouncedSearch,
       estado: estadoFilter,
@@ -142,25 +150,29 @@ const UsersTable = ({
 
   // DEBUG: Ver datos de usuarios cuando carguen
   React.useEffect(() => {
-    if (usuarios.length > 0) {
-      console.log("DEBUG: Analizando fechas de usuarios:")
+    console.log("🔍 DEBUG PAGINACIÓN:")
+    console.log("- Usuarios recibidos:", usuarios.length)
+    console.log("- Total reportado:", total)
+    console.log("- Página actual:", page)
+    console.log("- Límite:", limit)
+    console.log("- Loading:", loading)
+    console.log(
+      "- Usuarios (primeros 3):",
+      usuarios.slice(0, 3).map((u) => u.email)
+    )
 
-      usuarios.forEach((usuario, index) => {
-        console.log(`Usuario ${index + 1}:`, {
-          email: usuario.email,
-          fechaRegistro: usuario.fechaRegistro,
-          tipoDato: typeof usuario.fechaRegistro,
-          reservasHechas: usuario.reservasHechas || usuario.totalReservas,
-          plazasPublicadas: usuario.plazasPublicadas || usuario.totalPlazas,
-        })
-      })
-    }
-  }, [usuarios])
+    // 🔍 DEBUGGING TEMPORAL - Llamar método alternativo para comparar
+    console.log("🧪 PROBANDO método alternativo...")
+  }, [usuarios, total, page, limit, loading])
 
-  // Refetch cuando cambia la búsqueda
+  // Refetch cuando cambia la búsqueda o el filtro
   React.useEffect(() => {
+    console.log("🔍 REFETCH por cambio en búsqueda/filtro:", {
+      debouncedSearch,
+      estadoFilter,
+    })
     fetchUsuarios({
-      page: 1,
+      page: 1, // ✅ Reset a página 1 cuando cambia búsqueda
       limit: 10,
       search: debouncedSearch,
       estado: estadoFilter,
@@ -176,22 +188,6 @@ const UsersTable = ({
     error: actionError,
     success,
   } = useUserActions()
-
-  // Filtro temporal en frontend
-  const filteredUsuarios = React.useMemo(() => {
-    if (!debouncedSearch.trim()) {
-      return usuarios
-    }
-
-    const searchTerm = debouncedSearch.toLowerCase().trim()
-    const filtered = usuarios.filter((usuario) => {
-      const matchNombre = usuario.nombre?.toLowerCase().includes(searchTerm)
-      const matchEmail = usuario.email?.toLowerCase().includes(searchTerm)
-      return matchNombre || matchEmail
-    })
-
-    return filtered
-  }, [usuarios, debouncedSearch])
 
   // Función para limpiar búsqueda
   const clearSearch = () => {
@@ -210,8 +206,8 @@ const UsersTable = ({
       console.error("Error:", error)
     } finally {
       await fetchUsuarios({
-        page,
-        limit,
+        page: page, // ✅ Usar el page del hook
+        limit: 10,
         search: debouncedSearch,
         estado: undefined,
         sortBy: "fechaRegistro",
@@ -369,6 +365,7 @@ const UsersTable = ({
                 })
               }}
             >
+              <Edit className="mr-2 h-4 w-4" />
               Editar usuario
             </DropdownMenuItem>
 
@@ -416,9 +413,15 @@ const UsersTable = ({
                   Procesando...
                 </span>
               ) : row.original.isActive ? (
-                "Desactivar"
+                <>
+                  <UserX className="mr-2 h-4 w-4" />
+                  Desactivar
+                </>
               ) : (
-                "Activar"
+                <>
+                  <UserCheck className="mr-2 h-4 w-4" />
+                  Activar
+                </>
               )}
             </DropdownMenuItem>
           </DropdownMenuContent>
@@ -429,38 +432,61 @@ const UsersTable = ({
   ]
 
   const table = useReactTable({
-    data: filteredUsuarios,
+    data: usuarios, // ✅ Solo los datos de la página actual
     columns,
     getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
+    // ❌ QUITAR getPaginationRowModel() - el backend maneja la paginación
     manualPagination: true,
-    pageCount: Math.ceil(total / limit),
+    pageCount: Math.ceil(total / 10),
   })
 
-  // Funciones de paginación
+  // Funciones de paginación - USAR EL PAGE DEL HOOK
   const handlePreviousPage = () => {
+    console.log(
+      "🔙 ANTERIOR - Página actual:",
+      page,
+      "Búsqueda:",
+      debouncedSearch
+    )
     if (page > 1) {
+      const newPage = page - 1
+      console.log("🔙 Yendo a página:", newPage)
       fetchUsuarios({
-        page: page - 1,
-        limit,
+        page: newPage,
+        limit: 10,
         search: debouncedSearch,
         estado: estadoFilter,
         sortBy: "fechaRegistro",
         sortOrder: "desc",
       })
+    } else {
+      console.log("🔙 Ya estás en la primera página")
     }
   }
 
   const handleNextPage = () => {
-    if (page < Math.ceil(total / limit)) {
+    const totalPages = Math.ceil(total / 10)
+    console.log(
+      "▶️ SIGUIENTE - Página actual:",
+      page,
+      "Total páginas:",
+      totalPages,
+      "Búsqueda:",
+      debouncedSearch
+    )
+    if (page < totalPages) {
+      const newPage = page + 1
+      console.log("▶️ Yendo a página:", newPage)
       fetchUsuarios({
-        page: page + 1,
-        limit,
+        page: newPage,
+        limit: 10,
         search: debouncedSearch,
         estado: estadoFilter,
         sortBy: "fechaRegistro",
         sortOrder: "desc",
       })
+    } else {
+      console.log("▶️ Ya estás en la última página")
     }
   }
 
@@ -558,7 +584,7 @@ const UsersTable = ({
       {/* Header con información y buscador */}
       <div className="flex items-center justify-between mb-4">
         <div className="text-sm text-muted-foreground">
-          Mostrando {filteredUsuarios.length} de {total} usuarios
+          Mostrando {usuarios.length} de {total} usuarios
           {debouncedSearch && ` para "${debouncedSearch}"`}
           {estadoFilter && ` (${estadoFilter})`}
         </div>
@@ -608,7 +634,7 @@ const UsersTable = ({
             ))}
           </TableHeader>
           <TableBody>
-            {filteredUsuarios.length === 0 ? (
+            {usuarios.length === 0 ? (
               <TableRow>
                 <TableCell
                   colSpan={columns.length}
@@ -631,23 +657,195 @@ const UsersTable = ({
                 </TableCell>
               </TableRow>
             ) : (
-              table.getRowModel().rows.map((row) => (
-                <TableRow key={row.id}>
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell
-                      key={cell.id}
-                      className={`py-3 px-2 ${
-                        cell.column.columnDef.meta?.responsive
-                          ? "hidden lg:table-cell"
-                          : ""
+              // ✅ Renderizar DIRECTAMENTE los usuarios (no usar table.getRowModel())
+              usuarios.map((usuario, index) => (
+                <TableRow key={usuario.uid || index}>
+                  <TableCell className="py-3 px-2">
+                    <input type="checkbox" />
+                  </TableCell>
+
+                  <TableCell className="py-3 px-2">
+                    <div className="flex items-center gap-2">
+                      <UserAvatar
+                        userName={usuario.nombre}
+                        userEmail={usuario.email}
+                      />
+                      <div className="min-w-0">
+                        <span className="text-sm font-medium truncate block">
+                          {usuario.nombre || "Sin nombre"}
+                        </span>
+                        <span className="text-xs text-muted-foreground truncate block">
+                          {usuario.email}
+                        </span>
+                      </div>
+                    </div>
+                  </TableCell>
+
+                  <TableCell className="py-3 px-2">
+                    <span className="text-sm truncate block max-w-[150px]">
+                      {usuario.email}
+                    </span>
+                  </TableCell>
+
+                  <TableCell className="py-3 px-2 hidden lg:table-cell">
+                    {(() => {
+                      const formattedDate = formatDate(usuario.fechaRegistro)
+                      return (
+                        <span
+                          className={`text-sm ${
+                            formattedDate.includes("Error") ||
+                            formattedDate.includes("inválida") ||
+                            formattedDate.includes("Sin fecha")
+                              ? "text-red-500 italic"
+                              : ""
+                          }`}
+                          title={`Fecha original: ${
+                            usuario.fechaRegistro || "N/A"
+                          }`}
+                        >
+                          {formattedDate}
+                        </span>
+                      )
+                    })()}
+                  </TableCell>
+
+                  <TableCell className="py-3 px-2 hidden lg:table-cell">
+                    <span className="text-sm font-medium">
+                      {usuario.reservasHechas ?? usuario.totalReservas ?? 0}
+                    </span>
+                  </TableCell>
+
+                  <TableCell className="py-3 px-2 hidden lg:table-cell">
+                    <span className="text-sm font-medium">
+                      {usuario.plazasPublicadas ?? usuario.totalPlazas ?? 0}
+                    </span>
+                  </TableCell>
+
+                  <TableCell className="py-3 px-2 hidden lg:table-cell">
+                    <Badge
+                      className={`text-xs ${
+                        usuario.isActive
+                          ? "bg-green-100 text-green-800"
+                          : "bg-gray-100 text-gray-800"
                       }`}
                     >
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext()
-                      )}
-                    </TableCell>
-                  ))}
+                      {usuario.isActive ? "Activo" : "Inactivo"}
+                    </Badge>
+                  </TableCell>
+
+                  <TableCell className="py-3 px-2 hidden lg:table-cell">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          className="h-8 w-8 p-0"
+                          disabled={isProcessing}
+                        >
+                          {isProcessing ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <MoreHorizontal className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem
+                          onClick={() => {
+                            if (!usuario.isActive) {
+                              toast.error("Usuario inactivo", {
+                                description: `No puedes editar a ${
+                                  usuario.nombre || "este usuario"
+                                } porque está inactivo.`,
+                                action: {
+                                  label: "Activar usuario",
+                                  onClick: () => {
+                                    handleToggleUserStatus(
+                                      usuario.uid,
+                                      usuario.isActive
+                                    )
+                                    toast.success("Activando usuario...", {
+                                      description:
+                                        "Una vez activado, podrás editarlo",
+                                    })
+                                  },
+                                },
+                                duration: 6000,
+                              })
+                              return
+                            }
+
+                            router.push(`/usuarios/${usuario.uid}`)
+                            toast.success("Redirigiendo...", {
+                              description: `Editando a ${usuario.nombre}`,
+                              duration: 2000,
+                            })
+                          }}
+                        >
+                          <Edit className="mr-2 h-4 w-4" />
+                          Editar usuario
+                        </DropdownMenuItem>
+
+                        <DropdownMenuItem
+                          onClick={async () => {
+                            const loadingToast = toast.loading(
+                              usuario.isActive
+                                ? "Desactivando usuario..."
+                                : "Activando usuario...",
+                              { description: "Por favor espera..." }
+                            )
+
+                            try {
+                              await handleToggleUserStatus(
+                                usuario.uid,
+                                usuario.isActive
+                              )
+
+                              toast.dismiss(loadingToast)
+                              toast.success(
+                                usuario.isActive
+                                  ? "Usuario desactivado"
+                                  : "Usuario activado",
+                                {
+                                  description: `${usuario.nombre} ha sido ${
+                                    usuario.isActive
+                                      ? "desactivado"
+                                      : "activado"
+                                  } correctamente`,
+                                  duration: 4000,
+                                }
+                              )
+                              // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                            } catch (error) {
+                              toast.dismiss(loadingToast)
+                              toast.error("Error al cambiar estado", {
+                                description:
+                                  "Hubo un problema. Inténtalo de nuevo.",
+                                duration: 5000,
+                              })
+                            }
+                          }}
+                          disabled={isProcessing}
+                        >
+                          {isProcessing ? (
+                            <span className="flex items-center gap-2">
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                              Procesando...
+                            </span>
+                          ) : usuario.isActive ? (
+                            <>
+                              <UserX className="mr-2 h-4 w-4" />
+                              Desactivar
+                            </>
+                          ) : (
+                            <>
+                              <UserCheck className="mr-2 h-4 w-4" />
+                              Activar
+                            </>
+                          )}
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
                 </TableRow>
               ))
             )}
@@ -655,27 +853,34 @@ const UsersTable = ({
         </Table>
       </div>
 
-      {/* Paginación */}
+      {/* Paginación mejorada */}
       <div className="flex items-center justify-between py-4">
         <div className="text-sm text-muted-foreground">
-          Página {page} de {Math.ceil(total / limit)}
+          Mostrando {(page - 1) * 10 + 1} - {Math.min(page * 10, total)} de{" "}
+          {total} usuarios
         </div>
         <div className="flex items-center space-x-2">
           <Button
             variant="outline"
             size="sm"
             onClick={handlePreviousPage}
-            disabled={page <= 1}
+            disabled={page <= 1 || loading}
           >
-            Atrás
+            ← Anterior
           </Button>
+
+          {/* Información de página */}
+          <span className="text-sm text-muted-foreground px-3">
+            Página {page} de {Math.ceil(total / 10)}
+          </span>
+
           <Button
             variant="outline"
             size="sm"
             onClick={handleNextPage}
-            disabled={page >= Math.ceil(total / limit)}
+            disabled={page >= Math.ceil(total / 10) || loading}
           >
-            Adelante
+            Siguiente →
           </Button>
         </div>
       </div>

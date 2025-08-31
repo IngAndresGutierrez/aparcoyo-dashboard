@@ -285,7 +285,7 @@ const WelcomeUsers = ({ rango, onRangoChange }: WelcomeUsersProps) => {
           value={rango}
           onValueChange={onRangoChange}
         >
-          <SelectTrigger className="w-46 h-9 rounded-full border border-input bg-background hover:bg-accent hover:text-accent-foreground [&>svg]:hidden">
+          <SelectTrigger className="w-46 h-9 rounded-full border border-input bg-background hover:bg-accent hover:text-accent-foreground">
             <div className="flex items-center gap-2">
               <Image
                 src="/home/calendar.svg"

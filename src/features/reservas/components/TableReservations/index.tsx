@@ -20,8 +20,19 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Skeleton } from "@/components/ui/skeleton"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { AlertCircle, RefreshCw } from "lucide-react"
 import { useEffect } from "react"
+import { toast } from "sonner"
 
 import { useGetAllReservas } from "../../hooks/useGetAllReservas"
 import { reservasColumns } from "./columns"
@@ -31,101 +42,112 @@ import EditReservationModal from "../ModalEditReservas"
 const ReservationsTable = () => {
   const { getAllReservas, reservas, isLoading, error } = useGetAllReservas()
 
-  // ✨ NUEVOS ESTADOS para el modal
+  // Estados para el modal y confirmación
   const [selectedReservation, setSelectedReservation] =
     useState<ReservaTable | null>(null)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const [reservationToDelete, setReservationToDelete] =
+    useState<ReservaTable | null>(null)
 
-  // ✨ HANDLER para abrir el modal de edición
+  // Handler para abrir el modal de edición
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const handleEditReservation = (reservation: ReservaTable) => {
     setSelectedReservation(reservation)
     setIsEditModalOpen(true)
   }
 
-  // ✨ HANDLER para cerrar el modal
+  // Handler para cerrar el modal
   const handleCloseModal = () => {
     setIsEditModalOpen(false)
     setSelectedReservation(null)
   }
 
-  // ✨ HANDLER para cuando se actualiza una reserva
+  // Handler para cuando se actualiza una reserva
   const handleUpdateReservation = (updatedReservation: any) => {
     console.log("Reserva actualizada:", updatedReservation)
-    // Aquí podrías:
-    // 1. Refrescar toda la tabla: getAllReservas()
-    // 2. O actualizar solo esa reserva en el estado local
-    getAllReservas() // Por simplicidad, refrescamos todo
+    getAllReservas()
+    // Removido: toast.success("Reserva actualizada correctamente") - ya lo maneja el modal
   }
 
-  // ✨ HANDLER para eliminar reserva
+  // Handler para solicitar eliminación (abre el dialog)
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const handleDeleteReservation = async (reservation: ReservaTable) => {
-    const confirmDelete = window.confirm(
-      `¿Estás seguro de que quieres eliminar la reserva de ${
-        (reservation.usuario as any)?.nombre || "este usuario"
-      }?`
-    )
-
-    if (!confirmDelete) return
-
-    try {
-      console.log("🗑️ Eliminando reserva:", reservation.id)
-
-      const token =
-        localStorage.getItem("authToken") || localStorage.getItem("token")
-
-      if (!token) {
-        alert("No estás autenticado. Por favor, inicia sesión nuevamente.")
-        return
-      }
-
-      // ✅ URL del backend de producción + endpoint del Swagger
-      const response = await fetch(
-        `https://aparcoyo-back.onrender.com/apa/reservas/${reservation.id}`,
-        {
-          method: "DELETE",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      )
-
-      console.log("📡 DELETE Response status:", response.status)
-
-      if (response.ok) {
-        console.log("✅ Reserva eliminada exitosamente")
-        getAllReservas()
-        alert("Reserva eliminada correctamente")
-      } else if (response.status === 401) {
-        alert("Tu sesión ha expirado. Por favor, inicia sesión nuevamente.")
-        localStorage.removeItem("authToken")
-        localStorage.removeItem("token")
-      } else {
-        const errorData = await response.json()
-        console.error("❌ Error eliminando reserva:", errorData)
-        alert(
-          `Error eliminando reserva: ${
-            errorData.message || response.statusText
-          }`
-        )
-      }
-    } catch (error) {
-      console.error("❌ Error de red eliminando reserva:", error)
-      alert("Error de conexión eliminando la reserva")
-    }
+  const handleRequestDelete = (reservation: ReservaTable) => {
+    console.log("🚨 CLICK EN ELIMINAR - Datos:", reservation)
+    console.log("🚨 Abriendo dialog...")
+    setReservationToDelete(reservation)
+    setIsDeleteDialogOpen(true)
+    console.log("🚨 Estado del dialog:", true)
   }
 
-  // ✨ MEMORIZAR las columnas con los callbacks
+  // Handler para confirmar eliminación
+  const handleConfirmDelete = async () => {
+    if (!reservationToDelete) return
+
+    const nombreUsuario =
+      (reservationToDelete.usuario as any)?.nombre || "este usuario"
+
+    // Cerrar el dialog
+    setIsDeleteDialogOpen(false)
+    setReservationToDelete(null)
+
+    // Usar toast.promise para manejar el proceso completo
+    toast.promise(
+      async () => {
+        const token =
+          localStorage.getItem("authToken") || localStorage.getItem("token")
+
+        if (!token) {
+          throw new Error(
+            "No estás autenticado. Por favor, inicia sesión nuevamente."
+          )
+        }
+
+        const response = await fetch(
+          `https://aparcoyo-back.onrender.com/apa/reservas/${reservationToDelete.id}`,
+          {
+            method: "DELETE",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        )
+
+        if (!response.ok) {
+          if (response.status === 401) {
+            localStorage.removeItem("authToken")
+            localStorage.removeItem("token")
+            throw new Error(
+              "Tu sesión ha expirado. Por favor, inicia sesión nuevamente."
+            )
+          } else {
+            const errorData = await response.json()
+            throw new Error(errorData.message || response.statusText)
+          }
+        }
+
+        // Refrescar la tabla después de eliminar
+        await getAllReservas()
+        return `Reserva de ${nombreUsuario} eliminada`
+      },
+      {
+        loading: `Eliminando reserva de ${nombreUsuario}...`,
+        success: (message) => message,
+        error: (error) => `Error: ${error.message}`,
+      }
+    )
+  }
+
+  // Memorizar las columnas con los callbacks
   const columns = useMemo(
-    () => reservasColumns(handleEditReservation, handleDeleteReservation),
-    [handleEditReservation, handleDeleteReservation]
+    () => reservasColumns(handleEditReservation, handleRequestDelete),
+    [handleEditReservation]
   )
 
   const table = useReactTable({
     data: reservas,
-    columns: columns, // ← Usar las columnas memorizadas
+    columns: columns,
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
   })
@@ -300,13 +322,45 @@ const ReservationsTable = () => {
         </div>
       )}
 
-      {/* ✨ MODAL DE EDITAR RESERVA */}
+      {/* Modal de editar reserva */}
       <EditReservationModal
-        isOpen={isEditModalOpen}
-        onClose={handleCloseModal}
-        reservationData={selectedReservation}
-        onUpdate={handleUpdateReservation}
+        {...({
+          isOpen: isEditModalOpen,
+          onClose: handleCloseModal,
+          reservationData: selectedReservation,
+          onUpdate: handleUpdateReservation,
+        } as any)}
       />
+
+      {/* Dialog de confirmación para eliminar */}
+      <AlertDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={setIsDeleteDialogOpen}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción no se puede deshacer. Esto eliminará permanentemente
+              la reserva de{" "}
+              <span className="font-semibold">
+                {(reservationToDelete?.usuario as any)?.nombre ||
+                  "este usuario"}
+              </span>
+              .
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDelete}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Eliminar reserva
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

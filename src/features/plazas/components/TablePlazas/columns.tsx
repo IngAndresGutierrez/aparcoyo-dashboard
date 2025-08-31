@@ -1,7 +1,7 @@
 "use client"
 
 import { ColumnDef, RowData } from "@tanstack/react-table"
-import { MoreHorizontal, Loader2 } from "lucide-react"
+import { MoreHorizontal, Loader2, Edit, Trash2 } from "lucide-react" // ✨ AGREGADOS Edit y Trash2
 import Image from "next/image"
 
 import { Button } from "@/components/ui/button"
@@ -178,24 +178,32 @@ export const createColumns = ({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
+            {/* ✨ ITEM EDITAR CON ICONO */}
             <DropdownMenuItem
               disabled={isDeleting}
               onClick={handleEditClick}
+              className="flex items-center gap-2"
             >
+              <Edit className="h-4 w-4 text-gray-600" />
               <span className="text-gray-700">Editar plaza</span>
             </DropdownMenuItem>
+
+            {/* ✨ ITEM ELIMINAR CON ICONO */}
             <DropdownMenuItem
-              className="text-red-600 focus:text-red-600"
+              className="flex items-center gap-2 text-red-600 focus:text-red-600"
               onClick={() => onEliminarPlaza(plaza.id, plaza.direccion)}
               disabled={isDeleting}
             >
               {isDeleting ? (
                 <>
-                  <Loader2 className="h-3 w-3 mr-2 animate-spin" />
-                  Eliminando...
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>Eliminando...</span>
                 </>
               ) : (
-                "Eliminar plaza"
+                <>
+                  <Trash2 className="h-4 w-4" />
+                  <span>Eliminar plaza</span>
+                </>
               )}
             </DropdownMenuItem>
           </DropdownMenuContent>

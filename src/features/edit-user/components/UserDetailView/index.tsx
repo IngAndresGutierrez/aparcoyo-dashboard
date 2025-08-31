@@ -2,9 +2,9 @@
 "use client"
 
 import * as React from "react"
-import { Button } from "@/components/ui/button"
+//import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Trash2, User } from "lucide-react"
+import { User } from "lucide-react"
 import Image from "next/image"
 
 interface UserHeaderProps {
@@ -200,13 +200,13 @@ const UserHeader: React.FC<UserHeaderProps> = ({ userId }) => {
       </div>
 
       {/* Botón eliminar */}
-      <Button
+      {/* <Button
         variant="destructive"
         size="sm"
       >
         <Trash2 className="h-4 w-4 mr-2" />
         Eliminar
-      </Button>
+      </Button> */}
     </div>
   )
 }

@@ -556,14 +556,14 @@ const UserDetails: React.FC<UserDetailsProps> = ({ userId }) => {
           </div>
 
           {/* Siempre mostrar fecha, con fallback si no existe */}
-          <div>
+          {/* <div>
             <label className="text-sm font-medium text-muted-foreground">
               Fecha de registro
             </label>
             <p className="mt-1 text-sm text-muted-foreground">
               {hasValidDate(usuario) ? formatDate(usuario) : "No registrada"}
             </p>
-          </div>
+          </div> */}
         </div>
       </CardContent>
     </Card>

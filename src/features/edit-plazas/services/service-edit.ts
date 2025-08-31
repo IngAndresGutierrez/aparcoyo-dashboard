@@ -71,6 +71,8 @@ export const modalPlazaService = {
 
       console.log(`✅ Datos recibidos:`, data)
 
+      // En tu servicio, reemplaza la sección del mapeo de plazaData por esto:
+
       const plazaData: PlazaModal = {
         id: data.id || id,
         nombre: data.nombre || "Sin nombre",
@@ -80,17 +82,21 @@ export const modalPlazaService = {
         lat: data.lat || 0,
         lng: data.lng || 0,
         precio: data.precio || "0",
-        
+
+        // ✅ AGREGAR CAMPOS DE FECHA:
+        disponibilidadDesde: data.disponibilidadDesde || "",
+        disponibilidadHasta: data.disponibilidadHasta || "",
+        isActive: data.isActive || false,
+        img: data.img || [],
+
         propietario: {
           uid: data.propietario?.uid || "",
           nombre: data.propietario?.nombre || "Sin nombre",
           email: data.propietario?.email || "",
-          
         },
         resenas: data.resenas || [],
         cantidadResenas: data.cantidadResenas || 0,
         rating: data.rating || 0,
-        
       }
 
       return plazaData
@@ -193,6 +199,8 @@ export const modalPlazaService = {
       console.log(`✅ Respuesta del backend:`, data)
 
       // 🛠️ DEVOLVER ESTRUCTURA MÍNIMA - EL HOOK SE ENCARGA DEL PROPIETARIO
+      // En tu función actualizarPlaza(), reemplaza esta sección:
+
       const plazaActualizada: PlazaModal = {
         id: data.id || id,
         nombre: data.nombre || datos.nombre,
@@ -203,8 +211,13 @@ export const modalPlazaService = {
         lng: data.lng || 0,
         precio: data.precio?.toString() || datos.precio,
 
-        // 🛠️ PROPIETARIO VACÍO - EL HOOK LO RELLENARÁ CORRECTAMENTE
-        // No intentamos preservar nada aquí, dejamos que el hook se encargue
+        // ✅ AGREGAR CAMPOS FALTANTES:
+        disponibilidadDesde: data.disponibilidadDesde || "",
+        disponibilidadHasta: data.disponibilidadHasta || "",
+        isActive: data.isActive !== undefined ? data.isActive : true,
+        img: data.img || [],
+
+        // PROPIETARIO VACÍO - EL HOOK LO RELLENARÁ CORRECTAMENTE
         propietario: {
           uid: "", // El hook lo rellenará con formData.propietario.id
           nombre: "", // El hook lo rellenará con formData.propietario.nombre

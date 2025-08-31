@@ -10,22 +10,31 @@ import useModalPlaza from "../../hooks/useEdit"
 import ModalDetallesPlaza from "../ModalEditPlaza"
 
 // Tipo para los datos de la plaza
+// Actualiza tu interface PlazaDetailsData en PlazaDetails.tsx:
+
 interface PlazaDetailsData {
   id: string
   nombre: string
   descripcion: string
   descripcionCompleta?: string
-  ubicacion: string
+  ubicacion: string // Será mapeado desde 'direccion' del backend
   precio: number
   propietario: {
-    id: string
+    id: string // Será mapeado desde 'uid' del backend
     nombre: string
     email: string
     avatar?: string
   }
-  fechaPublicacion: string
+  fechaPublicacion: string // Será mapeado desde 'disponibilidadDesde'
   alturaMaxima?: string
   disponibilidad24h?: boolean
+  // CAMPOS ADICIONALES OPCIONALES:
+  tipo?: string
+  lat?: number
+  lng?: number
+  isActive?: boolean
+  rating?: number
+  cantidadResenas?: number
 }
 
 interface PlazaDetailsProps {
@@ -175,10 +184,15 @@ function PlazaDetails({
               "",
             avatar: (plazaDataBackend.propietario as any)?.avatar,
           },
-          fechaPublicacion: (plazaDataBackend as any).fechaCreacion
-            ? new Date(
-                (plazaDataBackend as any).fechaCreacion
-              ).toLocaleDateString()
+          fechaPublicacion: plazaDataBackend.disponibilidadDesde
+            ? new Date(plazaDataBackend.disponibilidadDesde).toLocaleDateString(
+                "es-ES",
+                {
+                  year: "numeric",
+                  month: "long",
+                  day: "numeric",
+                }
+              )
             : "Fecha no disponible",
           alturaMaxima: (plazaDataBackend as any).alturaMaxima,
           disponibilidad24h: (plazaDataBackend as any).disponibilidad24h,
@@ -382,18 +396,6 @@ function PlazaDetails({
               </div>
 
               {/* Debug info mejorado */}
-              <div className="mt-4 p-3 bg-gray-50 rounded-md text-xs text-gray-600">
-                <strong>Debug:</strong>
-                <br />• Plaza ID: {plaza.id}
-                <br />• Precio: {formatearPrecio(plaza.precio)}
-                <br />• Modal: {modalAbierto ? "Abierto" : "Cerrado"}
-                <br />• Backend data: {plazaDataBackend ? "✅" : "❌"}
-                <br />•{" "}
-                <strong>
-                  Propietario mostrado: {plaza.propietario.nombre}
-                </strong>
-                <br />• Propietario UID: {plaza.propietario.id}
-              </div>
             </>
           )}
         </CardContent>

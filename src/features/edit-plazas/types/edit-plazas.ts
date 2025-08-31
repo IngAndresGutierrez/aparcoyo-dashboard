@@ -3,39 +3,56 @@
 
 export interface PlazaModal {
   id: string
-  nombre: string // Era "titulo"
+  nombre: string
   descripcion: string
-  tipo: string // Faltaba
-  direccion: string // Faltaba
-  lat: number // Faltaba
-  lng: number // Faltaba
-  precio: string // Era number, debe ser string
+  tipo: string
+  direccion: string
+  lat: number
+  lng: number
+  precio: string
+  // CAMPOS DE FECHA AGREGADOS:
+  disponibilidadDesde: string // ISO string: "2025-08-29T17:36:31.420Z"
+  disponibilidadHasta: string // ISO string: "2025-09-28T17:36:31.420Z"
+  isActive: boolean // Faltaba este campo también
+  // IMÁGENES:
+  img: Array<{
+    id: string
+    url: string
+    tipo: string
+    nombre: string | null
+    tamaño: string | null
+    createAt: string // Esta es otra fecha disponible
+  }>
   propietario: {
-    email: string
-    uid: string // Era "id"
+    uid: string
     nombre: string
+    email?: string // El email puede no estar en la respuesta del backend
   }
-  resenas: any[] // Faltaba - define mejor según estructura
-  cantidadResenas: number // Faltaba
-  rating: number // Faltaba
+  resenas: any[]
+  cantidadResenas: number
+  rating: number
 }
 
 export interface PlazaModalResponse {
-  ok: boolean // Era "success"
+  ok: boolean
   data: PlazaModal
-  msg: string // Era "message?"
+  msg: string
 }
 
 // Para actualizar (probablemente diferente del GET)
 export interface ActualizarPlazaModal {
-  nombre: string // Era "titulo"
+  nombre: string
   descripcion: string
-  precio: string // Consistente con response
-  propietarioUid: string // Era "propietarioId"
+  precio: string
+  propietarioUid: string
   tipo?: string
   direccion?: string
   lat?: number
   lng?: number
+  // CAMPOS DE FECHA OPCIONALES PARA ACTUALIZAR:
+  disponibilidadDesde?: string
+  disponibilidadHasta?: string
+  isActive?: boolean
 }
 
 export interface FormDataModal {
@@ -43,8 +60,8 @@ export interface FormDataModal {
   descripcion: string
   precio: number // Para el frontend usamos number
   propietario: {
-    id: string // Para el frontend usamos id
+    id: string // Para el frontend usamos id (será el uid del backend)
     nombre: string
-    email: string // Para el frontend incluimos email
+    email: string
   }
 }

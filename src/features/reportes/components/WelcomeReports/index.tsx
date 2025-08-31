@@ -12,6 +12,7 @@ import React, { useState, useEffect } from "react"
 import { toast } from "sonner" // Importar Sonner
 import { Reporte } from "../../types/reports-table"
 import { useReportes } from "../../hooks/useReportsTable"
+import { ChevronDown } from "lucide-react"
 
 interface WelcomeReportsProps {
   onFilterChange: (filtro: string) => void
@@ -407,6 +408,7 @@ const WelcomeReports: React.FC<WelcomeReportsProps> = ({
                 height={20}
               />
               <span className="font-semibold">{getCurrentLabel()}</span>
+              <ChevronDown className="ml-auto h-4 w-4" />  {/* ← AGREGAR ESTO */}
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent

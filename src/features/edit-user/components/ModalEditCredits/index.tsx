@@ -49,6 +49,7 @@ const EditCreditosModal: React.FC<EditCreditosModalProps> = ({
       setSuccessData(null)
       setLoading(false)
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]) // Solo depende de isOpen
 
   // Manejar cambio en el input - SUPER SIMPLE

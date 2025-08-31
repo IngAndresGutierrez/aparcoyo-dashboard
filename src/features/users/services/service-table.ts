@@ -112,6 +112,8 @@ export class UsuariosTablaService {
 
       const basicData: UsuariosBasicosResponse = await basicResponse.json()
 
+      // En tu UsuariosTablaService, agrega este log después de obtener basicData:
+
       if (!basicData.ok) {
         throw new Error(basicData.msg || "Error en datos básicos")
       }
@@ -198,8 +200,8 @@ export class UsuariosTablaService {
         msg: statsData
           ? "Usuarios con estadísticas completas"
           : "Usuarios sin estadísticas",
-        total: basicData.total || usuariosCombinados.length,
-        page: basicData.page || params.page || 1,
+        total: statsData?.data?.usuariosTotales || 38, // ← El total va aquí
+        page: basicData.page || params.page || 1, // ← La página va aquí
         limit: basicData.limit || params.limit || 10,
       }
     } catch (error) {
