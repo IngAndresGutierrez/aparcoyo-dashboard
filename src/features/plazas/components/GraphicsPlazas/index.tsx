@@ -62,6 +62,9 @@ const transformDataForChart = (
 
   // Agrupar por período basado en el rango seleccionado
   const groupedByPeriod = plazasDetalle.reduce((acc, plaza) => {
+    console.log("=== DIAGNÓSTICO COMPLETO ===")
+    console.log("🔍 Rango seleccionado:", rango)
+    console.log("🔍 Total de plazas:", plazasDetalle.length)
     // 🔍 Ajusta estos campos según la estructura real de PlazaDetalle
     // Campos posibles: fechaCreacion, createdAt, fecha, fechaPublicacion, etc.
     const dateField =
@@ -93,6 +96,13 @@ const transformDataForChart = (
         periodKey = `${date.getFullYear()}-${String(
           date.getMonth() + 1
         ).padStart(2, "0")}` // YYYY-MM
+        console.log("DEBUG MES:", {
+          fechaOriginal: dateField,
+          dateObject: date,
+          año: date.getFullYear(),
+          mesNumber: date.getMonth() + 1,
+          periodKey: periodKey,
+        })
         break
     }
 
