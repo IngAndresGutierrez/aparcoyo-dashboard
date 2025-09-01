@@ -21,7 +21,6 @@ import {
 import { Skeleton } from "@/components/ui/skeleton"
 import { useUsuariosStats } from "@/features/users/hooks/useUsers"
 
-
 export const description =
   "Gráfico de usuarios totales con datos en tiempo real"
 
@@ -152,8 +151,12 @@ export function GraphicsHome({ rango = "mes" }: TotalUsersGraphProps) {
       </CardHeader>
 
       <CardContent className="">
-        <ChartContainer config={chartConfig}>
+        <ChartContainer
+          className=""
+          config={chartConfig}
+        >
           <AreaChart
+            className=""
             accessibilityLayer
             data={chartData}
             margin={{
