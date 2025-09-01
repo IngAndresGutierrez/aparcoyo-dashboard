@@ -4,13 +4,13 @@ import { Card } from "@/components/ui/card"
 import { ArrowUp, ArrowDown, Loader2 } from "lucide-react"
 import { useFinancialStats } from "../../hooks/useFinanzas"
 
-
 interface UsersTotalsCardsProps {
   isAdmin?: boolean // Para determinar si usar estadísticas de plataforma o balance personal
 }
 
 const UsersTotalsCards = ({ isAdmin = false }: UsersTotalsCardsProps) => {
-  const { data, loading, error, refetch, isConnected } = useFinancialStats(isAdmin)
+  const { data, loading, error, refetch, isConnected } =
+    useFinancialStats(isAdmin)
 
   // Formatear números con moneda
   const formatCurrency = (amount: number, currency: string = "€") => {
@@ -21,11 +21,11 @@ const UsersTotalsCards = ({ isAdmin = false }: UsersTotalsCardsProps) => {
   const getTrendDisplay = (percentage: number) => {
     const Icon = percentage >= 0 ? ArrowUp : ArrowDown
     const color = percentage >= 0 ? "#61AA12" : "#EF4444"
-    
+
     return {
       Icon,
       color,
-      text: `${Math.abs(percentage).toFixed(1)}%`
+      text: `${Math.abs(percentage).toFixed(1)}%`,
     }
   }
 
@@ -51,7 +51,7 @@ const UsersTotalsCards = ({ isAdmin = false }: UsersTotalsCardsProps) => {
             <p className="text-red-500 mb-2 text-sm">
               {error || "Error de conexión"}
             </p>
-            <button 
+            <button
               onClick={refetch}
               className="px-3 py-2 bg-blue-500 text-white rounded text-sm hover:bg-blue-600"
             >
@@ -64,7 +64,9 @@ const UsersTotalsCards = ({ isAdmin = false }: UsersTotalsCardsProps) => {
   }
 
   return (
-    <Card className="w-full max-w-sm lg:h-190 flex justify-center items-center">
+    <Card className="w-full max-w-sm h-full min-h-[400px] lg:min-h-[500px] flex justify-center items-center p-10">
+      {" "}
+      {/* ← Cambiar por esto */}
       <div className="flex lg:flex-col lg:p-4 lg:gap-y-24 flex-row gap-x-12">
         {/* Primer bloque - Ingresos totales */}
         <div className="flex flex-col items-center">
@@ -74,7 +76,7 @@ const UsersTotalsCards = ({ isAdmin = false }: UsersTotalsCardsProps) => {
           <p className="text-4xl font-semibold text-center">
             {formatCurrency(data?.ingresosTotales || 0, data?.moneda)}
           </p>
-          <div 
+          <div
             className="flex items-center gap-x-1 text-sm mt-1"
             style={{ color: ingresosTrend.color }}
           >
@@ -91,7 +93,7 @@ const UsersTotalsCards = ({ isAdmin = false }: UsersTotalsCardsProps) => {
           <p className="text-4xl font-semibold text-center">
             {formatCurrency(data?.comisionesPagadas || 0, data?.moneda)}
           </p>
-          <div 
+          <div
             className="flex items-center gap-x-1 text-sm mt-1"
             style={{ color: comisionesTrend.color }}
           >
