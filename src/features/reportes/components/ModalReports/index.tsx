@@ -15,7 +15,7 @@ interface ReporteDetailsModalProps {
 
 interface ReporteDetalle {
   id: string
-  descripcion: string 
+  descripcion: string
   categoria: string
   categoriaLabel: string
   estado: string
@@ -105,7 +105,7 @@ const ReporteDetailsModal: React.FC<ReporteDetailsModalProps> = ({
 
       // Si marcó resolver, cambiar estado
       if (marcarResuelto) {
-        updateData.estado = "resuelto"
+        updateData.estado = "Resuelto"
       }
 
       const response = await ReportesService.updateReporte(
@@ -120,7 +120,7 @@ const ReporteDetailsModal: React.FC<ReporteDetailsModalProps> = ({
             ? {
                 ...prev,
                 respuestaAdmin: respuestaAdmin.trim(),
-                estado: marcarResuelto ? "resuelto" : prev.estado,
+                estado: marcarResuelto ? "Resuelto" : prev.estado,
                 resolvedAt: marcarResuelto
                   ? new Date().toISOString()
                   : prev.resolvedAt,
@@ -311,12 +311,12 @@ const ReporteDetailsModal: React.FC<ReporteDetailsModalProps> = ({
                         ● Esperando acción del administrador
                       </span>
                     )}
-                    {reporte.estado === "resuelto" && (
+                    {reporte.estado === "Resuelto" && (
                       <span className="text-sm text-green-600">
                         ✓ Reporte resuelto exitosamente
                       </span>
                     )}
-                    {reporte.estado === "cancelado" && (
+                    {reporte.estado === "Cancelado" && (
                       <span className="text-sm text-red-600">
                         ✗ Reporte cancelado por el administrador
                       </span>
