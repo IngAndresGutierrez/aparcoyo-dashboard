@@ -64,7 +64,7 @@ const UsersTotalsCards = ({ isAdmin = false }: UsersTotalsCardsProps) => {
   }
 
   return (
-    <Card className="w-full max-w-sm h-full min-h-[400px] lg:min-h-[500px] flex justify-center items-center p-10">
+    <Card className="w-full max-w-sm h-full min-h-[400px] lg:min-h-[500px] flex justify-center items-center lg:p-3 p-10">
       {" "}
       {/* ← Cambiar por esto */}
       <div className="flex lg:flex-col lg:p-4 lg:gap-y-24 flex-row gap-x-12">
