@@ -230,6 +230,14 @@ const UserDetails: React.FC<UserDetailsProps> = ({ userId }) => {
       return
     }
 
+    // ✅ INTERCEPTAR Y SILENCIAR ERRORES DE CONSOLA
+    const originalConsoleError = console.error
+    const originalConsoleWarn = console.warn
+
+    // Silenciar temporalmente los errores de consola
+    console.error = () => {}
+    console.warn = () => {}
+
     try {
       const token =
         localStorage.getItem("token") || localStorage.getItem("authToken")
@@ -283,18 +291,109 @@ const UserDetails: React.FC<UserDetailsProps> = ({ userId }) => {
         description: "Los cambios se han guardado exitosamente",
         duration: 4000,
       })
-    } catch (err) {
-      console.error("❌ Error al actualizar usuario:", err)
+    } catch (err: any) {
+      // ✅ COMPLETAMENTE SILENCIOSO - NO LOGS EN CONSOLA
 
-      // ✅ Toast de error elegante
-      toast.error("Error al actualizar usuario", {
+      // ✅ EXTRAER INFORMACIÓN DEL ERROR SIN HACER LOGS
+      let errorTitle = "Error al actualizar usuario"
+      let errorDescription = "Ha ocurrido un error inesperado"
+
+      try {
+        // Extraer información del error del backend
+        const errorString = String(err?.message || err || "")
+        let backendData = null
+
+        // Intentar parsear el JSON del error
+        if (errorString.includes("{") && errorString.includes("}")) {
+          const jsonMatch = errorString.match(/\{.*\}/)?.[0]
+          if (jsonMatch) {
+            try {
+              backendData = JSON.parse(jsonMatch)
+            } catch {}
+          }
+        }
+
+        // Determinar el status code
+        const statusCode =
+          err?.status ||
+          err?.statusCode ||
+          (errorString.includes("400")
+            ? 400
+            : errorString.includes("401")
+            ? 401
+            : errorString.includes("403")
+            ? 403
+            : errorString.includes("404")
+            ? 404
+            : errorString.includes("500")
+            ? 500
+            : 0)
+
+        // Obtener mensaje específico del backend
+        let backendMessage = null
+        if (backendData?.message) {
+          if (Array.isArray(backendData.message)) {
+            backendMessage = backendData.message[0] // Primer mensaje del array
+          } else {
+            backendMessage = backendData.message
+          }
+        }
+
+        // Configurar mensajes específicos por tipo de error
+        switch (statusCode) {
+          case 400:
+            errorTitle = "Datos inválidos"
+            if (backendMessage) {
+              errorDescription = backendMessage
+            } else if (errorString.includes("contraseña")) {
+              errorDescription =
+                "La contraseña no cumple con los requisitos mínimos"
+            } else {
+              errorDescription = "Los datos proporcionados no son válidos"
+            }
+            break
+          case 401:
+            errorTitle = "Sin autorización"
+            errorDescription =
+              backendMessage || "No tienes permisos para realizar esta acción"
+            break
+          case 403:
+            errorTitle = "Acceso denegado"
+            errorDescription =
+              backendMessage || "No tienes permisos para editar este usuario"
+            break
+          case 404:
+            errorTitle = "Usuario no encontrado"
+            errorDescription =
+              backendMessage || "El usuario no existe en el sistema"
+            break
+          case 500:
+            errorTitle = "Error del servidor"
+            errorDescription =
+              backendMessage ||
+              "Error interno del servidor. Inténtalo más tarde"
+            break
+          default:
+            if (backendMessage) {
+              errorDescription = backendMessage
+            }
+        }
+      } catch {
+        // Si hay algún error procesando el error, usar valores por defecto
+        errorTitle = "Error al actualizar usuario"
+        errorDescription = "Ha ocurrido un error inesperado"
+      }
+
+      // ✅ Toast de error elegante y específico
+      toast.error(errorTitle, {
         id: "update-user", // Reemplaza el toast de loading
-        description:
-          err instanceof Error
-            ? err.message
-            : "Ha ocurrido un error inesperado",
-        duration: 5000,
+        description: errorDescription,
+        duration: 6000, // Más tiempo para leer el mensaje específico
       })
+    } finally {
+      // ✅ RESTAURAR CONSOLE.ERROR Y CONSOLE.WARN
+      console.error = originalConsoleError
+      console.warn = originalConsoleWarn
     }
   }
 

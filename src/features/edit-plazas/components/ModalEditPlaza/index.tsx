@@ -3,10 +3,11 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Edit3, X, User } from "lucide-react"
+import { Edit3, User } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { toast } from "sonner" // ✅ Importar toast de Sonner
 
 import {
   Dialog,
@@ -112,14 +113,6 @@ function ModalDetallesPlaza({
           p.email.toLowerCase() === formData.propietario.email.toLowerCase()
       )
     }
-
-    // Debug temporal (puedes quitar después)
-    console.log("🔍 DISPLAY - formData.propietario:", formData.propietario)
-    console.log("🔍 DISPLAY - propietarioActual encontrado:", propietarioActual)
-    console.log(
-      "🔍 DISPLAY - Lista propietarios:",
-      propietarios.map((p) => ({ id: p.id, email: p.email }))
-    )
 
     // Determinar qué mostrar - priorizar datos encontrados, luego formData
     const nombreAMostrar =
@@ -284,7 +277,7 @@ function ModalDetallesPlaza({
     return Object.keys(nuevosErrores).length === 0
   }
 
-  // 🛠️ FUNCIÓN MEJORADA PARA MANEJAR GUARDAR
+  // 🛠️ FUNCIÓN MEJORADA PARA MANEJAR GUARDAR CON TOAST
   const handleGuardar = async () => {
     if (!validarFormulario()) return
 
@@ -300,10 +293,22 @@ function ModalDetallesPlaza({
 
       console.log("✅ MODAL - Guardado exitoso")
 
+      // ✅ MOSTRAR TOAST DE ÉXITO
+      toast.success("Plaza actualizada", {
+        description: "Los cambios se han guardado correctamente",
+        duration: 3000,
+      })
+
       // El modal se cierra automáticamente
       onClose()
     } catch (error) {
       console.error("❌ MODAL - Error en el modal:", error)
+
+      // ✅ MOSTRAR TOAST DE ERROR
+      toast.error("Error al guardar", {
+        description: "No se pudieron guardar los cambios. Inténtalo de nuevo.",
+        duration: 4000,
+      })
     }
   }
 
@@ -351,7 +356,12 @@ function ModalDetallesPlaza({
   return (
     <Dialog
       open={isOpen}
-      onOpenChange={onClose}
+      onOpenChange={(open) => {
+        // ✅ SOLO PERMITIR CERRAR, NO ABRIR DESDE AQUÍ
+        if (!open) {
+          handleCancelar()
+        }
+      }}
     >
       <DialogContent className="max-w-[450px] p-0 gap-0 bg-white rounded-xl shadow-2xl">
         {/* Estado de loading */}
@@ -402,14 +412,7 @@ function ModalDetallesPlaza({
                     Detalles de la plaza
                   </DialogTitle>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={onClose}
-                  className="h-8 w-8 text-gray-400 hover:text-gray-600 hover:bg-gray-100"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
+                {/* ✅ REMOVED: El botón X manual ya no es necesario */}
               </div>
             </DialogHeader>
 
