@@ -6,12 +6,13 @@ import {
   flexRender,
   getCoreRowModel,
   useReactTable,
-  getPaginationRowModel,
 } from "@tanstack/react-table"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
+import { Search, X, Loader2 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import {
   Table,
   TableBody,
@@ -21,7 +22,6 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Skeleton } from "@/components/ui/skeleton"
-import { useEffect, useState } from "react"
 
 import { useGetAllPlazas } from "../../hooks/useGetAllPlazas"
 import { createColumns } from "./columns"
@@ -32,14 +32,96 @@ import {
 
 const UsersTablePlazas = () => {
   const router = useRouter()
-  const { getAllPlazas, plazas, isLoading } = useGetAllPlazas()
+  const { getAllPlazas, plazas: initialPlazas, isLoading } = useGetAllPlazas()
 
-  // Estado para controlar qué plaza se está eliminando
-  const [deletingId, setDeletingId] = useState<string | null>(null)
+  // Estados para búsqueda local y paginación
+  const [searchValue, setSearchValue] = React.useState("")
+  const [allPlazas, setAllPlazas] = React.useState<any[]>([])
+  const [filteredPlazas, setFilteredPlazas] = React.useState<any[]>([])
+  const [currentPage, setCurrentPage] = React.useState(1)
+  const [deletingId, setDeletingId] = React.useState<string | null>(null)
+  const itemsPerPage = 10
+  const searchTimeoutRef = React.useRef<NodeJS.Timeout | undefined>(undefined)
+
+  // Cargar plazas inicialmente
+  React.useEffect(() => {
+    getAllPlazas()
+  }, [])
+
+  // Actualizar cuando llegan datos
+  React.useEffect(() => {
+    if (initialPlazas?.length > 0) {
+      console.log(
+        "Cargadas",
+        initialPlazas.length,
+        "plazas para filtrado local"
+      )
+      setAllPlazas(initialPlazas)
+      setFilteredPlazas(initialPlazas)
+    }
+  }, [initialPlazas])
+
+  // Filtrar plazas localmente
+  const handleFilter = React.useCallback(
+    (searchTerm: string) => {
+      if (!searchTerm.trim()) {
+        setFilteredPlazas(allPlazas)
+        setCurrentPage(1)
+        return
+      }
+
+      const search = searchTerm.toLowerCase().trim()
+      const filtered = allPlazas.filter(
+        (plaza) =>
+          plaza.direccion?.toLowerCase().includes(search) ||
+          plaza.propietario?.nombre?.toLowerCase().includes(search) ||
+          plaza.propietario?.email?.toLowerCase().includes(search) ||
+          plaza.tipo?.toLowerCase().includes(search)
+      )
+
+      console.log(
+        `Filtradas: ${filtered.length} plazas de ${allPlazas.length} para "${searchTerm}"`
+      )
+      setFilteredPlazas(filtered)
+      setCurrentPage(1)
+    },
+    [allPlazas]
+  )
+
+  // Manejar cambio de búsqueda
+  const handleSearchChange = (value: string) => {
+    setSearchValue(value)
+
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current)
+    }
+
+    searchTimeoutRef.current = setTimeout(() => {
+      handleFilter(value)
+    }, 300)
+  }
+
+  // Limpiar búsqueda
+  const clearSearch = () => {
+    setSearchValue("")
+    setFilteredPlazas(allPlazas)
+    setCurrentPage(1)
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current)
+    }
+  }
+
+  // Cleanup
+  React.useEffect(() => {
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current)
+      }
+    }
+  }, [])
 
   // FUNCIÓN MEJORADA CON VERIFICACIÓN PREVIA
   const handleEliminarPlaza = async (id: string, direccion: string) => {
-    // Validar que tengamos un ID válido
     if (!id) {
       toast.error("Error", {
         description: "ID de plaza no válido",
@@ -48,18 +130,14 @@ const UsersTablePlazas = () => {
     }
 
     try {
-      // STEP 1: VERIFICAR PRIMERO SI SE PUEDE ELIMINAR
       const verificacionToast = toast.loading("Verificando plaza...", {
         description: "Comprobando si la plaza puede ser eliminada",
       })
 
       const verificacion = await verificarEliminacionPlazaService(id)
-
-      // Cerrar toast de verificación
       toast.dismiss(verificacionToast)
 
       if (!verificacion.puedeEliminar && verificacion.motivo) {
-        // NO SE PUEDE ELIMINAR - MOSTRAR INFORMACIÓN CLARA
         toast.error("No se puede eliminar", {
           description: verificacion.motivo,
           duration: 8000,
@@ -73,7 +151,6 @@ const UsersTablePlazas = () => {
         return
       }
 
-      // SÍ SE PUEDE ELIMINAR (o no sabemos) - MOSTRAR CONFIRMACIÓN NORMAL
       toast("¿Eliminar plaza?", {
         description: `¿Estás seguro de que quieres eliminar "${direccion}"? Esta acción no se puede deshacer.`,
         action: {
@@ -84,16 +161,13 @@ const UsersTablePlazas = () => {
         },
         cancel: {
           label: "Cancelar",
-          onClick: () => {
-            // Toast se cierra automáticamente
-          },
+          onClick: () => {},
         },
         duration: 10000,
       })
     } catch (error: any) {
       console.error("Error al verificar plaza:", error)
 
-      // Si la verificación falla, mostrar confirmación de todas formas
       toast("¿Eliminar plaza?", {
         description: `No se pudo verificar el estado de "${direccion}". ¿Continuar con la eliminación?`,
         action: {
@@ -111,56 +185,45 @@ const UsersTablePlazas = () => {
     }
   }
 
-  // FUNCIÓN PARA EJECUTAR LA ELIMINACIÓN (SIN CAMBIOS)
+  // FUNCIÓN PARA EJECUTAR LA ELIMINACIÓN - ACTUALIZADA para estado local
   const executeDelete = async (id: string, direccion: string) => {
     try {
-      setDeletingId(id) // Mostrar loading en esta plaza específica
+      setDeletingId(id)
 
-      // TOAST DE LOADING
       const loadingToast = toast.loading("Eliminando plaza...", {
         description: `Eliminando "${direccion}"`,
       })
 
       console.log(`Iniciando eliminación de plaza:`, { id, direccion })
 
-      // Llamar al servicio de eliminación
       const response = await eliminarPlazaService(id)
-
       console.log(`Plaza eliminada exitosamente:`, response.data)
 
-      // CERRAR LOADING TOAST
       toast.dismiss(loadingToast)
-
-      // TOAST DE ÉXITO
       toast.success("Plaza eliminada", {
         description: `"${direccion}" ha sido eliminada exitosamente`,
       })
 
-      // Recargar la lista de plazas
-      await getAllPlazas()
+      // Actualizar estado local en lugar de recargar desde servidor
+      const updatePlazasList = (plazas: any[]) =>
+        plazas.filter((plaza) => plaza.id !== id)
+
+      setAllPlazas((prev) => updatePlazasList(prev))
+      setFilteredPlazas((prev) => updatePlazasList(prev))
     } catch (error: any) {
       console.error("Error completo al eliminar plaza:", error)
 
-      // MANEJO DE ERRORES CON SONNER
       if (error.response) {
-        // El servidor respondió con un código de error
         const status = error.response.status
         const data = error.response.data
 
-        console.error(`Error del servidor:`, {
-          status,
-          data,
-          headers: error.response.headers,
-        })
+        console.error(`Error del servidor:`, { status, data })
 
         switch (status) {
           case 400:
-            // Extraer el mensaje específico del servidor
             const serverMessage =
               data?.message || data?.msg || data?.error || "Petición inválida"
-            console.error(`Mensaje del servidor (400):`, serverMessage)
 
-            // MENSAJES ESPECÍFICOS CON SONNER
             if (
               serverMessage.includes("reservas activas") ||
               serverMessage.includes("reserva")
@@ -171,7 +234,6 @@ const UsersTablePlazas = () => {
                 action: {
                   label: "Ver reservas",
                   onClick: () => {
-                    // Opcional: navegar a ver las reservas
                     router.push(`/reservas?plazaId=${id}`)
                   },
                 },
@@ -226,70 +288,125 @@ const UsersTablePlazas = () => {
             })
         }
       } else if (error.request) {
-        // La petición se hizo pero no hubo respuesta
-        console.error(`Sin respuesta del servidor:`, error.request)
         toast.error("Error de conexión", {
           description:
             "No se pudo conectar con el servidor. Verifica tu conexión a internet.",
           duration: 5000,
         })
       } else {
-        // Algo más pasó
-        console.error(`Error de configuración:`, error.message)
         toast.error("Error", {
           description: error.message,
           duration: 5000,
         })
       }
     } finally {
-      setDeletingId(null) // Quitar loading
+      setDeletingId(null)
     }
   }
 
   // Función para manejar la navegación a editar
   const handleEditarPlaza = (id: string) => {
     console.log("Navegando a editar plaza con ID:", id)
-    console.log("URL destino:", `/plazas/${id}`)
-
-    // Navegar a tu página de edición
     router.push(`/plazas/${id}`)
   }
 
-  // Crear columnas con AMBAS funciones (eliminar Y editar)
-  const columns = createColumns({
-    onEliminarPlaza: handleEliminarPlaza,
-    deletingId,
-    onEditarPlaza: handleEditarPlaza,
-  })
+  // Paginación
+  const startIndex = (currentPage - 1) * itemsPerPage
+  const endIndex = startIndex + itemsPerPage
+  const plazasPagina = filteredPlazas.slice(startIndex, endIndex)
+  const totalPages = Math.ceil(filteredPlazas.length / itemsPerPage)
+
+  // Crear columnas memoizadas
+  const columns = React.useMemo(
+    () =>
+      createColumns({
+        onEliminarPlaza: handleEliminarPlaza,
+        deletingId,
+        onEditarPlaza: handleEditarPlaza,
+      }),
+    [deletingId]
+  )
 
   const table = useReactTable({
-    data: plazas,
+    data: plazasPagina,
     columns,
     getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
+    manualPagination: true,
   })
-
-  useEffect(() => {
-    getAllPlazas()
-  }, [])
-
-  // Debug para verificar que las funciones están conectadas
-  useEffect(() => {
-    console.log("Componente UsersTablePlazas montado")
-    console.log("Función handleEditarPlaza:", handleEditarPlaza)
-    console.log("Total de plazas:", plazas.length)
-  }, [plazas])
 
   if (isLoading) {
     return (
-      <div className="h-6">
-        <Skeleton className="h-full" />
+      <div className="w-full">
+        <div className="flex items-center justify-between mb-4">
+          <Skeleton className="h-4 w-48" />
+          <Skeleton className="h-10 w-72" />
+        </div>
+        <div className="rounded-md border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                {[...Array(7)].map((_, i) => (
+                  <TableHead key={i}>
+                    <Skeleton className="h-4 w-20" />
+                  </TableHead>
+                ))}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {[...Array(5)].map((_, i) => (
+                <TableRow key={i}>
+                  {[...Array(7)].map((_, j) => (
+                    <TableCell key={j}>
+                      <Skeleton className="h-4 w-full" />
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+        <div className="flex items-center justify-center py-8">
+          <Loader2 className="h-6 w-6 animate-spin" />
+          <span className="ml-2 text-sm">Cargando plazas...</span>
+        </div>
       </div>
     )
   }
 
   return (
     <div className="w-full">
+      {/* Header con información y buscador */}
+      <div className="flex items-center justify-between mb-4">
+        <div className="text-sm text-muted-foreground">
+          Mostrando {plazasPagina.length} de {filteredPlazas.length} plazas
+          {searchValue && ` para "${searchValue}"`}
+          {filteredPlazas.length !== allPlazas.length &&
+            ` (${allPlazas.length} total)`}
+        </div>
+
+        <div className="relative w-72">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+          <Input
+            placeholder="Buscar plazas..."
+            value={searchValue}
+            onChange={(e) => handleSearchChange(e.target.value)}
+            className="pl-10 pr-10"
+            disabled={isLoading}
+          />
+          {searchValue && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={clearSearch}
+              className="absolute right-1 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0 hover:bg-gray-100"
+            >
+              <X className="h-3 w-3" />
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {/* Tabla */}
       <div className="rounded-md border overflow-x-auto">
         <Table className="min-w-full">
           <TableHeader>
@@ -314,13 +431,26 @@ const UsersTablePlazas = () => {
             ))}
           </TableHeader>
           <TableBody>
-            {plazas.length === 0 ? (
+            {plazasPagina.length === 0 ? (
               <TableRow>
                 <TableCell
                   colSpan={columns.length}
                   className="text-center py-8 text-muted-foreground"
                 >
-                  No se encontraron plazas
+                  {searchValue ? (
+                    <div>
+                      <p>No se encontraron plazas para {searchValue}</p>
+                      <Button
+                        variant="link"
+                        onClick={clearSearch}
+                        className="mt-2"
+                      >
+                        Limpiar búsqueda
+                      </Button>
+                    </div>
+                  ) : (
+                    "No se encontraron plazas"
+                  )}
                 </TableCell>
               </TableRow>
             ) : (
@@ -347,23 +477,39 @@ const UsersTablePlazas = () => {
           </TableBody>
         </Table>
       </div>
-      <div className="flex items-center justify-end space-x-2 py-4">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => table.previousPage()}
-          disabled={!table.getCanPreviousPage()}
-        >
-          Atrás
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => table.nextPage()}
-          disabled={!table.getCanNextPage()}
-        >
-          Adelante
-        </Button>
+
+      {/* Paginación */}
+      <div className="flex items-center justify-between py-4">
+        <div className="text-sm text-muted-foreground">
+          Mostrando {startIndex + 1} -{" "}
+          {Math.min(endIndex, filteredPlazas.length)} de {filteredPlazas.length}{" "}
+          plazas
+          {filteredPlazas.length !== allPlazas.length &&
+            ` (filtrados de ${allPlazas.length})`}
+        </div>
+        <div className="flex items-center space-x-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+            disabled={currentPage <= 1}
+          >
+            ← Anterior
+          </Button>
+          <span className="text-sm text-muted-foreground px-3">
+            Página {currentPage} de {totalPages}
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() =>
+              setCurrentPage((prev) => Math.min(totalPages, prev + 1))
+            }
+            disabled={currentPage >= totalPages}
+          >
+            Siguiente →
+          </Button>
+        </div>
       </div>
     </div>
   )
