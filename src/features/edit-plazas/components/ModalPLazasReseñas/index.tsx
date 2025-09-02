@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useEffect } from "react"
 import {
   Dialog,
@@ -6,6 +7,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input" // ✅ Agregado Input de Shadcn
+
 import { Label } from "@/components/ui/label"
 import { Edit3, Star, CheckCircle, Sparkles } from "lucide-react"
 
@@ -68,8 +71,19 @@ const EditReviewModal = ({
   }, [isOpen, initialData])
 
   const handleSave = async () => {
+    // ✅ PREVENIR MÚLTIPLES EJECUCIONES
+    if (loading) return
+
+    // ✅ INTERCEPTAR Y SILENCIAR ERRORES DE CONSOLA
+    const originalConsoleError = console.error
+    const originalConsoleWarn = console.warn
+
+    // Silenciar temporalmente los errores de consola
+    console.error = () => {}
+    console.warn = () => {}
+
     try {
-      // Validación de campos requeridos
+      // ✅ VALIDACIONES MEJORADAS
       if (
         !formData.usuario.trim() ||
         !formData.plaza.trim() ||
@@ -77,6 +91,23 @@ const EditReviewModal = ({
       ) {
         toast.error("Campos requeridos", {
           description: "Por favor, completa todos los campos antes de guardar.",
+          icon: <Star className="w-4 h-4" />,
+        })
+        return
+      }
+
+      // ✅ VALIDACIÓN DE FORMATO DE IDs (opcional, por si acaso)
+      if (formData.usuario.trim().length < 3) {
+        toast.error("Usuario inválido", {
+          description: "El ID del usuario debe tener al menos 3 caracteres.",
+          icon: <Star className="w-4 h-4" />,
+        })
+        return
+      }
+
+      if (formData.plaza.trim().length < 3) {
+        toast.error("Plaza inválida", {
+          description: "El ID de la plaza debe tener al menos 3 caracteres.",
           icon: <Star className="w-4 h-4" />,
         })
         return
@@ -90,6 +121,7 @@ const EditReviewModal = ({
         plaza: formData.plaza.trim(),
       }
 
+      // ✅ OPERACIÓN COMPLETAMENTE SILENCIOSA
       if (reviewId) {
         await updateReview(reviewId, apiData)
         toast.success("¡Reseña actualizada!", {
@@ -111,13 +143,78 @@ const EditReviewModal = ({
       }
 
       onClose()
-    } catch (err) {
-      console.error("Error al guardar reseña:", err)
-      toast.error("Error al guardar", {
-        description:
-          "Hubo un problema al guardar tu reseña. Por favor, inténtalo de nuevo.",
+    } catch (err: any) {
+      // ✅ COMPLETAMENTE SILENCIOSO - NO LOGS EN CONSOLA
+
+      // ✅ MANEJO ESPECÍFICO DE ERRORES POR STATUS CODE
+      let errorTitle = "Error al guardar"
+      let errorDescription = "Hubo un problema al guardar tu reseña."
+
+      // Extraer información del error sin hacer logs
+      const errorString = String(err?.message || err || "")
+      const responseData = err?.response?.data || {}
+      const statusCode =
+        err?.statusCode ||
+        err?.status ||
+        err?.response?.status ||
+        (errorString.includes("400")
+          ? 400
+          : errorString.includes("401")
+          ? 401
+          : errorString.includes("403")
+          ? 403
+          : errorString.includes("404")
+          ? 404
+          : errorString.includes("500")
+          ? 500
+          : 0)
+
+      // ✅ USAR MENSAJE DEL BACKEND SI ESTÁ DISPONIBLE
+      const backendMessage = responseData?.message
+
+      switch (statusCode) {
+        case 400:
+          errorTitle = "Datos inválidos"
+          errorDescription =
+            backendMessage ||
+            "Los IDs de usuario o plaza no son válidos. Verifica que existan en el sistema."
+          break
+        case 401:
+          errorTitle = "Sin autorización"
+          errorDescription =
+            backendMessage || "No tienes permisos para realizar esta acción."
+          break
+        case 403:
+          errorTitle = "Acceso denegado"
+          errorDescription =
+            backendMessage || "No tienes permisos para editar esta reseña."
+          break
+        case 404:
+          errorTitle = "No encontrado"
+          errorDescription =
+            backendMessage || "La reseña, usuario o plaza no existe."
+          break
+        case 500:
+          errorTitle = "Error del servidor"
+          errorDescription =
+            backendMessage || "Error interno del servidor. Inténtalo más tarde."
+          break
+        default:
+          errorDescription =
+            backendMessage ||
+            "Hubo un problema al procesar tu solicitud. Verifica los datos e inténtalo de nuevo."
+      }
+
+      // ✅ MOSTRAR TOAST DE ERROR SIN CERRAR EL MODAL
+      toast.error(errorTitle, {
+        description: errorDescription,
         icon: <Star className="w-4 h-4 text-red-500" />,
+        duration: 6000,
       })
+    } finally {
+      // ✅ RESTAURAR CONSOLE.ERROR Y CONSOLE.WARN
+      console.error = originalConsoleError
+      console.warn = originalConsoleWarn
     }
   }
 
@@ -186,30 +283,40 @@ const EditReviewModal = ({
           </div>
 
           <div className="space-y-2">
-            <Label className="text-sm font-medium text-gray-700">
+            <Label
+              htmlFor="usuario"
+              className="text-sm font-medium text-gray-700"
+            >
               Usuario (ID)
             </Label>
-            <input
+            <Input
+              id="usuario"
               value={formData.usuario}
               onChange={(e) =>
                 setFormData((prev) => ({ ...prev, usuario: e.target.value }))
               }
-              className="w-full border-gray-200 focus:border-blue-500 focus:ring-blue-500 rounded-lg p-3 text-sm"
+              className="h-11 text-gray-900 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
               placeholder="ID del usuario"
+              disabled={loading}
             />
           </div>
 
           <div className="space-y-2">
-            <Label className="text-sm font-medium text-gray-700">
+            <Label
+              htmlFor="plaza"
+              className="text-sm font-medium text-gray-700"
+            >
               Plaza (ID)
             </Label>
-            <input
+            <Input
+              id="plaza"
               value={formData.plaza}
               onChange={(e) =>
                 setFormData((prev) => ({ ...prev, plaza: e.target.value }))
               }
-              className="w-full border-gray-200 focus:border-blue-500 focus:ring-blue-500 rounded-lg p-3 text-sm"
+              className="h-11 text-gray-900 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
               placeholder="ID de la plaza"
+              disabled={loading}
             />
           </div>
 
@@ -223,7 +330,7 @@ const EditReviewModal = ({
                 setFormData((prev) => ({ ...prev, comentario: e.target.value }))
               }
               placeholder="Escribe tu reseña aquí..."
-              className="min-h-[120px] w-full resize-none border-gray-200 focus:border-blue-500 focus:ring-blue-500 rounded-lg p-3 text-sm"
+              className="border min-h-[120px] w-full resize-none border-gray-200 focus:border-blue-500 focus:ring-blue-500 rounded-lg p-3 text-sm"
             />
           </div>
         </div>

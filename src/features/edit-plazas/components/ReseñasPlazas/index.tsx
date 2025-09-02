@@ -269,7 +269,7 @@ function PlazaReviews({
                     {renderEstrellas(resena.estrellas, `resena-${resena.id}`)}
                   </div>
 
-                  <p className="text-gray-700 leading-relaxed">
+                  <p className="text-gray-700 leading-relaxed text-sm">
                     {resena.comentario}
                   </p>
                 </div>
