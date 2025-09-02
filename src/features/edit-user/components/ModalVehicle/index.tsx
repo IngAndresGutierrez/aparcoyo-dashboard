@@ -51,7 +51,9 @@ const EditVehiculoModal: React.FC<EditVehiculoModalProps> = ({
     loading,
   } = useVehiculos()
 
-  const [vehiculosForm, setVehiculosForm] = React.useState<VehiculoFormState[]>([])
+  const [vehiculosForm, setVehiculosForm] = React.useState<VehiculoFormState[]>(
+    []
+  )
   const [hasChanges, setHasChanges] = React.useState(false)
   const [errors, setErrors] = React.useState<Record<string, string>>({})
   const [saveError, setSaveError] = React.useState<string | null>(null) // Nuevo estado para errores de guardado
@@ -60,7 +62,7 @@ const EditVehiculoModal: React.FC<EditVehiculoModalProps> = ({
   React.useEffect(() => {
     if (isOpen) {
       console.log("🚗 Inicializando modal con vehículos:", vehiculos)
-      
+
       if (vehiculos && vehiculos.length > 0) {
         // Si hay vehículos, cargar los existentes
         const initialForm = vehiculos.map((vehiculo) => ({
@@ -87,22 +89,27 @@ const EditVehiculoModal: React.FC<EditVehiculoModalProps> = ({
 
     vehiculosForm.forEach((vehiculo, index) => {
       const prefix = `vehiculo-${index}`
-      
+
       if (!vehiculo.matricula?.trim()) {
         newErrors[`${prefix}-matricula`] = "La matrícula es requerida"
       } else if (vehiculo.matricula.length < 6) {
-        newErrors[`${prefix}-matricula`] = "La matrícula debe tener al menos 6 caracteres"
+        newErrors[`${prefix}-matricula`] =
+          "La matrícula debe tener al menos 6 caracteres"
       }
-      
+
       if (!vehiculo.modelo?.trim()) {
         newErrors[`${prefix}-modelo`] = "El modelo es requerido"
       } else if (vehiculo.modelo.length < 2) {
-        newErrors[`${prefix}-modelo`] = "El modelo debe tener al menos 2 caracteres"
+        newErrors[`${prefix}-modelo`] =
+          "El modelo debe tener al menos 2 caracteres"
       }
 
       // Verificar duplicados de matrícula
-      const duplicateIndex = vehiculosForm.findIndex((v, i) => 
-        i !== index && v.matricula?.trim().toUpperCase() === vehiculo.matricula?.trim().toUpperCase()
+      const duplicateIndex = vehiculosForm.findIndex(
+        (v, i) =>
+          i !== index &&
+          v.matricula?.trim().toUpperCase() ===
+            vehiculo.matricula?.trim().toUpperCase()
       )
       if (duplicateIndex !== -1) {
         newErrors[`${prefix}-matricula`] = "Esta matrícula ya está en uso"
@@ -121,9 +128,10 @@ const EditVehiculoModal: React.FC<EditVehiculoModalProps> = ({
   ) => {
     setVehiculosForm((prev) => {
       const updated = [...prev]
-      updated[index] = { 
-        ...updated[index], 
-        [field]: field === 'matricula' ? value.toUpperCase().trim() : value.trim()
+      updated[index] = {
+        ...updated[index],
+        [field]:
+          field === "matricula" ? value.toUpperCase().trim() : value.trim(),
       }
       return updated
     })
@@ -132,7 +140,7 @@ const EditVehiculoModal: React.FC<EditVehiculoModalProps> = ({
     // Limpiar error específico cuando el usuario empiece a escribir
     const errorKey = `vehiculo-${index}-${field}`
     if (errors[errorKey]) {
-      setErrors(prev => {
+      setErrors((prev) => {
         const newErrors = { ...prev }
         delete newErrors[errorKey]
         return newErrors
@@ -144,14 +152,16 @@ const EditVehiculoModal: React.FC<EditVehiculoModalProps> = ({
   const handleAddVehiculo = () => {
     // Contar vehículos reales (excluyendo los que están marcados para eliminación)
     const vehiculosReales = vehiculosForm.length
-    
+
     // Verificar límite de vehículos (3 máximo según el backend)
     if (vehiculosReales >= 3) {
       alert("No puedes tener más de 3 vehículos registrados.")
       return
     }
 
-    const tempId = `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+    const tempId = `temp-${Date.now()}-${Math.random()
+      .toString(36)
+      .substr(2, 9)}`
     const newVehiculo: VehiculoFormState = {
       matricula: "",
       modelo: "",
@@ -195,7 +205,6 @@ const EditVehiculoModal: React.FC<EditVehiculoModalProps> = ({
       setVehiculosForm((prev) => prev.filter((_, i) => i !== index))
       setHasChanges(true)
       console.log("✅ Vehículo eliminado exitosamente")
-      
     } catch (error) {
       console.error("❌ Error al eliminar vehículo:", error)
       alert(`Error al eliminar vehículo: ${error}`)
@@ -234,40 +243,52 @@ const EditVehiculoModal: React.FC<EditVehiculoModalProps> = ({
             placa: formVehiculo.matricula.trim().toUpperCase(),
             modelo: formVehiculo.modelo.trim(),
           }
-          
+
           console.log("➕ Creando vehículo con datos:", createData)
-          
+
           const createOperation = async () => {
             try {
               const result = await createVehiculo(createData)
               console.log("🔍 Resultado de creación:", result)
-              
+
               // El hook ahora retorna el objeto Vehiculo creado
               console.log("✅ Vehículo creado exitosamente:", result)
               return result
             } catch (error: any) {
               console.error("❌ Error creando vehículo:", error)
-              
+
               // Manejar error específico del límite de vehículos
-              if (error?.status === 400 && error?.message?.includes('máximo de 3 vehículos')) {
-                throw new Error("No puedes tener más de 3 vehículos registrados. Elimina uno existente para agregar otro.")
+              if (
+                error?.status === 400 &&
+                error?.message?.includes("máximo de 3 vehículos")
+              ) {
+                throw new Error(
+                  "No puedes tener más de 3 vehículos registrados. Elimina uno existente para agregar otro."
+                )
               }
-              
+
               // Verificar si el error contiene información del backend
               if (error?.message) {
-                throw new Error(`Error al crear vehículo ${formVehiculo.matricula}: ${error.message}`)
+                throw new Error(
+                  `Error al crear vehículo ${formVehiculo.matricula}: ${error.message}`
+                )
               }
-              
+
               // Error genérico
-              throw new Error(`Error al crear vehículo ${formVehiculo.matricula}: ${error?.toString() || "Error desconocido"}`)
+              throw new Error(
+                `Error al crear vehículo ${formVehiculo.matricula}: ${
+                  error?.toString() || "Error desconocido"
+                }`
+              )
             }
           }
-          
+
           operations.push(createOperation())
-          
         } else {
           // ✅ Actualizar vehículo existente
-          const originalVehiculo = vehiculos.find((v) => v.id === formVehiculo.id)
+          const originalVehiculo = vehiculos.find(
+            (v) => v.id === formVehiculo.id
+          )
           if (!originalVehiculo) {
             console.warn("⚠️ Vehículo original no encontrado, saltando")
             continue
@@ -275,7 +296,8 @@ const EditVehiculoModal: React.FC<EditVehiculoModalProps> = ({
 
           // Verificar cambios
           const hasVehiculoChanges =
-            originalVehiculo.placa !== formVehiculo.matricula.trim().toUpperCase() ||
+            originalVehiculo.placa !==
+              formVehiculo.matricula.trim().toUpperCase() ||
             originalVehiculo.modelo !== formVehiculo.modelo.trim()
 
           if (!hasVehiculoChanges) {
@@ -295,7 +317,11 @@ const EditVehiculoModal: React.FC<EditVehiculoModalProps> = ({
             try {
               let result
               if (userId) {
-                result = await updateVehiculoAdmin(userId, formVehiculo.id!, updateData)
+                result = await updateVehiculoAdmin(
+                  userId,
+                  formVehiculo.id!,
+                  updateData
+                )
               } else {
                 result = await updateVehiculo(formVehiculo.id!, updateData)
               }
@@ -303,7 +329,9 @@ const EditVehiculoModal: React.FC<EditVehiculoModalProps> = ({
               return result
             } catch (error) {
               console.error("❌ Error actualizando vehículo:", error)
-              throw new Error(`Error al actualizar vehículo ${formVehiculo.matricula}: ${error}`)
+              throw new Error(
+                `Error al actualizar vehículo ${formVehiculo.matricula}: ${error}`
+              )
             }
           }
 
@@ -315,34 +343,40 @@ const EditVehiculoModal: React.FC<EditVehiculoModalProps> = ({
       if (operations.length > 0) {
         console.log(`🚀 Ejecutando ${operations.length} operaciones...`)
         const results = await Promise.allSettled(operations)
-        
+
         // Verificar resultados
-        const failures = results.filter(result => result.status === 'rejected')
+        const failures = results.filter(
+          (result) => result.status === "rejected"
+        )
         if (failures.length > 0) {
           console.error("❌ Algunas operaciones fallaron:", failures)
-          
+
           // Mostrar errores específicos al usuario
           failures.forEach((failure, index) => {
-            if (failure.status === 'rejected') {
+            if (failure.status === "rejected") {
               console.error(`Operación ${index + 1} falló:`, failure.reason)
-              
+
               // Extraer el mensaje del error
               let errorMessage = "Error desconocido"
-              if (failure.reason && typeof failure.reason === 'object' && 'message' in failure.reason) {
+              if (
+                failure.reason &&
+                typeof failure.reason === "object" &&
+                "message" in failure.reason
+              ) {
                 errorMessage = (failure.reason as any).message
-              } else if (typeof failure.reason === 'string') {
+              } else if (typeof failure.reason === "string") {
                 errorMessage = failure.reason
               }
-              
+
               // Mostrar error específico y amigable
               alert(`❌ Error: ${errorMessage}`)
             }
           })
-          
+
           // No cerrar el modal si hay errores
           return
         }
-        
+
         console.log("✅ Todas las operaciones completadas exitosamente")
       } else {
         console.log("ℹ️ No hay operaciones que realizar")
@@ -355,20 +389,25 @@ const EditVehiculoModal: React.FC<EditVehiculoModalProps> = ({
 
       // Cerrar modal
       onClose()
-      
     } catch (error) {
       console.error("❌ Error general al guardar vehículos:", error)
     }
   }
 
-  const getErrorForField = (index: number, field: string): string | undefined => {
+  const getErrorForField = (
+    index: number,
+    field: string
+  ): string | undefined => {
     return errors[`vehiculo-${index}-${field}`]
   }
 
   // Mostrar estado vacío
   if (vehiculosForm.length === 0) {
     return (
-      <Dialog open={isOpen} onOpenChange={onClose}>
+      <Dialog
+        open={isOpen}
+        onOpenChange={onClose}
+      >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center space-x-2">
@@ -384,23 +423,33 @@ const EditVehiculoModal: React.FC<EditVehiculoModalProps> = ({
               <Car className="h-8 w-8 text-blue-600" />
             </div>
             <h3 className="font-semibold text-lg mb-2">
-              {userId ? "Este usuario no ha registrado vehículos aún" : "No tienes vehículos registrados"}
+              {userId
+                ? "Este usuario no ha registrado vehículos aún"
+                : "No tienes vehículos registrados"}
             </h3>
             <p className="text-muted-foreground text-sm mb-6">
-              {userId 
+              {userId
                 ? "Puedes añadir hasta 3 vehículos desde aquí para que aparezcan en su perfil y pueda utilizarlos en futuras reservas."
-                : "Añade tu primer vehículo para poder hacer reservas de aparcamiento. Puedes registrar hasta 3 vehículos."
-              }
+                : "Añade tu primer vehículo para poder hacer reservas de aparcamiento. Puedes registrar hasta 3 vehículos."}
             </p>
 
-            <Button onClick={handleAddVehiculo} className="mb-6" disabled={loading}>
+            <Button
+              onClick={handleAddVehiculo}
+              className="mb-6"
+              disabled={loading}
+            >
               <Plus className="h-4 w-4 mr-2" />
               Añadir vehículo
             </Button>
           </div>
 
           <div className="flex justify-end space-x-2">
-            <Button type="button" variant="outline" onClick={onClose} disabled={loading}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onClose}
+              disabled={loading}
+            >
               Cancelar
             </Button>
             <Button
@@ -417,7 +466,10 @@ const EditVehiculoModal: React.FC<EditVehiculoModalProps> = ({
 
   // Mostrar formulario con vehículos
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog
+      open={isOpen}
+      onOpenChange={onClose}
+    >
       <DialogContent className="sm:max-w-2xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center space-x-2">
@@ -437,9 +489,7 @@ const EditVehiculoModal: React.FC<EditVehiculoModalProps> = ({
                   Error al guardar
                 </span>
               </div>
-              <p className="text-xs text-red-600 mt-1">
-                {saveError}
-              </p>
+              <p className="text-xs text-red-600 mt-1">{saveError}</p>
             </div>
           )}
 
@@ -500,15 +550,19 @@ const EditVehiculoModal: React.FC<EditVehiculoModalProps> = ({
                     onChange={(e) =>
                       handleInputChange(index, "matricula", e.target.value)
                     }
-                    className={`mt-1 ${getErrorForField(index, 'matricula') ? 'border-red-500' : ''}`}
+                    className={`mt-1 ${
+                      getErrorForField(index, "matricula")
+                        ? "border-red-500"
+                        : ""
+                    }`}
                     placeholder="Ej: ABC123"
                     maxLength={10}
                     required
                     disabled={loading}
                   />
-                  {getErrorForField(index, 'matricula') && (
+                  {getErrorForField(index, "matricula") && (
                     <p className="text-red-500 text-xs mt-1">
-                      {getErrorForField(index, 'matricula')}
+                      {getErrorForField(index, "matricula")}
                     </p>
                   )}
                 </div>
@@ -528,26 +582,28 @@ const EditVehiculoModal: React.FC<EditVehiculoModalProps> = ({
                     onChange={(e) =>
                       handleInputChange(index, "modelo", e.target.value)
                     }
-                    className={`mt-1 ${getErrorForField(index, 'modelo') ? 'border-red-500' : ''}`}
+                    className={`mt-1 ${
+                      getErrorForField(index, "modelo") ? "border-red-500" : ""
+                    }`}
                     placeholder="Ej: Corolla 2020"
                     maxLength={50}
                     required
                     disabled={loading}
                   />
-                  {getErrorForField(index, 'modelo') && (
+                  {getErrorForField(index, "modelo") && (
                     <p className="text-red-500 text-xs mt-1">
-                      {getErrorForField(index, 'modelo')}
+                      {getErrorForField(index, "modelo")}
                     </p>
                   )}
                 </div>
               </div>
 
               {/* Información adicional para debugging */}
-              {process.env.NODE_ENV === 'development' && (
+              {process.env.NODE_ENV === "development" && (
                 <div className="mt-2 p-2 bg-gray-50 rounded text-xs text-gray-600">
-                  ID: {vehiculo.id || 'Sin ID'} | 
-                  Nuevo: {vehiculo.isNew ? 'Sí' : 'No'} |
-                  TempID: {vehiculo.tempId || 'N/A'}
+                  ID: {vehiculo.id || "Sin ID"} | Nuevo:{" "}
+                  {vehiculo.isNew ? "Sí" : "No"} | TempID:{" "}
+                  {vehiculo.tempId || "N/A"}
                 </div>
               )}
             </div>
@@ -571,7 +627,6 @@ const EditVehiculoModal: React.FC<EditVehiculoModalProps> = ({
             </Button>
           )}
           */}
-
         </div>
 
         <div className="flex justify-end space-x-2 pt-4 border-t">
@@ -583,11 +638,13 @@ const EditVehiculoModal: React.FC<EditVehiculoModalProps> = ({
           >
             Cancelar
           </Button>
-          <Button 
-            onClick={handleSave} 
+          <Button
+            onClick={handleSave}
             disabled={loading || Object.keys(errors).length > 0}
           >
-            {loading ? "Guardando..." : `Guardar ${hasChanges ? '(Cambios pendientes)' : ''}`}
+            {loading
+              ? "Guardando..."
+              : `Guardar ${hasChanges ? "(Cambios pendientes)" : ""}`}
           </Button>
         </div>
       </DialogContent>
