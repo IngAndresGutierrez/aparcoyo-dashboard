@@ -57,7 +57,11 @@ const generateTransactionsCSV = (transactions: Transaction[]): string => {
   const csvData = transactions.map((transaction) => {
     // Convertir importe a número para análisis
     const importeNumerico =
-      parseFloat(transaction.importe.replace(/[^\d.-]/g, "")) || 0
+      typeof transaction.importe === "number"
+        ? transaction.importe
+        : parseFloat(
+            String(transaction.importe || "0").replace(/[^\d.-]/g, "")
+          ) || 0
 
     // Formatear fecha si es necesario
     const fechaFormateada = transaction.fecha
@@ -126,12 +130,14 @@ const downloadFile = (
 const WelcomeTransactions = () => {
   const [selectedPeriod, setSelectedPeriod] = useState<PeriodType>("monthly")
   const { loading, transactions, statistics, fetchStatsByPeriod } =
-    usePlatformStats()
+    usePlatformStats({
+      autoFetch: false, // ← Agregar esta línea
+    })
 
   // Cargar datos iniciales al montar el componente
   useEffect(() => {
     fetchStatsByPeriod(selectedPeriod)
-  }, [])
+  }, [selectedPeriod, fetchStatsByPeriod])
 
   // Manejar cambio de período
   const handlePeriodChange = async (period: string) => {
@@ -197,9 +203,11 @@ const WelcomeTransactions = () => {
       const totalTransacciones = transactions.length
 
       // Calcular estadísticas financieras
-      const importesNumericos = transactions.map(
-        (t) => parseFloat(t.importe.replace(/[^\d.-]/g, "")) || 0
-      )
+      const importesNumericos = transactions.map((t) => {
+        return typeof t.importe === "number"
+          ? t.importe
+          : parseFloat(String(t.importe || "0").replace(/[^\d.-]/g, "")) || 0
+      })
 
       const totalImporte = importesNumericos.reduce(
         (sum, importe) => sum + importe,
