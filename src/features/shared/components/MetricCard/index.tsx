@@ -23,17 +23,19 @@ const MetricCard = ({
   const Icon = isPositive ? ArrowUp : ArrowDown
 
   return (
-    <Card className="lg:w-full md:w-60 max-w-sm rounded-xl">
-      <CardHeader className="relative">
+    <Card className="lg:w-full md:w-60 max-w-sm rounded-xl h-33">
+      <CardHeader className="pb-2">
         <CardTitle className="text-tertiary font-semibold">{title}</CardTitle>
         <CardDescription
-          className={`absolute mt-17 ml-22 lg:mt-14 lg:ml-38 left-0 flex items-center  text-sm ${percentageColor}`}
+          className={`flex items-center justify-end text-sm ${percentageColor} mt-1`}
         >
           <Icon className={`w-4 h-4 mr-1 ${percentageColor}`} />
           {percentageValue}
         </CardDescription>
       </CardHeader>
-      <CardContent className="text-2xl font-bold">{value}</CardContent>
+      <CardContent className="text-2xl font-bold pt-0 lg:-mt-5 -mt-7">
+        {value}
+      </CardContent>
     </Card>
   )
 }
