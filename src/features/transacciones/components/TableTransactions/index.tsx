@@ -206,13 +206,6 @@ const TransactionsTable = () => {
               Reintentar
             </button>
           )}
-          <span className="text-xs">
-            {transactions.length > 0 ? (
-              <span className="text-green-600">✅ Datos reales</span>
-            ) : (
-              <span className="text-orange-600"></span>
-            )}
-          </span>
         </div>
       </div>
 

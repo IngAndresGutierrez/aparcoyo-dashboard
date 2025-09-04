@@ -1,19 +1,15 @@
-// hooks/useModalPlaza.ts - VERSIÓN CORREGIDA
+// hooks/useModalPlaza.ts - VERSIÓN SIMPLIFICADA
 "use client"
 
 import { useState, useCallback } from "react"
 import modalPlazaService from "../services/service-edit"
 import { ActualizarPlazaModal, PlazaModal } from "../types/edit-plazas"
 
+// ✅ FormData simplificado - SIN propietario
 export interface FormDataModal {
   nombre: string
   descripcion: string
   precio: number
-  propietario: {
-    id: string
-    nombre: string
-    email: string
-  }
 }
 
 export interface UseModalPlazaReturn {
@@ -65,12 +61,12 @@ export function useModalPlaza(plazaId: string): UseModalPlazaReturn {
   }, [plazaId])
 
   /**
-   * 🛠️ GUARDAR CAMBIOS CORREGIDO - PRESERVA PROPIETARIO ORIGINAL
+   * ✅ GUARDAR CAMBIOS SIMPLIFICADO - MANTIENE PROPIETARIO ORIGINAL
    */
   const guardarCambios = useCallback(
     async (formData: FormDataModal): Promise<PlazaModal> => {
-      if (!plazaId) {
-        throw new Error("ID de plaza no válido")
+      if (!plazaId || !plazaData) {
+        throw new Error("ID de plaza no válido o datos no cargados")
       }
 
       try {
@@ -80,23 +76,12 @@ export function useModalPlaza(plazaId: string): UseModalPlazaReturn {
         console.log("🔄 Guardando cambios en modal:", formData)
         console.log("🔍 Datos originales de la plaza:", plazaData)
 
-        // 🛠️ PRESERVAR DATOS ORIGINALES DEL PROPIETARIO ANTES DE ENVIAR
-        const propietarioOriginalParaPreservar = {
-          uid: formData.propietario.id, // Usar ID del formulario como UID
-          nombre: formData.propietario.nombre, // Nombre del formulario (correcto)
-          email: formData.propietario.email, // Email del formulario
-        }
-
-        console.log(
-          "🔍 Propietario que vamos a preservar:",
-          propietarioOriginalParaPreservar
-        )
-
+        // ✅ Crear datos para API MANTENIENDO el propietario original
         const datosParaAPI: ActualizarPlazaModal = {
           nombre: formData.nombre.trim(),
           descripcion: formData.descripcion.trim(),
           precio: formData.precio.toString(),
-          propietarioUid: formData.propietario.id,
+          propietarioUid: plazaData.propietario.uid, // ← USAR EL PROPIETARIO ORIGINAL
         }
 
         // Validaciones básicas
@@ -106,10 +91,6 @@ export function useModalPlaza(plazaId: string): UseModalPlazaReturn {
 
         if (parseFloat(datosParaAPI.precio) <= 0) {
           throw new Error("El precio debe ser mayor a 0")
-        }
-
-        if (!datosParaAPI.propietarioUid) {
-          throw new Error("Debe seleccionar un propietario")
         }
 
         console.log("📤 Datos enviados a la API:", datosParaAPI)
@@ -122,28 +103,19 @@ export function useModalPlaza(plazaId: string): UseModalPlazaReturn {
 
         console.log("✅ Plaza actualizada recibida:", plazaActualizada)
 
-        // 🛠️ FORZAR PRESERVACIÓN DEL PROPIETARIO CON DATOS DEL FORMULARIO
-        const plazaConPropietarioPreservado: PlazaModal = {
+        // ✅ Mantener el propietario original en la respuesta
+        const plazaFinal: PlazaModal = {
           ...plazaActualizada,
-          propietario: {
-            // 🛠️ MANTENER UID ORIGINAL DEL FORMULARIO (prop-3, no el UUID del backend)
-            uid: formData.propietario.id, // ← ESTO ES CLAVE
-            // 🛠️ MANTENER NOMBRE Y EMAIL DEL FORMULARIO
-            nombre: formData.propietario.nombre,
-            email: formData.propietario.email,
-          },
+          propietario: plazaData.propietario, // ← PRESERVAR propietario original
         }
 
-        console.log(
-          "🔍 Plaza final con propietario preservado:",
-          plazaConPropietarioPreservado.propietario
-        )
+        console.log("🔍 Plaza final con propietario preservado:", plazaFinal)
 
         // Actualizar estado local
-        setPlazaData(plazaConPropietarioPreservado)
+        setPlazaData(plazaFinal)
         console.log("✅ Plaza actualizada guardada en estado local")
 
-        return plazaConPropietarioPreservado
+        return plazaFinal
       } catch (err) {
         const errorMessage =
           err instanceof Error ? err.message : "Error al guardar"

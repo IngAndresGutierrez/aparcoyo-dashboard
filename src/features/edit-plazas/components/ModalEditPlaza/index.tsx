@@ -7,7 +7,7 @@ import { Edit3, User } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { toast } from "sonner" // ✅ Importar toast de Sonner
+import { toast } from "sonner"
 
 import {
   Dialog,
@@ -15,21 +15,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 
-// ✅ Interfaces para tipado
-interface Propietario {
-  id: string
-  nombre: string
-  email: string
-}
-
+// ✅ Interfaces simplificadas
 interface PlazaData {
   id: string
   nombre: string
@@ -46,32 +33,21 @@ interface FormData {
   nombre: string
   descripcion: string
   precio: number
-  propietario: {
-    id: string
-    nombre: string
-    email: string
-  }
 }
 
-// ✅ Props del modal
+// ✅ Props del modal simplificadas
 interface ModalDetallesPlazaProps {
   isOpen: boolean
   onClose: () => void
-
-  // Datos que vienen del padre
   plazaData: PlazaData | null
   loading: boolean
   saving: boolean
   error: string | null
-  propietarios: Propietario[]
-
-  // Funciones que ejecuta el padre
   onSave: (formData: FormData) => Promise<void>
   onRetry: () => void
   onClearError: () => void
 }
 
-// ✅ Modal principal
 function ModalDetallesPlaza({
   isOpen,
   onClose,
@@ -79,61 +55,25 @@ function ModalDetallesPlaza({
   loading,
   saving,
   error,
-  propietarios,
   onSave,
   onRetry,
   onClearError,
 }: ModalDetallesPlazaProps) {
-  // Estado del formulario
+  // Estado del formulario simplificado
   const [formData, setFormData] = useState<FormData>({
     nombre: "",
     descripcion: "",
     precio: 0,
-    propietario: {
-      id: "",
-      nombre: "",
-      email: "",
-    },
+  })
+
+  // Estado para mostrar datos del propietario (solo lectura)
+  const [propietarioInfo, setPropietarioInfo] = useState({
+    nombre: "",
+    email: "",
   })
 
   // Estado para errores de validación
   const [errores, setErrores] = useState<Record<string, string>>({})
-
-  // 🛠️ COMPONENTE PARA MOSTRAR PROPIETARIO - CORREGIDO PARA MANEJAR DESAJUSTE DE IDs
-  const PropietarioDisplay = () => {
-    // Buscar por ID normal primero
-    let propietarioActual = propietarios.find(
-      (p) => p.id === formData.propietario.id
-    )
-
-    // Si no se encuentra por ID, buscar por email como fallback
-    if (!propietarioActual && formData.propietario.email) {
-      propietarioActual = propietarios.find(
-        (p) =>
-          p.email.toLowerCase() === formData.propietario.email.toLowerCase()
-      )
-    }
-
-    // Determinar qué mostrar - priorizar datos encontrados, luego formData
-    const nombreAMostrar =
-      propietarioActual?.nombre || formData.propietario.nombre || "Sin nombre"
-    const emailAMostrar =
-      propietarioActual?.email || formData.propietario.email || ""
-
-    return (
-      <div className="flex items-center gap-2">
-        <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center">
-          <User className="w-3.5 h-3.5 text-blue-600" />
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-gray-900">
-            {nombreAMostrar}
-          </span>
-          <span className="text-sm text-gray-500">{emailAMostrar}</span>
-        </div>
-      </div>
-    )
-  }
 
   // Limpiar errores cuando se abre el modal
   useEffect(() => {
@@ -145,58 +85,24 @@ function ModalDetallesPlaza({
     }
   }, [isOpen, onClearError])
 
-  // 🛠️ ACTUALIZAR FORMULARIO - MEJORADO PARA PRESERVAR DATOS
+  // ✅ UseEffect simplificado
   useEffect(() => {
-    console.log("🔍 MODAL - plazaData cambió:", plazaData)
-    console.log("🔍 MODAL - propietario en plazaData:", plazaData?.propietario)
-
     if (plazaData) {
-      // 🛠️ BUSCAR PROPIETARIO EN LA LISTA PARA OBTENER DATOS COMPLETOS
-      let propietarioCompleto = propietarios.find(
-        (p) => p.id === plazaData.propietario.uid
-      )
-
-      // Si no se encuentra por UID, buscar por email
-      if (!propietarioCompleto && plazaData.propietario.email) {
-        propietarioCompleto = propietarios.find(
-          (p) =>
-            p.email.toLowerCase() === plazaData.propietario.email?.toLowerCase()
-        )
-      }
-
-      console.log(
-        "🔍 MODAL - propietarioCompleto encontrado:",
-        propietarioCompleto
-      )
-
-      const nuevosFormData = {
+      setFormData({
         nombre: plazaData.nombre,
         descripcion: plazaData.descripcion || "",
         precio:
           typeof plazaData.precio === "string"
             ? parseFloat(plazaData.precio) || 0
             : plazaData.precio || 0,
-        propietario: {
-          id: plazaData.propietario.uid,
-          // 🛠️ USAR DATOS COMPLETOS SI SE ENCUENTRAN, SINO USAR LOS DE plazaData
-          nombre:
-            propietarioCompleto?.nombre ||
-            plazaData.propietario.nombre ||
-            "Sin nombre",
-          email:
-            propietarioCompleto?.email || plazaData.propietario.email || "",
-        },
-      }
+      })
 
-      console.log("🔍 MODAL - Actualizando formData a:", nuevosFormData)
-      console.log(
-        "🔍 MODAL - Propietario en formData:",
-        nuevosFormData.propietario
-      )
-
-      setFormData(nuevosFormData)
+      setPropietarioInfo({
+        nombre: plazaData.propietario.nombre,
+        email: plazaData.propietario.email || "",
+      })
     }
-  }, [plazaData, propietarios]) // ← Agregar propietarios como dependencia
+  }, [plazaData])
 
   // Función para manejar cambios en los inputs
   const handleChange = (campo: string, valor: any) => {
@@ -214,46 +120,7 @@ function ModalDetallesPlaza({
     }
   }
 
-  // 🛠️ FUNCIÓN MEJORADA PARA MANEJAR CAMBIO DE PROPIETARIO
-  const handlePropietarioChange = (propietarioId: string) => {
-    console.log("🔍 MODAL - Cambiando propietario a ID:", propietarioId)
-
-    const propietarioSeleccionado = propietarios.find(
-      (p) => p.id === propietarioId
-    )
-
-    console.log("🔍 MODAL - Propietario encontrado:", propietarioSeleccionado)
-
-    if (propietarioSeleccionado) {
-      const nuevoFormData = {
-        ...formData,
-        propietario: {
-          id: propietarioSeleccionado.id,
-          nombre: propietarioSeleccionado.nombre,
-          email: propietarioSeleccionado.email,
-        },
-      }
-
-      console.log(
-        "🔍 MODAL - Actualizando formData.propietario a:",
-        nuevoFormData.propietario
-      )
-
-      setFormData(nuevoFormData)
-
-      // Limpiar error si existía
-      if (errores.propietario) {
-        setErrores((prev) => ({ ...prev, propietario: "" }))
-      }
-    } else {
-      console.warn(
-        "⚠️ MODAL - No se encontró propietario con ID:",
-        propietarioId
-      )
-    }
-  }
-
-  // Función de validación
+  // ✅ Validación simplificada
   const validarFormulario = () => {
     const nuevosErrores: Record<string, string> = {}
 
@@ -269,42 +136,30 @@ function ModalDetallesPlaza({
       nuevosErrores.precio = "El precio debe ser mayor a 0"
     }
 
-    if (!formData.propietario.id) {
-      nuevosErrores.propietario = "Debe seleccionar un propietario"
-    }
-
     setErrores(nuevosErrores)
     return Object.keys(nuevosErrores).length === 0
   }
 
-  // 🛠️ FUNCIÓN MEJORADA PARA MANEJAR GUARDAR CON TOAST
+  // ✅ Función de guardar simplificada
   const handleGuardar = async () => {
     if (!validarFormulario()) return
 
     try {
       console.log("🔍 MODAL - Guardando con formData:", formData)
-      console.log(
-        "🔍 MODAL - Propietario antes de guardar:",
-        formData.propietario
-      )
 
-      // ✅ Llamar función del padre
       await onSave(formData)
 
       console.log("✅ MODAL - Guardado exitoso")
 
-      // ✅ MOSTRAR TOAST DE ÉXITO
       toast.success("Plaza actualizada", {
         description: "Los cambios se han guardado correctamente",
         duration: 3000,
       })
 
-      // El modal se cierra automáticamente
       onClose()
     } catch (error) {
       console.error("❌ MODAL - Error en el modal:", error)
 
-      // ✅ MOSTRAR TOAST DE ERROR
       toast.error("Error al guardar", {
         description: "No se pudieron guardar los cambios. Inténtalo de nuevo.",
         duration: 4000,
@@ -314,20 +169,7 @@ function ModalDetallesPlaza({
 
   // Función para manejar cancelar
   const handleCancelar = () => {
-    // Resetear formulario a datos originales
     if (plazaData) {
-      // Buscar propietario completo para el reseteo
-      let propietarioCompleto = propietarios.find(
-        (p) => p.id === plazaData.propietario.uid
-      )
-
-      if (!propietarioCompleto && plazaData.propietario.email) {
-        propietarioCompleto = propietarios.find(
-          (p) =>
-            p.email.toLowerCase() === plazaData.propietario.email?.toLowerCase()
-        )
-      }
-
       setFormData({
         nombre: plazaData.nombre,
         descripcion: plazaData.descripcion || "",
@@ -335,15 +177,6 @@ function ModalDetallesPlaza({
           typeof plazaData.precio === "string"
             ? parseFloat(plazaData.precio) || 0
             : plazaData.precio || 0,
-        propietario: {
-          id: plazaData.propietario.uid,
-          nombre:
-            propietarioCompleto?.nombre ||
-            plazaData.propietario.nombre ||
-            "Sin nombre",
-          email:
-            propietarioCompleto?.email || plazaData.propietario.email || "",
-        },
       })
     }
     setErrores({})
@@ -357,7 +190,6 @@ function ModalDetallesPlaza({
     <Dialog
       open={isOpen}
       onOpenChange={(open) => {
-        // ✅ SOLO PERMITIR CERRAR, NO ABRIR DESDE AQUÍ
         if (!open) {
           handleCancelar()
         }
@@ -412,12 +244,11 @@ function ModalDetallesPlaza({
                     Detalles de la plaza
                   </DialogTitle>
                 </div>
-                {/* ✅ REMOVED: El botón X manual ya no es necesario */}
               </div>
             </DialogHeader>
 
             {/* Contenido del modal */}
-            <div className="px-6 py-6 space-y-6">
+            <div className="px-6 py-6 space-y-5">
               {/* Nombre */}
               <div className="space-y-2">
                 <Label
@@ -464,57 +295,28 @@ function ModalDetallesPlaza({
                 )}
               </div>
 
-              {/* 🛠️ PROPIETARIO CORREGIDO PARA MANEJAR DESAJUSTE DE IDs */}
+              {/* ✅ Propietario como solo lectura */}
               <div className="space-y-2">
                 <Label className="text-sm font-medium text-gray-700">
                   Propietario
                 </Label>
-                <Select
-                  value={formData.propietario.id}
-                  onValueChange={handlePropietarioChange}
-                  disabled={saving}
-                >
-                  <SelectTrigger
-                    className={`h-11 border-gray-200 focus:border-blue-500 focus:ring-blue-500 ${
-                      errores.propietario ? "border-red-300" : ""
-                    }`}
-                  >
-                    <SelectValue>
-                      {formData.propietario.id ? (
-                        <PropietarioDisplay />
-                      ) : (
-                        <span className="text-gray-500">
-                          Seleccionar propietario
+                <div className="h-11 px-3 py-2 bg-gray-50 border border-gray-200 rounded-md flex items-center">
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center">
+                      <User className="w-3.5 h-3.5 text-blue-600" />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium text-gray-900">
+                        {propietarioInfo.nombre}
+                      </span>
+                      {propietarioInfo.email && (
+                        <span className="text-sm text-gray-500">
+                          {propietarioInfo.email}
                         </span>
                       )}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {propietarios.map((propietario) => (
-                      <SelectItem
-                        key={propietario.id}
-                        value={propietario.id}
-                      >
-                        <div className="flex items-center gap-2">
-                          <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center">
-                            <User className="w-3.5 h-3.5 text-blue-600" />
-                          </div>
-                          <div className="flex flex-col">
-                            <span className="text-sm font-medium text-gray-900">
-                              {propietario.nombre}
-                            </span>
-                            <span className="text-xs text-gray-500">
-                              {propietario.email}
-                            </span>
-                          </div>
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {errores.propietario && (
-                  <p className="text-xs text-red-600">{errores.propietario}</p>
-                )}
+                    </div>
+                  </div>
+                </div>
               </div>
 
               {/* Precio */}
