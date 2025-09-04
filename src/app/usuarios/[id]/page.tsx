@@ -16,7 +16,7 @@ const page = async ({ params }: UserPageProps) => {
 
   return (
     <AppSidebarDashboard>
-      <div className="p-6 max-w-6xl mx-auto space-y-6 ml-10">
+      <div className="p-6 max-w-6xl mx-auto space-y-6 ml-10 -mt-4">
         {/* Header del usuario - queda arriba solo */}
         <div className=" -mt-16">
           <UserHeader userId={id} />
