@@ -410,7 +410,6 @@ function PlazaDetails({
         loading={loading}
         saving={saving}
         error={error}
-        propietarios={propietariosDisponibles}
         // ✅ Pasar funciones del backend
         onSave={handleModalSave}
         onRetry={handleRetry}
