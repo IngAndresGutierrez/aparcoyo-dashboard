@@ -404,7 +404,7 @@ const WelcomeTransactions = () => {
                 width={20}
                 height={20}
               />
-              <span className="font-semibold lg:ml-2">
+              <span className="font-semibold lg:ml-2 -ml-1">
                 <SelectValue placeholder="Seleccionar período">
                   {currentPeriodLabel}
                 </SelectValue>
