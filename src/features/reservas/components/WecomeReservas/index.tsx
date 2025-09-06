@@ -325,7 +325,7 @@ const WelcomeReservas = ({
                 width={20}
                 height={20}
               />
-              <span className="font-semibold ml-2">
+              <span className="font-semibold lg:ml-2">
                 <SelectValue>{rangeLabels[selectedRange]}</SelectValue>
               </span>
               <ChevronDown className="ml-auto h-4 w-4" /> {/* ← AGREGAR ESTO */}

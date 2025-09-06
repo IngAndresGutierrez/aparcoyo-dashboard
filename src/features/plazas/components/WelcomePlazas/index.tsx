@@ -282,7 +282,7 @@ const WelcomePlazas = ({
                 height={20}
               />
               <SelectValue>
-                <span className="font-semibold ml-2">
+                <span className="font-semibold lg:ml-2">
                   {rangeLabels[selectedRange]}
                 </span>
               </SelectValue>
