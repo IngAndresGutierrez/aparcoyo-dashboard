@@ -240,7 +240,7 @@ const Welcome = () => {
                 height={20}
               />
               <SelectValue>
-                <span className="font-semibold lg:ml-2">
+                <span className="font-semibold lg:ml-2 -ml-1">
                   {getCurrentLabel()}
                 </span>
               </SelectValue>
