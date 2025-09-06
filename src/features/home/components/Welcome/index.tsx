@@ -240,7 +240,9 @@ const Welcome = () => {
                 height={20}
               />
               <SelectValue>
-                <span className="font-semibold ml-2">{getCurrentLabel()}</span>
+                <span className="font-semibold lg:ml-2">
+                  {getCurrentLabel()}
+                </span>
               </SelectValue>
             </div>
           </SelectTrigger>
