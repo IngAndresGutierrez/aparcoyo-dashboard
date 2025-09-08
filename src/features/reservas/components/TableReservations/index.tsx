@@ -7,10 +7,10 @@ import {
   flexRender,
   getCoreRowModel,
   useReactTable,
-  getPaginationRowModel,
 } from "@tanstack/react-table"
 
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import {
   Table,
   TableBody,
@@ -30,7 +30,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { AlertCircle, RefreshCw } from "lucide-react"
+import { AlertCircle, RefreshCw, Search, X } from "lucide-react"
 import { useEffect } from "react"
 import { toast } from "sonner"
 
@@ -39,8 +39,33 @@ import { reservasColumns } from "./columns"
 import { ReservaTable } from "../../types"
 import EditReservationModal from "../ModalEditReservas"
 
+// Función helper para obtener el estado de la reserva
+const getReservaStatus = (fechaInicio: string, fechaFin: string) => {
+  const now = new Date()
+  const inicio = new Date(fechaInicio)
+  const fin = new Date(fechaFin)
+
+  if (now < inicio) {
+    return "Programada"
+  } else if (now >= inicio && now <= fin) {
+    return "Activa"
+  } else {
+    return "Finalizada"
+  }
+}
+
 const ReservationsTable = () => {
   const { getAllReservas, reservas, isLoading, error } = useGetAllReservas()
+
+  // Estados para búsqueda
+  const [searchValue, setSearchValue] = React.useState("")
+  const [allReservas, setAllReservas] = React.useState<ReservaTable[]>([])
+  const [filteredReservas, setFilteredReservas] = React.useState<
+    ReservaTable[]
+  >([])
+  const [currentPage, setCurrentPage] = React.useState(1)
+  const itemsPerPage = 10
+  const searchTimeoutRef = React.useRef<NodeJS.Timeout | undefined>(undefined)
 
   // Estados para el modal y confirmación
   const [selectedReservation, setSelectedReservation] =
@@ -49,6 +74,92 @@ const ReservationsTable = () => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [reservationToDelete, setReservationToDelete] =
     useState<ReservaTable | null>(null)
+
+  // Actualizar cuando llegan datos
+  React.useEffect(() => {
+    if (reservas?.length > 0) {
+      setAllReservas(reservas)
+      setFilteredReservas(reservas)
+    }
+  }, [reservas])
+
+  // Función de filtrado para reservas
+  const handleFilter = React.useCallback(
+    (searchTerm: string) => {
+      if (!searchTerm.trim()) {
+        setFilteredReservas(allReservas)
+        setCurrentPage(1)
+        return
+      }
+
+      const search = searchTerm.toLowerCase().trim()
+      const filtered = allReservas.filter((reserva) => {
+        // Buscar en nombre del usuario
+        const usuario = reserva.usuario as any
+        const nombreUsuario = usuario?.nombre?.toLowerCase() || ""
+
+        // Buscar en plaza (nombre o dirección)
+        const plaza = reserva.plaza as any
+        const nombrePlaza = (
+          plaza?.nombre ||
+          plaza?.direccion ||
+          ""
+        ).toLowerCase()
+
+        // Buscar en matrícula
+        const matricula = (reserva.matricula || "").toLowerCase()
+
+        // Buscar en estado
+        const estado = getReservaStatus(
+          reserva.fechaInicio,
+          reserva.fechaFin
+        ).toLowerCase()
+
+        return (
+          nombreUsuario.includes(search) ||
+          nombrePlaza.includes(search) ||
+          matricula.includes(search) ||
+          estado.includes(search)
+        )
+      })
+
+      setFilteredReservas(filtered)
+      setCurrentPage(1)
+    },
+    [allReservas]
+  )
+
+  // Manejar cambio de búsqueda con debounce
+  const handleSearchChange = (value: string) => {
+    setSearchValue(value)
+
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current)
+    }
+
+    searchTimeoutRef.current = setTimeout(() => {
+      handleFilter(value)
+    }, 300)
+  }
+
+  // Limpiar búsqueda
+  const clearSearch = () => {
+    setSearchValue("")
+    setFilteredReservas(allReservas)
+    setCurrentPage(1)
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current)
+    }
+  }
+
+  // Cleanup del timeout
+  React.useEffect(() => {
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current)
+      }
+    }
+  }, [])
 
   // Handler para abrir el modal de edición
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -67,7 +178,6 @@ const ReservationsTable = () => {
   const handleUpdateReservation = (updatedReservation: any) => {
     console.log("Reserva actualizada:", updatedReservation)
     getAllReservas()
-    // Removido: toast.success("Reserva actualizada correctamente") - ya lo maneja el modal
   }
 
   // Handler para solicitar eliminación (abre el dialog)
@@ -145,11 +255,17 @@ const ReservationsTable = () => {
     [handleEditReservation]
   )
 
+  // Paginación
+  const startIndex = (currentPage - 1) * itemsPerPage
+  const endIndex = startIndex + itemsPerPage
+  const reservasPagina = filteredReservas.slice(startIndex, endIndex)
+  const totalPages = Math.ceil(filteredReservas.length / itemsPerPage)
+
   const table = useReactTable({
-    data: reservas,
+    data: reservasPagina,
     columns: columns,
     getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
+    manualPagination: true,
   })
 
   useEffect(() => {
@@ -162,7 +278,7 @@ const ReservationsTable = () => {
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <Skeleton className="h-8 w-48" />
-          <Skeleton className="h-8 w-24" />
+          <Skeleton className="h-10 w-72" />
         </div>
         <Skeleton className="h-64 w-full" />
         <div className="flex justify-end space-x-2">
@@ -202,26 +318,52 @@ const ReservationsTable = () => {
 
   return (
     <div className="w-full">
-      {/* Header con información */}
+      {/* Header con información y buscador */}
       <div className="flex items-center justify-between mb-4">
-        <div>
-          <h2 className="text-lg font-semibold">Reservas</h2>
-          <p className="text-sm text-muted-foreground">
-            {reservas.length} reserva{reservas.length !== 1 ? "s" : ""}{" "}
-            encontrada{reservas.length !== 1 ? "s" : ""}
-          </p>
+        <div className="text-sm text-muted-foreground">
+          Mostrando {reservasPagina.length} de {filteredReservas.length}{" "}
+          reservas
+          {searchValue && ` para "${searchValue}"`}
+          {filteredReservas.length !== allReservas.length &&
+            ` (${allReservas.length} total)`}
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => getAllReservas()}
-          disabled={isLoading}
-        >
-          <RefreshCw
-            className={`h-4 w-4 mr-2 ${isLoading ? "animate-spin" : ""}`}
-          />
-          Actualizar
-        </Button>
+
+        <div className="flex items-center gap-3">
+          {/* Buscador */}
+          <div className="relative w-72">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+            <Input
+              placeholder="Buscar reservas..."
+              value={searchValue}
+              onChange={(e) => handleSearchChange(e.target.value)}
+              className="pl-10 pr-10"
+              disabled={isLoading}
+            />
+            {searchValue && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={clearSearch}
+                className="absolute right-1 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0 hover:bg-gray-100"
+              >
+                <X className="h-3 w-3" />
+              </Button>
+            )}
+          </div>
+
+          {/* Botón actualizar */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => getAllReservas()}
+            disabled={isLoading}
+          >
+            <RefreshCw
+              className={`h-4 w-4 mr-2 ${isLoading ? "animate-spin" : ""}`}
+            />
+            Actualizar
+          </Button>
+        </div>
       </div>
 
       {/* Tabla de reservas */}
@@ -249,7 +391,38 @@ const ReservationsTable = () => {
             ))}
           </TableHeader>
           <TableBody>
-            {table.getRowModel().rows?.length ? (
+            {reservasPagina.length === 0 ? (
+              <TableRow>
+                <TableCell
+                  colSpan={table.getAllColumns().length}
+                  className="text-center py-8 text-muted-foreground"
+                >
+                  {searchValue ? (
+                    <div>
+                      <p>No se encontraron reservas para {searchValue}</p>
+                      <Button
+                        variant="link"
+                        onClick={clearSearch}
+                        className="mt-2"
+                      >
+                        Limpiar búsqueda
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center space-y-2">
+                      <p>No hay reservas disponibles</p>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => getAllReservas()}
+                      >
+                        Actualizar datos
+                      </Button>
+                    </div>
+                  )}
+                </TableCell>
+              </TableRow>
+            ) : (
               table.getRowModel().rows.map((row) => (
                 <TableRow key={row.id}>
                   {row.getVisibleCells().map((cell) => (
@@ -269,54 +442,42 @@ const ReservationsTable = () => {
                   ))}
                 </TableRow>
               ))
-            ) : (
-              <TableRow>
-                <TableCell
-                  colSpan={table.getAllColumns().length}
-                  className="h-24 text-center"
-                >
-                  <div className="flex flex-col items-center justify-center space-y-2">
-                    <p className="text-muted-foreground">
-                      No hay reservas disponibles
-                    </p>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => getAllReservas()}
-                    >
-                      Actualizar datos
-                    </Button>
-                  </div>
-                </TableCell>
-              </TableRow>
             )}
           </TableBody>
         </Table>
       </div>
 
       {/* Paginación */}
-      {reservas.length > 0 && (
-        <div className="flex items-center justify-between space-x-2 py-4">
+      {filteredReservas.length > 0 && (
+        <div className="flex items-center justify-between py-4">
           <div className="text-sm text-muted-foreground">
-            Página {table.getState().pagination.pageIndex + 1} de{" "}
-            {table.getPageCount()}
+            Mostrando {startIndex + 1} -{" "}
+            {Math.min(endIndex, filteredReservas.length)} de{" "}
+            {filteredReservas.length} reservas
+            {filteredReservas.length !== allReservas.length &&
+              ` (filtradas de ${allReservas.length})`}
           </div>
-          <div className="flex space-x-2">
+          <div className="flex items-center space-x-2">
             <Button
               variant="outline"
               size="sm"
-              onClick={() => table.previousPage()}
-              disabled={!table.getCanPreviousPage()}
+              onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+              disabled={currentPage <= 1}
             >
-              Atrás
+              ← Anterior
             </Button>
+            <span className="text-sm text-muted-foreground px-3">
+              Página {currentPage} de {totalPages}
+            </span>
             <Button
               variant="outline"
               size="sm"
-              onClick={() => table.nextPage()}
-              disabled={!table.getCanNextPage()}
+              onClick={() =>
+                setCurrentPage((prev) => Math.min(totalPages, prev + 1))
+              }
+              disabled={currentPage >= totalPages}
             >
-              Adelante
+              Siguiente →
             </Button>
           </div>
         </div>

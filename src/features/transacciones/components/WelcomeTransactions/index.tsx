@@ -14,24 +14,41 @@ import { toast } from "sonner" // Importar Sonner
 import { Transaction } from "../../types/transaction"
 import { usePlatformStats } from "../../hooks/useTransaction"
 
-// Tipo para los períodos
-type PeriodType = "daily" | "weekly" | "monthly"
+// Tipo para los períodos de la UI
+type PeriodType = "day" | "week" | "month"
 
-// Opciones de período
+// Tipo que espera el backend/hook
+type BackendPeriodType = "daily" | "weekly" | "monthly" | "yearly"
+
+// Función para mapear entre los dos tipos
+const mapPeriodToBackend = (period: PeriodType): BackendPeriodType => {
+  switch (period) {
+    case "day":
+      return "daily"
+    case "week":
+      return "weekly"
+    case "month":
+      return "monthly"
+    default:
+      return "monthly"
+  }
+}
+
+// Opciones de período actualizadas
 const periodOptions = [
   {
-    value: "daily" as const,
+    value: "day" as const,
+    label: "Hoy",
+    icon: "/home/calendar.svg",
+  },
+  {
+    value: "week" as const,
     label: "Últimos 7 días",
     icon: "/home/calendar.svg",
   },
   {
-    value: "weekly" as const,
-    label: "Últimas 4 semanas",
-    icon: "/home/calendar.svg",
-  },
-  {
-    value: "monthly" as const,
-    label: "Últimos 3 meses",
+    value: "month" as const,
+    label: "Últimos 30 días",
     icon: "/home/calendar.svg",
   },
 ]
@@ -128,7 +145,7 @@ const downloadFile = (
 }
 
 const WelcomeTransactions = () => {
-  const [selectedPeriod, setSelectedPeriod] = useState<PeriodType>("monthly")
+  const [selectedPeriod, setSelectedPeriod] = useState<PeriodType>("month")
   const { loading, transactions, statistics, fetchStatsByPeriod } =
     usePlatformStats({
       autoFetch: false, // ← Agregar esta línea
@@ -136,7 +153,7 @@ const WelcomeTransactions = () => {
 
   // Cargar datos iniciales al montar el componente
   useEffect(() => {
-    fetchStatsByPeriod(selectedPeriod)
+    fetchStatsByPeriod(mapPeriodToBackend(selectedPeriod))
   }, [selectedPeriod, fetchStatsByPeriod])
 
   // Manejar cambio de período
@@ -144,13 +161,13 @@ const WelcomeTransactions = () => {
     const newPeriod = period as PeriodType
     setSelectedPeriod(newPeriod)
     console.log("🔄 Cambiando período de transacciones a:", newPeriod)
-    await fetchStatsByPeriod(newPeriod)
+    await fetchStatsByPeriod(mapPeriodToBackend(newPeriod))
   }
 
   // Obtener el label actual basado en el período seleccionado
   const currentPeriodLabel =
     periodOptions.find((option) => option.value === selectedPeriod)?.label ||
-    "Últimos 3 meses"
+    "Últimos 30 días"
 
   // Función de descarga de reportes
   const handleDownloadReport = async () => {
@@ -167,7 +184,7 @@ const WelcomeTransactions = () => {
           description: "Obteniendo datos de transacciones",
         })
 
-        await fetchStatsByPeriod(selectedPeriod)
+        await fetchStatsByPeriod(mapPeriodToBackend(selectedPeriod))
 
         toast.dismiss(loadingToast)
 
@@ -398,14 +415,14 @@ const WelcomeTransactions = () => {
         >
           <SelectTrigger className="w-46 h-9 rounded-full border border-input bg-background hover:bg-accent hover:text-accent-foreground px-4">
             <div className="flex items-center justify-between w-full">
-              <div className="flex items-center gap-3 -ml-2">
+              <div className="flex items-center gap-3">
                 <Image
                   src="/home/calendar.svg"
                   alt="calendar"
                   width={20}
                   height={20}
                 />
-                <span className="font-semibold lg:-ml-2 -ml-2">
+                <span className="font-semibold lg:-ml-1 -ml-1">
                   <SelectValue placeholder="Seleccionar período">
                     {currentPeriodLabel}
                   </SelectValue>
@@ -440,7 +457,7 @@ const WelcomeTransactions = () => {
             alt="download"
             width={20}
             height={20}
-            className="-ml-3"
+            className=""
           />
           {loading ? "Cargando..." : "Descargar reporte"}
         </Button>
