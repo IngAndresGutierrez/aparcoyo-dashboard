@@ -22,7 +22,7 @@ export interface PrecioPromedioPorTipo {
   precioPromedio: number // ✅ Es number, no string
 }
 
-// ✅ CORREGIDO: El backend devuelve "precioPromedio" (no "precio_promedio")  
+// ✅ CORREGIDO: El backend devuelve "precioPromedio" (no "precio_promedio")
 export interface PrecioPromedioPorCiudad {
   ciudad: string
   precioPromedio: number // ✅ Es number, no string
@@ -69,21 +69,25 @@ export const adaptarEstadisticasParaCompatibilidad = (
   responseReal: EstadisticasBackendResponse
 ): EstadisticasBackendDataAntigua => {
   // Generar plazasPorRango basado en plazasDetalle
-  const plazasPorRango: PlazaPorRango[] = responseReal.plazasDetalle.map(plaza => ({
-    periodo: plaza.fechaPublicacion,
-    cantidad: "1" // Cada plaza cuenta como 1
-  }))
+  const plazasPorRango: PlazaPorRango[] = responseReal.plazasDetalle.map(
+    (plaza) => ({
+      periodo: plaza.fechaPublicacion,
+      cantidad: "1", // Cada plaza cuenta como 1
+    })
+  )
 
   return {
     plazasPorRango,
-    precioPromedioPorTipo: responseReal.precioPromedioPorTipo.map(item => ({
+    precioPromedioPorTipo: responseReal.precioPromedioPorTipo.map((item) => ({
       tipo: item.tipo,
-      precio_promedio: item.precioPromedio.toString()
+      precio_promedio: item.precioPromedio.toString(),
     })),
-    precioPromedioPorCiudad: responseReal.precioPromedioPorCiudad.map(item => ({
-      ciudad: item.ciudad,
-      precio_promedio: item.precioPromedio.toString()
-    }))
+    precioPromedioPorCiudad: responseReal.precioPromedioPorCiudad.map(
+      (item) => ({
+        ciudad: item.ciudad,
+        precio_promedio: item.precioPromedio.toString(),
+      })
+    ),
   }
 }
 
@@ -110,3 +114,11 @@ export interface EstadisticasState {
 }
 
 export type RangoEstadisticas = "dia" | "semana" | "mes"
+
+export interface PlazasChartDataPoint {
+  month: string
+  inmediatas: number
+  privadas: number
+  date: string
+  fullMonth: string
+}

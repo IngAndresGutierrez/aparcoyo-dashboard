@@ -154,7 +154,8 @@ const ChartBarHorizontalType = ({
             data={chartData}
             layout="vertical"
             margin={{
-              left: -20,
+              left: 50,
+              right: 20,
             }}
           >
             <XAxis

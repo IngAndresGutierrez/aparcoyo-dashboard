@@ -396,19 +396,21 @@ const WelcomeTransactions = () => {
           onValueChange={handlePeriodChange}
           disabled={loading}
         >
-          <SelectTrigger className="w-46 h-9 rounded-full border border-input bg-background hover:bg-accent hover:text-accent-foreground">
-            <div className="flex items-center gap-2">
-              <Image
-                src="/home/calendar.svg"
-                alt="calendar"
-                width={20}
-                height={20}
-              />
-              <span className="font-semibold lg:ml-2 -ml-1">
-                <SelectValue placeholder="Seleccionar período">
-                  {currentPeriodLabel}
-                </SelectValue>
-              </span>
+          <SelectTrigger className="w-46 h-9 rounded-full border border-input bg-background hover:bg-accent hover:text-accent-foreground px-4">
+            <div className="flex items-center justify-between w-full">
+              <div className="flex items-center gap-3 -ml-2">
+                <Image
+                  src="/home/calendar.svg"
+                  alt="calendar"
+                  width={20}
+                  height={20}
+                />
+                <span className="font-semibold lg:-ml-2">
+                  <SelectValue placeholder="Seleccionar período">
+                    {currentPeriodLabel}
+                  </SelectValue>
+                </span>
+              </div>
             </div>
           </SelectTrigger>
           <SelectContent>
@@ -438,6 +440,7 @@ const WelcomeTransactions = () => {
             alt="download"
             width={20}
             height={20}
+            className="-ml-3"
           />
           {loading ? "Cargando..." : "Descargar reporte"}
         </Button>
