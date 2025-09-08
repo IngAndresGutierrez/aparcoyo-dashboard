@@ -318,17 +318,19 @@ const WelcomeReservas = ({
           }}
         >
           <SelectTrigger className="w-46 h-9 rounded-full ring-0 focus:ring-0 focus:ring-offset-0 [&>svg]:hidden">
-            <div className="flex items-center gap-2">
-              <Image
-                src="/home/calendar.svg"
-                alt="calendar"
-                width={20}
-                height={20}
-              />
-              <span className="font-semibold lg:ml-2">
-                <SelectValue>{rangeLabels[selectedRange]}</SelectValue>
-              </span>
-              <ChevronDown className="ml-auto h-4 w-4" /> {/* ← AGREGAR ESTO */}
+            <div className="flex items-center justify-between w-full">
+              <div className="flex items-center gap-2">
+                <Image
+                  src="/home/calendar.svg"
+                  alt="calendar"
+                  width={20}
+                  height={20}
+                />
+                <span className="font-semibold lg:ml-2">
+                  <SelectValue>{rangeLabels[selectedRange]}</SelectValue>
+                </span>
+              </div>
+              <ChevronDown className="h-4 w-4" />
             </div>
           </SelectTrigger>
 

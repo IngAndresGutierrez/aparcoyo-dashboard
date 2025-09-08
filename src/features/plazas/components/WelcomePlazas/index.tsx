@@ -273,20 +273,22 @@ const WelcomePlazas = ({
             onRangeChange(value)
           }}
         >
-          <SelectTrigger className="w-46 h-9 rounded-full  ring-0 focus:ring-0 focus:ring-offset-0 [&>svg]:hidden">
-            <div className="flex items-center gap-2">
-              <Image
-                src="/home/calendar.svg"
-                alt="calendar"
-                width={20}
-                height={20}
-              />
-              <SelectValue>
-                <span className="font-semibold lg:ml-2">
-                  {rangeLabels[selectedRange]}
-                </span>
-              </SelectValue>
-              <ChevronDown className="ml-auto h-4 w-4" />  {/* ← AGREGAR ESTO */}
+          <SelectTrigger className="w-46 h-9 rounded-full ring-0 focus:ring-0 focus:ring-offset-0 [&>svg]:hidden">
+            <div className="flex items-center justify-between w-full">
+              <div className="flex items-center gap-2">
+                <Image
+                  src="/home/calendar.svg"
+                  alt="calendar"
+                  width={20}
+                  height={20}
+                />
+                <SelectValue>
+                  <span className="font-semibold lg:ml-2">
+                    {rangeLabels[selectedRange]}
+                  </span>
+                </SelectValue>
+              </div>
+              <ChevronDown className="h-4 w-4" />
             </div>
           </SelectTrigger>
           <SelectContent>
@@ -299,7 +301,7 @@ const WelcomePlazas = ({
         {/* Botón para descargar reporte CON FUNCIONALIDAD */}
         <Button
           variant="outline"
-          className="w-46 h-10 rounded-full"
+          className="w-46 h-11 rounded-full"
           onClick={handleDownloadReport}
           disabled={isLoading}
         >

@@ -24,23 +24,23 @@ import {
   ChartLegend,
   ChartLegendContent,
   ChartTooltip,
-  ChartTooltipContent,
 } from "@/components/ui/chart"
 import { Button } from "@/components/ui/button"
 
 import { usePlazasStats } from "../../hooks/useGetRangePlazas"
-import { ChartDataPoint, GrowthData } from "../../types/range"
+import { GrowthData, PlazasChartDataPoint } from "../../types/range"
 
-export const description = "An area chart with a legend"
+export const description = "An area chart showing plaza types over time"
 
+// Configuración corregida para datos reales
 const chartConfig = {
-  desktop: {
-    label: "Desktop",
-    color: "#0E47E1", // azul nuevo
+  inmediatas: {
+    label: "Plazas Inmediatas",
+    color: "#0E47E1", // azul
   },
-  mobile: {
-    label: "Mobile",
-    color: "#9A75E5", // azul nuevo
+  privadas: {
+    label: "Plazas Privadas",
+    color: "#9A75E5", // morado
   },
 } satisfies ChartConfig
 
@@ -48,12 +48,11 @@ interface TotalUsersGraphPlazasProps {
   rango?: "dia" | "semana" | "mes"
 }
 
-// ✅ NUEVA función para transformar PlazaDetalle[] al formato del gráfico
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+// Función transformada para usar datos reales de plazas
 const transformDataForChart = (
   plazasDetalle: any[],
   rango: "dia" | "semana" | "mes"
-): ChartDataPoint[] => {
+): PlazasChartDataPoint[] => {
   if (!plazasDetalle || !Array.isArray(plazasDetalle)) {
     return []
   }
@@ -65,16 +64,11 @@ const transformDataForChart = (
     console.log("=== DIAGNÓSTICO COMPLETO ===")
     console.log("🔍 Rango seleccionado:", rango)
     console.log("🔍 Total de plazas:", plazasDetalle.length)
-    // 🔍 Ajusta estos campos según la estructura real de PlazaDetalle
-    // Campos posibles: fechaCreacion, createdAt, fecha, fechaPublicacion, etc.
-    const dateField =
-      plaza.fechaCreacion ||
-      plaza.createdAt ||
-      plaza.fecha ||
-      plaza.fechaPublicacion
+
+    const dateField = plaza.fechaPublicacion // Usar fechaPublicacion específicamente
 
     if (!dateField) {
-      console.warn("⚠️ No se encontró campo de fecha en:", plaza)
+      console.warn("⚠️ No se encontró fechaPublicacion en:", plaza)
       return acc
     }
 
@@ -108,15 +102,22 @@ const transformDataForChart = (
 
     if (!acc[periodKey]) {
       acc[periodKey] = {
-        count: 0,
+        inmediatas: 0,
+        privadas: 0,
         date,
         period: periodKey,
       }
     }
-    acc[periodKey].count++
+
+    // Contar por tipo según los datos reales
+    if (plaza.tipo === "Inmediata") {
+      acc[periodKey].inmediatas++
+    } else if (plaza.tipo === "Privada") {
+      acc[periodKey].privadas++
+    }
 
     return acc
-  }, {} as Record<string, { count: number; date: Date; period: string }>)
+  }, {} as Record<string, { inmediatas: number; privadas: number; date: Date; period: string }>)
 
   const monthNames = [
     "January",
@@ -139,7 +140,12 @@ const transformDataForChart = (
   return Object.entries(groupedByPeriod)
     .sort(([a], [b]) => a.localeCompare(b)) // Ordenar por período
     .map(([key, data]) => {
-      const typedData = data as { count: number; date: Date; period: string }
+      const typedData = data as {
+        inmediatas: number
+        privadas: number
+        date: Date
+        period: string
+      }
       let displayName: string
 
       switch (rango) {
@@ -160,8 +166,8 @@ const transformDataForChart = (
 
       return {
         month: displayName,
-        desktop: typedData.count,
-        mobile: Math.floor(typedData.count * 0.6), // Simulamos datos mobile como 60% del desktop
+        inmediatas: typedData.inmediatas,
+        privadas: typedData.privadas,
         date: key,
         fullMonth: typedData.date.toLocaleDateString("es-ES", {
           ...(rango === "dia" && {
@@ -180,14 +186,12 @@ const transformDataForChart = (
     })
 }
 
-// ✅ NUEVA función para calcular total de usuarios
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const calculateTotalUsers = (plazasDetalle: any[]): number => {
+// Función para calcular total de plazas
+const calculateTotalPlazas = (plazasDetalle: any[]): number => {
   return plazasDetalle?.length || 0
 }
 
-// ✅ NUEVA función para calcular porcentaje de crecimiento
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+// Función para calcular porcentaje de crecimiento
 const calculateGrowthPercentage = (
   plazasDetalle: any[],
   rango: "dia" | "semana" | "mes"
@@ -198,11 +202,7 @@ const calculateGrowthPercentage = (
 
   // Agrupar por período para calcular tendencia
   const groupedData = plazasDetalle.reduce((acc, plaza) => {
-    const dateField =
-      plaza.fechaCreacion ||
-      plaza.createdAt ||
-      plaza.fecha ||
-      plaza.fechaPublicacion
+    const dateField = plaza.fechaPublicacion
     if (!dateField) return acc
 
     const date = new Date(dateField)
@@ -248,8 +248,7 @@ const calculateGrowthPercentage = (
   }
 }
 
-// ✅ NUEVA función para obtener rango de fechas
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+// Función para obtener rango de fechas
 const getDateRange = (plazasDetalle: any[]): string => {
   if (!plazasDetalle || plazasDetalle.length === 0) {
     return "Sin datos"
@@ -257,11 +256,7 @@ const getDateRange = (plazasDetalle: any[]): string => {
 
   const dates = plazasDetalle
     .map((plaza) => {
-      const dateField =
-        plaza.fechaCreacion ||
-        plaza.createdAt ||
-        plaza.fecha ||
-        plaza.fechaPublicacion
+      const dateField = plaza.fechaPublicacion
       return dateField ? new Date(dateField) : null
     })
     .filter((date) => date !== null) as Date[]
@@ -300,18 +295,18 @@ export function TotalUsersGraphPlazas({
   console.log("Tipo de plazasDetalle:", Array.isArray(data?.plazasDetalle))
   console.log("==================")
 
-  // ✅ Transformar datos para el gráfico usando PlazaDetalle
+  // Transformar datos para el gráfico usando PlazaDetalle
   const chartData = data ? transformDataForChart(data.plazasDetalle, rango) : []
-  const totalUsers = data ? calculateTotalUsers(data.plazasDetalle) : 0
+  const totalPlazas = data ? calculateTotalPlazas(data.plazasDetalle) : 0
   const growth = data
     ? calculateGrowthPercentage(data.plazasDetalle, rango)
     : { percentage: "0", isPositive: true }
   const dateRange = data ? getDateRange(data.plazasDetalle) : "Sin datos"
 
-  // 🔍 DEBUG temporal - quita esto cuando funcione
+  // DEBUG temporal - quita esto cuando funcione
   console.log("🚀 Datos transformados:", {
     chartDataLength: chartData.length,
-    totalUsers,
+    totalPlazas,
     growth,
     dateRange,
     firstChartItem: chartData[0],
@@ -323,7 +318,7 @@ export function TotalUsersGraphPlazas({
       <Card className="">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm text-muted-foreground font-medium">
-            Usuarios totales
+            Total de Plazas
           </CardTitle>
         </CardHeader>
         <CardContent className="flex items-center justify-center h-64">
@@ -344,7 +339,7 @@ export function TotalUsersGraphPlazas({
       <Card className="">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm text-muted-foreground font-medium">
-            Usuarios totales
+            Total de Plazas
           </CardTitle>
         </CardHeader>
         <CardContent className="flex items-center justify-center h-64">
@@ -373,13 +368,13 @@ export function TotalUsersGraphPlazas({
     <Card className="">
       <CardHeader className="pb-2">
         <CardTitle className="text-sm text-muted-foreground font-medium">
-          Usuarios totales
+          Total de Plazas
         </CardTitle>
 
         <div className="flex items-center gap-2 pt-1">
           {/* Número */}
           <span className="text-2xl font-bold text-primary">
-            {totalUsers.toLocaleString()}
+            {totalPlazas.toLocaleString()}
           </span>
 
           {/* Porcentaje */}
@@ -419,22 +414,55 @@ export function TotalUsersGraphPlazas({
               />
               <ChartTooltip
                 cursor={false}
-                content={<ChartTooltipContent indicator="line" />}
+                content={({ payload, label }) => {
+                  if (payload && payload.length) {
+                    const inmediatas =
+                      payload.find((p) => p.dataKey === "inmediatas")?.value ||
+                      0
+                    const privadas =
+                      payload.find((p) => p.dataKey === "privadas")?.value || 0
+                    const total = Number(inmediatas) + Number(privadas)
+
+                    return (
+                      <div className="bg-background border border-border rounded-lg shadow-lg p-3">
+                        <p className="font-medium">{label}</p>
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <div
+                            className="w-2 h-2 rounded-full"
+                            style={{ backgroundColor: "#0E47E1" }}
+                          ></div>
+                          <span>Plazas Inmediatas: {inmediatas}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <div
+                            className="w-2 h-2 rounded-full"
+                            style={{ backgroundColor: "#9A75E5" }}
+                          ></div>
+                          <span>Plazas Privadas: {privadas}</span>
+                        </div>
+                        <p className="text-sm font-medium border-t pt-1 mt-1">
+                          Total: {total}
+                        </p>
+                      </div>
+                    )
+                  }
+                  return null
+                }}
               />
               <Area
-                dataKey="mobile"
+                dataKey="inmediatas"
                 type="natural"
-                fill="var(--color-mobile)"
+                fill="var(--color-inmediatas)"
                 fillOpacity={0.4}
-                stroke="var(--color-mobile)"
+                stroke="var(--color-inmediatas)"
                 stackId="a"
               />
               <Area
-                dataKey="desktop"
+                dataKey="privadas"
                 type="natural"
-                fill="var(--color-desktop)"
+                fill="var(--color-privadas)"
                 fillOpacity={0.4}
-                stroke="var(--color-desktop)"
+                stroke="var(--color-privadas)"
                 stackId="a"
               />
               <ChartLegend content={<ChartLegendContent />} />
