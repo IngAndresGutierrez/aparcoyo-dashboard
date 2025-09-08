@@ -6,12 +6,12 @@ import {
   flexRender,
   getCoreRowModel,
   useReactTable,
-  getPaginationRowModel,
   RowData,
 } from "@tanstack/react-table"
-import { Loader2 } from "lucide-react"
+import { Loader2, Search, X } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import {
   Table,
   TableBody,
@@ -85,22 +85,6 @@ const fallbackData: Transaction[] = [
 
 export const columns: ColumnDef<Transaction>[] = [
   {
-    id: "select",
-    header: () => (
-      <input
-        type="checkbox"
-        className="rounded"
-      />
-    ),
-    cell: ({ row }) => (
-      <input
-        type="checkbox"
-        className="rounded"
-        data-row-id={row.id}
-      />
-    ),
-  },
-  {
     accessorKey: "factura",
     header: "Factura n.º",
     cell: ({ row }) => (
@@ -161,7 +145,6 @@ export const columns: ColumnDef<Transaction>[] = [
     ),
     meta: { responsive: true },
   },
-  // ✅ ELIMINADA: Columna de acciones con los 3 puntos
 ]
 
 const TransactionsTable = () => {
@@ -169,43 +152,165 @@ const TransactionsTable = () => {
     refetchInterval: 5 * 60 * 1000, // Refetch cada 5 minutos
   })
 
+  // Estados para búsqueda
+  const [searchValue, setSearchValue] = React.useState("")
+  const [allTransactions, setAllTransactions] = React.useState<Transaction[]>(
+    []
+  )
+  const [filteredTransactions, setFilteredTransactions] = React.useState<
+    Transaction[]
+  >([])
+  const [currentPage, setCurrentPage] = React.useState(1)
+  const itemsPerPage = 10
+  const searchTimeoutRef = React.useRef<NodeJS.Timeout | undefined>(undefined)
+
   // Usar datos reales o fallback
   const tableData = transactions.length > 0 ? transactions : fallbackData
 
+  // Actualizar cuando llegan datos
+  React.useEffect(() => {
+    if (tableData?.length > 0) {
+      setAllTransactions(tableData)
+      setFilteredTransactions(tableData)
+    }
+  }, [tableData])
+
+  // Función de filtrado para transacciones
+  const handleFilter = React.useCallback(
+    (searchTerm: string) => {
+      if (!searchTerm.trim()) {
+        setFilteredTransactions(allTransactions)
+        setCurrentPage(1)
+        return
+      }
+
+      const search = searchTerm.toLowerCase().trim()
+      const filtered = allTransactions.filter((transaction) => {
+        // Buscar en número de factura
+        const factura = (transaction.factura || "").toLowerCase()
+
+        // Buscar en cliente
+        const cliente = (transaction.cliente || "").toLowerCase()
+
+        // Buscar en estado
+        const estado = (transaction.estado || "").toLowerCase()
+
+        // Buscar en tipo de transacción
+        const tipo = (transaction.tipo || "").toLowerCase()
+
+        // Buscar en importe (opcional)
+        const importe = (transaction.importe || "").toString().toLowerCase()
+
+        return (
+          factura.includes(search) ||
+          cliente.includes(search) ||
+          estado.includes(search) ||
+          tipo.includes(search) ||
+          importe.includes(search)
+        )
+      })
+
+      setFilteredTransactions(filtered)
+      setCurrentPage(1)
+    },
+    [allTransactions]
+  )
+
+  // Manejar cambio de búsqueda con debounce
+  const handleSearchChange = (value: string) => {
+    setSearchValue(value)
+
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current)
+    }
+
+    searchTimeoutRef.current = setTimeout(() => {
+      handleFilter(value)
+    }, 300)
+  }
+
+  // Limpiar búsqueda
+  const clearSearch = () => {
+    setSearchValue("")
+    setFilteredTransactions(allTransactions)
+    setCurrentPage(1)
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current)
+    }
+  }
+
+  // Cleanup del timeout
+  React.useEffect(() => {
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current)
+      }
+    }
+  }, [])
+
+  // Paginación
+  const startIndex = (currentPage - 1) * itemsPerPage
+  const endIndex = startIndex + itemsPerPage
+  const transaccionesPagina = filteredTransactions.slice(startIndex, endIndex)
+  const totalPages = Math.ceil(filteredTransactions.length / itemsPerPage)
+
   const table = useReactTable({
-    data: tableData,
+    data: transaccionesPagina,
     columns,
     getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    initialState: {
-      pagination: {
-        pageSize: 10, // Mostrar 10 transacciones por página
-      },
-    },
+    manualPagination: true,
   })
 
   return (
     <div className="w-full space-y-4">
-      {/* Header con indicadores */}
+      {/* Header con indicadores y buscador */}
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-lg font-semibold">Transacciones Recientes</h3>
-          <p className="text-sm text-muted-foreground">
-            {loading ? "Cargando..." : `${tableData.length} transacciones`}
-          </p>
+          <div className="text-sm text-muted-foreground">
+            Mostrando {transaccionesPagina.length} de{" "}
+            {filteredTransactions.length} transacciones
+            {searchValue && ` para "${searchValue}"`}
+            {filteredTransactions.length !== allTransactions.length &&
+              ` (${allTransactions.length} total)`}
+          </div>
         </div>
 
-        {/* Indicador de estado */}
-        <div className="flex items-center gap-2">
-          {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-          {error && (
-            <button
-              onClick={refetch}
-              className="text-xs bg-orange-500 text-white px-2 py-1 rounded hover:bg-orange-600"
-            >
-              Reintentar
-            </button>
-          )}
+        <div className="flex items-center gap-3">
+          {/* Buscador */}
+          <div className="relative w-72">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+            <Input
+              placeholder="Buscar transacciones..."
+              value={searchValue}
+              onChange={(e) => handleSearchChange(e.target.value)}
+              className="pl-10 pr-10"
+              disabled={loading}
+            />
+            {searchValue && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={clearSearch}
+                className="absolute right-1 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0 hover:bg-gray-100"
+              >
+                <X className="h-3 w-3" />
+              </Button>
+            )}
+          </div>
+
+          {/* Indicador de estado */}
+          <div className="flex items-center gap-2">
+            {loading && <Loader2 className="w-4 h-4 animate-spin" />}
+            {error && (
+              <button
+                onClick={refetch}
+                className="text-xs bg-orange-500 text-white px-2 py-1 rounded hover:bg-orange-600"
+              >
+                Reintentar
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -234,7 +339,7 @@ const TransactionsTable = () => {
             ))}
           </TableHeader>
           <TableBody>
-            {table.getRowModel().rows?.length ? (
+            {transaccionesPagina?.length ? (
               table.getRowModel().rows.map((row) => (
                 <TableRow key={row.id}>
                   {row.getVisibleCells().map((cell) => (
@@ -265,6 +370,19 @@ const TransactionsTable = () => {
                       <Loader2 className="w-4 h-4 animate-spin" />
                       Cargando transacciones...
                     </div>
+                  ) : searchValue ? (
+                    <div>
+                      <p className="text-muted-foreground">
+                        No se encontraron transacciones para {searchValue}
+                      </p>
+                      <Button
+                        variant="link"
+                        onClick={clearSearch}
+                        className="mt-2"
+                      >
+                        Limpiar búsqueda
+                      </Button>
+                    </div>
                   ) : (
                     "No hay transacciones disponibles."
                   )}
@@ -276,31 +394,41 @@ const TransactionsTable = () => {
       </div>
 
       {/* Paginación */}
-      <div className="flex items-center justify-between">
-        <div className="text-sm text-muted-foreground">
-          Página {table.getState().pagination.pageIndex + 1} de{" "}
-          {table.getPageCount()} ({tableData.length} transacciones total)
-        </div>
+      {filteredTransactions.length > 0 && (
+        <div className="flex items-center justify-between">
+          <div className="text-sm text-muted-foreground">
+            Mostrando {startIndex + 1} -{" "}
+            {Math.min(endIndex, filteredTransactions.length)} de{" "}
+            {filteredTransactions.length} transacciones
+            {filteredTransactions.length !== allTransactions.length &&
+              ` (filtradas de ${allTransactions.length})`}
+          </div>
 
-        <div className="flex items-center space-x-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => table.previousPage()}
-            disabled={!table.getCanPreviousPage()}
-          >
-            Atrás
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => table.nextPage()}
-            disabled={!table.getCanNextPage()}
-          >
-            Adelante
-          </Button>
+          <div className="flex items-center space-x-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+              disabled={currentPage <= 1}
+            >
+              ← Anterior
+            </Button>
+            <span className="text-sm text-muted-foreground px-3">
+              Página {currentPage} de {totalPages}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() =>
+                setCurrentPage((prev) => Math.min(totalPages, prev + 1))
+              }
+              disabled={currentPage >= totalPages}
+            >
+              Siguiente →
+            </Button>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   )
 }
