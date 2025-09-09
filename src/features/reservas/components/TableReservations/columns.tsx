@@ -12,7 +12,6 @@ import {
   Edit2,
   Trash2,
 } from "lucide-react"
-import Image from "next/image"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -22,6 +21,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Badge } from "@/components/ui/badge"
+import { Checkbox } from "@/components/ui/checkbox"
 import { ReservaTable } from "../../types"
 
 // Extender la interfaz ColumnMeta para incluir la propiedad responsive
@@ -66,13 +66,33 @@ const getReservaStatus = (fechaInicio: string, fechaFin: string) => {
 // Función que retorna las columnas y recibe callbacks
 export const reservasColumns = (
   onEditReservation?: (reservation: ReservaTable) => void,
-  onDeleteReservation?: (reservation: ReservaTable) => void
+  onDeleteReservation?: (reservation: ReservaTable) => void,
+  selectedRows?: string[],
+  onRowSelectionChange?: (rowId: string, selected: boolean) => void,
+  onSelectAllChange?: (selected: boolean) => void,
+  allRowsSelected?: boolean
 ): ColumnDef<ReservaTable>[] => [
   {
     id: "select",
-    header: () => <input type="checkbox" />,
-    cell: () => <input type="checkbox" />,
-    // Sin meta.responsive para que siempre sea visible
+    header: ({ table }) => (
+      <Checkbox
+        checked={allRowsSelected}
+        onCheckedChange={(value) => onSelectAllChange?.(!!value)}
+        aria-label="Seleccionar todas"
+      />
+    ),
+    cell: ({ row }) => (
+      <Checkbox
+        checked={selectedRows?.includes(row.original.id) || false}
+        onCheckedChange={(value) =>
+          onRowSelectionChange?.(row.original.id, !!value)
+        }
+        aria-label="Seleccionar fila"
+      />
+    ),
+    enableSorting: false,
+    enableHiding: false,
+    size: 40,
   },
   {
     accessorKey: "usuario",
