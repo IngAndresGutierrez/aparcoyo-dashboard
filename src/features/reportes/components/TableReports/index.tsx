@@ -46,9 +46,9 @@ import {
 import Image from "next/image"
 
 import { useEffect } from "react"
-import { useReportes } from "../../hooks/useReportsTable"
-import { Reporte } from "../../types/reports-table"
-import ReporteDetailsModal from "../ModalReports"
+import { useReportes } from "@/features/reportes/hooks/useReportsTable"
+import { Reporte } from "@/features/reportes/types/reports-table"
+import ReporteDetailsModal from "@/features/reportes/components/ModalReports"
 
 // Extender la interfaz ColumnMeta para incluir la propiedad responsive
 declare module "@tanstack/react-table" {
@@ -287,33 +287,64 @@ const UsersTableReports: React.FC<UsersTableReportsProps> = ({
     }
 
     const selectedCount = selectedReportes.size
+
+    toast.custom(
+      (t) => (
+        <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-4 max-w-md">
+          <div className="flex items-start gap-3">
+            <div className="flex-shrink-0 w-10 h-10 bg-red-50 rounded-full flex items-center justify-center">
+              <Trash2 className="w-5 h-5 text-red-600" />
+            </div>
+            <div className="flex-1">
+              <h3 className="font-medium text-gray-900 mb-1">
+                ¿Eliminar {selectedCount} reportes?
+              </h3>
+              <p className="text-sm text-gray-600 mb-4">
+                Esta acción no se puede deshacer.
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => toast.dismiss(t)}
+                  className="flex-1"
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => {
+                    toast.dismiss(t)
+                    confirmDeleteSelected()
+                  }}
+                  className="flex-1"
+                >
+                  Eliminar reportes
+                </Button>
+              </div>
+            </div>
+            <button
+              onClick={() => toast.dismiss(t)}
+              className="flex-shrink-0 w-6 h-6 text-gray-400 hover:text-gray-600"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      ),
+      {
+        duration: Infinity,
+      }
+    )
+  }
+
+  // Función para confirmar eliminación múltiple
+  const confirmDeleteSelected = async () => {
     const selectedReportesData = reportesPagina.filter((reporte) =>
       selectedReportes.has(reporte.id)
     )
-
-    toast(
-      `¿Eliminar ${selectedCount} reporte${selectedCount > 1 ? "s" : ""}?`,
-      {
-        description: `¿Estás seguro de que quieres eliminar ${selectedCount} reporte${
-          selectedCount > 1 ? "s" : ""
-        } seleccionado${
-          selectedCount > 1 ? "s" : ""
-        }?\n\nEsta acción no se puede deshacer.`,
-        action: {
-          label: `Eliminar ${selectedCount} reporte${
-            selectedCount > 1 ? "s" : ""
-          }`,
-          onClick: async () => {
-            await executeDeleteMultiple(selectedReportesData)
-          },
-        },
-        cancel: {
-          label: "Cancelar",
-          onClick: () => {},
-        },
-        duration: 10000,
-      }
-    )
+    await executeDeleteMultiple(selectedReportesData)
   }
 
   // Función para ejecutar eliminación múltiple
@@ -455,23 +486,58 @@ const UsersTableReports: React.FC<UsersTableReportsProps> = ({
     if (selectedReportes.size > 0) {
       const selectedCount = selectedReportes.size
 
-      toast(`¿Eliminar ${selectedCount} reportes?`, {
-        description: "Esta acción no se puede deshacer.",
-        action: {
-          label: "Eliminar reportes",
-          onClick: async () => {
-            const selectedReportesData = reportesPagina.filter((reporte) =>
-              selectedReportes.has(reporte.id)
-            )
-            await executeDeleteMultiple(selectedReportesData)
-          },
-        },
-        cancel: {
-          label: "Cancelar",
-          onClick: () => {},
-        },
-        duration: 10000,
-      })
+      toast.custom(
+        (t) => (
+          <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-4 max-w-md">
+            <div className="flex items-start gap-3">
+              <div className="flex-shrink-0 w-10 h-10 bg-red-50 rounded-full flex items-center justify-center">
+                <Trash2 className="w-5 h-5 text-red-600" />
+              </div>
+              <div className="flex-1">
+                <h3 className="font-medium text-gray-900 mb-1">
+                  ¿Eliminar {selectedCount} reportes?
+                </h3>
+                <p className="text-sm text-gray-600 mb-4">
+                  Esta acción no se puede deshacer.
+                </p>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => toast.dismiss(t)}
+                    className="flex-1"
+                  >
+                    Cancelar
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => {
+                      toast.dismiss(t)
+                      const selectedReportesData = reportesPagina.filter(
+                        (reporte) => selectedReportes.has(reporte.id)
+                      )
+                      executeDeleteMultiple(selectedReportesData)
+                    }}
+                    className="flex-1"
+                  >
+                    Eliminar reportes
+                  </Button>
+                </div>
+              </div>
+              <button
+                onClick={() => toast.dismiss(t)}
+                className="flex-shrink-0 w-6 h-6 text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        ),
+        {
+          duration: Infinity,
+        }
+      )
       return
     }
 
