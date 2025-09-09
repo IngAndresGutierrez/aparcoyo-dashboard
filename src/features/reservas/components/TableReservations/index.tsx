@@ -30,7 +30,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { AlertCircle, RefreshCw, Search, X } from "lucide-react"
+import { AlertCircle, RefreshCw, Search, X, Trash2 } from "lucide-react"
 import { useEffect } from "react"
 import { toast } from "sonner"
 
@@ -67,6 +67,9 @@ const ReservationsTable = () => {
   const itemsPerPage = 10
   const searchTimeoutRef = React.useRef<NodeJS.Timeout | undefined>(undefined)
 
+  // Estados para selección múltiple
+  const [selectedRows, setSelectedRows] = React.useState<string[]>([])
+
   // Estados para el modal y confirmación
   const [selectedReservation, setSelectedReservation] =
     useState<ReservaTable | null>(null)
@@ -82,6 +85,205 @@ const ReservationsTable = () => {
       setFilteredReservas(reservas)
     }
   }, [reservas])
+
+  // Limpiar selecciones cuando cambian los datos filtrados
+  React.useEffect(() => {
+    setSelectedRows([])
+  }, [filteredReservas])
+
+  // Funciones para manejo de selección
+  const handleRowSelectionChange = (rowId: string, selected: boolean) => {
+    setSelectedRows((prev) => {
+      if (selected) {
+        return [...prev, rowId]
+      } else {
+        return prev.filter((id) => id !== rowId)
+      }
+    })
+  }
+
+  const handleSelectAllChange = (selected: boolean) => {
+    if (selected) {
+      const currentPageIds = reservasPagina.map((reserva) => reserva.id)
+      setSelectedRows(currentPageIds)
+    } else {
+      setSelectedRows([])
+    }
+  }
+
+  // Función para mostrar el toast de confirmación múltiple
+  const handleMultipleDelete = () => {
+    if (selectedRows.length === 0) return
+
+    const selectedCount = selectedRows.length
+
+    toast.custom(
+      (t) => (
+        <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-4 max-w-lg">
+          <div className="flex items-start gap-3">
+            <div className="flex-shrink-0 w-10 h-10 bg-red-50 rounded-full flex items-center justify-center">
+              <Trash2 className="w-5 h-5 text-red-600" />
+            </div>
+            <div className="flex-1">
+              <h3 className="font-medium text-gray-900 mb-1">
+                ¿Eliminar reservas seleccionadas?
+              </h3>
+              <p className="text-sm text-gray-600 mb-4">
+                Esto cancelará las reservas de los usuarios involucrados. Si
+                desean volver a aparcar, deberán realizar el proceso nuevamente.
+                Las plazas y usuarios no serán eliminados.
+              </p>
+              <p className="text-xs text-gray-500 mb-4">
+                Ten en cuenta que esta acción no se puede deshacer.
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => toast.dismiss(t)}
+                  className="flex-1"
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => {
+                    toast.dismiss(t)
+                    confirmMultipleDelete()
+                  }}
+                  className="flex-1"
+                >
+                  Eliminar {selectedCount} reservas
+                </Button>
+              </div>
+            </div>
+            <button
+              onClick={() => toast.dismiss(t)}
+              className="flex-shrink-0 w-6 h-6 text-gray-400 hover:text-gray-600"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      ),
+      {
+        duration: Infinity,
+      }
+    )
+  }
+
+  // Función para confirmar eliminación múltiple
+  const confirmMultipleDelete = async () => {
+    const selectedReservas = allReservas.filter((reserva) =>
+      selectedRows.includes(reserva.id)
+    )
+
+    toast.promise(
+      async () => {
+        const token =
+          localStorage.getItem("authToken") || localStorage.getItem("token")
+
+        if (!token) {
+          throw new Error(
+            "No estás autenticado. Por favor, inicia sesión nuevamente."
+          )
+        }
+
+        let successCount = 0
+        let failedCount = 0
+        let paymentRestrictedCount = 0
+        const errors = []
+
+        // Eliminar las reservas una por una para evitar conflictos
+        for (const reserva of selectedReservas) {
+          try {
+            const response = await fetch(
+              `https://aparcoyo-back.onrender.com/apa/reservas/${reserva.id}`,
+              {
+                method: "DELETE",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${token}`,
+                },
+              }
+            )
+
+            if (response.ok) {
+              successCount++
+            } else {
+              const errorData = await response
+                .json()
+                .catch(() => ({ message: response.statusText }))
+              const errorMessage = errorData.message || response.statusText
+
+              // Verificar si es error de pagos asociados
+              if (
+                errorMessage.includes("pagos") ||
+                errorMessage.includes("payments")
+              ) {
+                paymentRestrictedCount++
+              } else {
+                failedCount++
+                errors.push(`Reserva ${reserva.id}: ${errorMessage}`)
+              }
+            }
+          } catch (error: any) {
+            failedCount++
+            errors.push(
+              `Reserva ${reserva.id}: ${error?.message || "Error desconocido"}`
+            )
+          }
+        }
+
+        // Limpiar selecciones y refrescar datos
+        setSelectedRows([])
+        await getAllReservas()
+
+        // Construir mensaje de resultado
+        let resultMessage = ""
+
+        if (successCount > 0) {
+          resultMessage += `${successCount} reservas eliminadas exitosamente`
+        }
+
+        if (paymentRestrictedCount > 0) {
+          if (resultMessage) resultMessage += ". "
+          resultMessage += `${paymentRestrictedCount} reservas no se pudieron eliminar porque tienen pagos asociados`
+        }
+
+        if (failedCount > 0) {
+          if (resultMessage) resultMessage += ". "
+          resultMessage += `${failedCount} reservas fallaron por otros motivos`
+          console.error("Errores en eliminación:", errors)
+        }
+
+        if (
+          successCount === 0 &&
+          (paymentRestrictedCount > 0 || failedCount > 0)
+        ) {
+          if (paymentRestrictedCount > 0 && failedCount === 0) {
+            throw new Error(
+              `No se pudieron eliminar las reservas porque tienen pagos asociados. Las reservas con pagos no pueden ser eliminadas.`
+            )
+          } else {
+            throw new Error(
+              `No se pudo eliminar ninguna reserva: ${
+                errors[0] || "Error desconocido"
+              }`
+            )
+          }
+        }
+
+        return resultMessage || "Proceso completado"
+      },
+      {
+        loading: `Eliminando ${selectedReservas.length} reservas...`,
+        success: (message) => message,
+        error: (error) => `${error.message}`,
+      }
+    )
+  }
 
   // Función de filtrado para reservas
   const handleFilter = React.useCallback(
@@ -249,17 +451,29 @@ const ReservationsTable = () => {
     )
   }
 
-  // Memorizar las columnas con los callbacks
-  const columns = useMemo(
-    () => reservasColumns(handleEditReservation, handleRequestDelete),
-    [handleEditReservation]
-  )
-
   // Paginación
   const startIndex = (currentPage - 1) * itemsPerPage
   const endIndex = startIndex + itemsPerPage
   const reservasPagina = filteredReservas.slice(startIndex, endIndex)
   const totalPages = Math.ceil(filteredReservas.length / itemsPerPage)
+
+  const allRowsSelected =
+    reservasPagina.length > 0 &&
+    reservasPagina.every((reserva) => selectedRows.includes(reserva.id))
+
+  // Memorizar las columnas con los callbacks
+  const columns = useMemo(
+    () =>
+      reservasColumns(
+        handleEditReservation,
+        handleRequestDelete,
+        selectedRows,
+        handleRowSelectionChange,
+        handleSelectAllChange,
+        allRowsSelected
+      ),
+    [handleEditReservation, selectedRows, allRowsSelected]
+  )
 
   const table = useReactTable({
     data: reservasPagina,
@@ -318,14 +532,29 @@ const ReservationsTable = () => {
 
   return (
     <div className="w-full">
-      {/* Header con información y buscador */}
+      {/* Header con información, buscador y botón de eliminar múltiple */}
       <div className="flex items-center justify-between mb-4">
-        <div className="text-sm text-muted-foreground">
-          Mostrando {reservasPagina.length} de {filteredReservas.length}{" "}
-          reservas
-          {searchValue && ` para "${searchValue}"`}
-          {filteredReservas.length !== allReservas.length &&
-            ` (${allReservas.length} total)`}
+        <div className="flex items-center gap-4">
+          <div className="text-sm text-muted-foreground">
+            Mostrando {reservasPagina.length} de {filteredReservas.length}{" "}
+            reservas
+            {searchValue && ` para "${searchValue}"`}
+            {filteredReservas.length !== allReservas.length &&
+              ` (${allReservas.length} total)`}
+          </div>
+
+          {/* Botón de eliminar múltiple */}
+          {selectedRows.length > 0 && (
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={handleMultipleDelete}
+              className="flex items-center gap-2"
+            >
+              <Trash2 className="h-4 w-4" />
+              Eliminar {selectedRows.length} reservas
+            </Button>
+          )}
         </div>
 
         <div className="flex items-center gap-3">
@@ -424,11 +653,18 @@ const ReservationsTable = () => {
               </TableRow>
             ) : (
               table.getRowModel().rows.map((row) => (
-                <TableRow key={row.id}>
+                <TableRow
+                  key={row.id}
+                  className={
+                    selectedRows.includes(row.original.id) ? "bg-muted/50" : ""
+                  }
+                >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell
                       key={cell.id}
-                      className={`py-3 px-2 ${
+                      className={`py-3 ${
+                        cell.column.id === "select" ? "px-2" : "px-2"
+                      } ${
                         cell.column.columnDef.meta?.responsive
                           ? "hidden lg:table-cell"
                           : ""
