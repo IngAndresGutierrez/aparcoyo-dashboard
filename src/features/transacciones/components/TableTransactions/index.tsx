@@ -42,17 +42,42 @@ const formatCurrency = (amount: string) => {
 }
 
 // Función para formatear fecha
+// Función corregida para formatear fecha
 const formatDate = (dateString: string) => {
   if (dateString === "Sin fecha") return "Sin fecha"
 
   try {
+    // Si la fecha viene en formato YYYY-MM-DD (sin hora),
+    // la interpretamos como fecha local, no UTC
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+      // Separar los componentes de la fecha
+      const [year, month, day] = dateString.split("-").map(Number)
+
+      // Crear fecha local (mes - 1 porque Date usa 0-11 para meses)
+      const date = new Date(year, month - 1, day)
+
+      return date.toLocaleDateString("es-ES", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      })
+    }
+
+    // Para otros formatos de fecha, usar el comportamiento normal
     const date = new Date(dateString)
+
+    // Verificar si la fecha es válida
+    if (isNaN(date.getTime())) {
+      throw new Error("Fecha inválida")
+    }
+
     return date.toLocaleDateString("es-ES", {
       day: "2-digit",
       month: "short",
       year: "numeric",
     })
-  } catch {
+  } catch (error) {
+    console.error("Error al formatear fecha:", dateString, error)
     return dateString
   }
 }
