@@ -55,6 +55,7 @@ export interface UsuariosTablaResponse {
   limit?: number
 }
 
+// 🔥 ACTUALIZADO: Agregar filtros de fecha
 export interface UsuariosTablaParams {
   page?: number
   limit?: number
@@ -67,4 +68,8 @@ export interface UsuariosTablaParams {
     | "reservasHechas"
     | "plazasPublicadas"
   sortOrder?: "asc" | "desc"
+
+  // 🔥 NUEVOS: Filtros de fecha para el filtrado del lado del cliente
+  fechaInicio?: string // ISO string (ej: "2024-01-01T00:00:00.000Z")
+  fechaFin?: string // ISO string (ej: "2024-01-31T23:59:59.999Z")
 }

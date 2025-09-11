@@ -24,7 +24,7 @@ import { useUsuariosStats } from "../../hooks/useUsers"
 export const description =
   "Gráfico de usuarios totales con datos en tiempo real"
 
-// Datos de ejemplo para el gráfico (en producción vendrían del API)
+// Datos de ejemplo para el gráfico
 const generateChartData = (usuariosTotales: number) => {
   const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun"]
   const baseValue = Math.max(usuariosTotales - 20, 5)
@@ -39,23 +39,45 @@ const generateChartData = (usuariosTotales: number) => {
 const chartConfig = {
   activos: {
     label: "Usuarios Activos",
-    color: "#0E47E1", // azul principal
+    color: "#0E47E1",
   },
   nuevos: {
     label: "Usuarios Nuevos",
-    color: "#9A75E5", // púrpura
+    color: "#9A75E5",
   },
 } satisfies ChartConfig
 
-interface TotalUsersGraphProps {
-  rango?: "dia" | "semana" | "mes"
+// 🔥 NUEVA INTERFAZ: Soporte para estadísticas calculadas
+interface EstadisticasCalculadas {
+  usuariosTotales: number
+  usuariosActivos: number
+  usuariosConPlaza: number
+  usuariosNuevos: number
+  usuariosConReserva: number
+  periodoActual: number
+  periodoAnterior: number
 }
 
-export function TotalUsersGraph({ rango = "mes" }: TotalUsersGraphProps) {
-  const { data, loading, error } = useUsuariosStats(rango)
+interface TotalUsersGraphProps {
+  rango?: "dia" | "semana" | "mes"
+  estadisticasCalculadas?: EstadisticasCalculadas // 🔥 Nueva prop opcional
+}
 
-  // Calcular datos del gráfico
-  const chartData = data ? generateChartData(data.usuariosTotales) : []
+export function TotalUsersGraph({
+  rango = "mes",
+  estadisticasCalculadas,
+}: TotalUsersGraphProps) {
+  // 🔥 USAR estadísticas calculadas si están disponibles, sino el hook original
+  const { data: hookData, loading, error } = useUsuariosStats(rango)
+
+  // Priorizar estadísticas calculadas sobre datos del hook
+  const data = estadisticasCalculadas || hookData
+
+  console.log("📊 TotalUsersGraph - usando datos:", {
+    tipoFuente: estadisticasCalculadas ? "calculadas" : "hook",
+    usuariosTotales: data?.usuariosTotales || 0,
+    rango,
+  })
 
   // Calcular crecimiento basado en períodos
   const crecimiento = data
@@ -66,8 +88,11 @@ export function TotalUsersGraph({ rango = "mes" }: TotalUsersGraphProps) {
 
   const isPositiveGrowth = crecimiento >= 0
 
-  // Estado de carga
-  if (loading) {
+  // Calcular datos del gráfico
+  const chartData = data ? generateChartData(data.usuariosTotales) : []
+
+  // 🔥 SOLO mostrar loading si no hay estadísticas calculadas Y está cargando
+  if (loading && !estadisticasCalculadas) {
     return (
       <Card className="">
         <CardHeader className="pb-2">
@@ -91,8 +116,8 @@ export function TotalUsersGraph({ rango = "mes" }: TotalUsersGraphProps) {
     )
   }
 
-  // Estado de error
-  if (error) {
+  // 🔥 SOLO mostrar error si no hay estadísticas calculadas Y hay error
+  if (error && !estadisticasCalculadas) {
     return (
       <Card className="">
         <CardHeader className="pb-2">
@@ -121,13 +146,10 @@ export function TotalUsersGraph({ rango = "mes" }: TotalUsersGraphProps) {
     )
   }
 
+  // 🔥 MOSTRAR datos (ya sea calculados o del hook)
   return (
     <Card className="">
       <CardHeader className="pb-2">
-        <CardTitle className="text-sm text-muted-foreground font-medium">
-          Usuarios totales
-        </CardTitle>
-
         <div className="flex items-center gap-2 pt-1">
           {/* Número total de usuarios */}
           <span className="text-2xl font-bold text-primary">

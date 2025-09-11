@@ -37,9 +37,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
-import { Skeleton } from "@/components/ui/skeleton"
 import { UsuarioTabla } from "../../types/table"
-import { useUsuariosTabla } from "../../hooks/useTable"
 import { useUserActions } from "../../hooks/useChange"
 import { useRouter } from "next/navigation"
 
@@ -83,42 +81,27 @@ const formatDate = (dateString: string | null | undefined): string => {
   }
 }
 
+// 🔥 NUEVA INTERFAZ: Ahora recibe usuarios como prop
 interface UsersTableProps {
+  usuarios: UsuarioTabla[] // ← Nueva prop principal
   searchTerm?: string
   estadoFilter?: "activo" | "inactivo" | "suspendido"
 }
 
 const UsersTable = ({
+  usuarios: usuariosFromProps, // ← Recibir usuarios filtrados del padre
   searchTerm: initialSearchTerm = "",
   estadoFilter,
 }: UsersTableProps) => {
-  // Estados
+  // Estados - SIMPLIFICADOS
   const [searchValue, setSearchValue] = React.useState(initialSearchTerm)
-  const [allUsuarios, setAllUsuarios] = React.useState<UsuarioTabla[]>([])
-  const [filteredUsuarios, setFilteredUsuarios] = React.useState<
-    UsuarioTabla[]
-  >([])
+  const [filteredUsuarios, setFilteredUsuarios] = React.useState<UsuarioTabla[]>([])
   const [currentPage, setCurrentPage] = React.useState(1)
   const itemsPerPage = 10
   const searchTimeoutRef = React.useRef<NodeJS.Timeout | undefined>(undefined)
   const router = useRouter()
 
-  // Hooks
-  const {
-    usuarios: initialUsuarios,
-    loading,
-    error,
-    fetchUsuarios,
-  } = useUsuariosTabla(
-    {
-      page: 1,
-      limit: 1000,
-      sortBy: "fechaRegistro",
-      sortOrder: "desc",
-    },
-    false
-  )
-
+  // Hooks - SOLO para acciones de usuario
   const {
     changeUserStatus,
     isLoading: isProcessing,
@@ -126,44 +109,39 @@ const UsersTable = ({
     success,
   } = useUserActions()
 
-  // Cargar usuarios inicialmente
+  // 🔥 ACTUALIZAR cuando llegan usuarios del padre
   React.useEffect(() => {
-    fetchUsuarios({
-      page: 1,
-      limit: 1000,
-      sortBy: "fechaRegistro",
-      sortOrder: "desc",
-    })
-  }, []) // Solo una vez
+    console.log("📊 UsersTable - usuarios recibidos:", usuariosFromProps.length)
+    setFilteredUsuarios(usuariosFromProps)
+    setCurrentPage(1) // Reset a página 1 cuando cambien los datos
+  }, [usuariosFromProps])
 
-  // Actualizar cuando llegan datos
-  React.useEffect(() => {
-    if (initialUsuarios?.length > 0) {
-      setAllUsuarios(initialUsuarios)
-      setFilteredUsuarios(initialUsuarios)
-    }
-  }, [initialUsuarios])
-
-  // Filtrar usuarios
+  // Filtrar usuarios por búsqueda
   const handleFilter = React.useCallback(
     (searchTerm: string) => {
       if (!searchTerm.trim()) {
-        setFilteredUsuarios(allUsuarios)
+        setFilteredUsuarios(usuariosFromProps)
         setCurrentPage(1)
         return
       }
 
       const search = searchTerm.toLowerCase().trim()
-      const filtered = allUsuarios.filter(
+      const filtered = usuariosFromProps.filter(
         (usuario) =>
           usuario.nombre?.toLowerCase().includes(search) ||
           usuario.email?.toLowerCase().includes(search)
       )
 
+      console.log("🔍 Filtrado por búsqueda:", {
+        termino: searchTerm,
+        total: usuariosFromProps.length,
+        filtrados: filtered.length
+      })
+
       setFilteredUsuarios(filtered)
       setCurrentPage(1)
     },
-    [allUsuarios]
+    [usuariosFromProps]
   )
 
   // Manejar cambio de búsqueda
@@ -182,14 +160,14 @@ const UsersTable = ({
   // Limpiar búsqueda
   const clearSearch = () => {
     setSearchValue("")
-    setFilteredUsuarios(allUsuarios)
+    setFilteredUsuarios(usuariosFromProps)
     setCurrentPage(1)
     if (searchTimeoutRef.current) {
       clearTimeout(searchTimeoutRef.current)
     }
   }
 
-  // Cambiar estado usuario - SIN llamar fetchUsuarios
+  // Cambiar estado usuario - actualizar localmente
   const handleToggleUserStatus = async (
     userId: string | number,
     isCurrentlyActive: boolean
@@ -197,16 +175,15 @@ const UsersTable = ({
     try {
       await changeUserStatus(userId, isCurrentlyActive)
 
-      // Actualizar estado localmente en lugar de recargar desde servidor
+      // Actualizar estado localmente
       const updateUserInList = (users: UsuarioTabla[]) =>
         users.map((user) =>
           user.uid === userId ? { ...user, isActive: !isCurrentlyActive } : user
         )
 
-      setAllUsuarios((prev) => updateUserInList(prev))
       setFilteredUsuarios((prev) => updateUserInList(prev))
     } catch (error) {
-      console.error("Error:", error)
+      console.error("Error actualizando usuario:", error)
     }
   }
 
@@ -428,68 +405,25 @@ const UsersTable = ({
     [isProcessing, router]
   )
 
-  // Table instance - SIN paginación automática
+  // Table instance
   const table = useReactTable({
     data: usuariosPagina,
     columns,
     getCoreRowModel: getCoreRowModel(),
-    manualPagination: true, // Solo esto es necesario
+    manualPagination: true,
   })
 
-  if (loading) {
-    return (
-      <div className="w-full">
-        <div className="flex items-center justify-between mb-4">
-          <Skeleton className="h-4 w-48" />
-          <Skeleton className="h-10 w-72" />
-        </div>
-        <div className="rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                {[...Array(7)].map((_, i) => (
-                  <TableHead key={i}>
-                    <Skeleton className="h-4 w-20" />
-                  </TableHead>
-                ))}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {[...Array(5)].map((_, i) => (
-                <TableRow key={i}>
-                  {[...Array(7)].map((_, j) => (
-                    <TableCell key={j}>
-                      <Skeleton className="h-4 w-full" />
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-        <div className="flex items-center justify-center py-8">
-          <Loader2 className="h-6 w-6 animate-spin" />
-          <span className="ml-2 text-sm">Cargando usuarios...</span>
-        </div>
-      </div>
-    )
-  }
-
-  if (error) {
+  // 🔥 LOADING/ERROR SIMPLIFICADOS - Solo mostrar si no hay usuarios
+  if (usuariosFromProps.length === 0) {
     return (
       <div className="w-full">
         <div className="rounded-md border p-8 text-center">
-          <div className="text-red-500 text-sm font-medium mb-2">
-            Error al cargar usuarios
+          <div className="text-muted-foreground text-sm mb-2">
+            No hay usuarios disponibles
           </div>
-          <div className="text-muted-foreground text-sm mb-4">{error}</div>
-          <Button
-            onClick={() => fetchUsuarios({ page: 1, limit: 1000 })}
-            variant="outline"
-            size="sm"
-          >
-            Reintentar
-          </Button>
+          <div className="text-xs text-muted-foreground">
+            Los datos se están cargando o no hay usuarios en el rango seleccionado
+          </div>
         </div>
       </div>
     )
@@ -518,8 +452,8 @@ const UsersTable = ({
           usuarios
           {searchValue && ` para "${searchValue}"`}
           {estadoFilter && ` (${estadoFilter})`}
-          {filteredUsuarios.length !== allUsuarios.length &&
-            ` (${allUsuarios.length} total)`}
+          {filteredUsuarios.length !== usuariosFromProps.length &&
+            ` (${usuariosFromProps.length} en total)`}
         </div>
 
         <div className="relative w-72">
@@ -529,7 +463,6 @@ const UsersTable = ({
             value={searchValue}
             onChange={(e) => handleSearchChange(e.target.value)}
             className="pl-10 pr-10"
-            disabled={loading}
           />
           {searchValue && (
             <Button
@@ -587,7 +520,7 @@ const UsersTable = ({
                       </Button>
                     </div>
                   ) : (
-                    "No se encontraron usuarios"
+                    "No hay usuarios para mostrar"
                   )}
                 </TableCell>
               </TableRow>
@@ -622,8 +555,8 @@ const UsersTable = ({
           Mostrando {startIndex + 1} -{" "}
           {Math.min(endIndex, filteredUsuarios.length)} de{" "}
           {filteredUsuarios.length} usuarios
-          {filteredUsuarios.length !== allUsuarios.length &&
-            ` (filtrados de ${allUsuarios.length})`}
+          {filteredUsuarios.length !== usuariosFromProps.length &&
+            ` (filtrados de ${usuariosFromProps.length})`}
         </div>
         <div className="flex items-center space-x-2">
           <Button

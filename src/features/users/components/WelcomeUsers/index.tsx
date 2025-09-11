@@ -9,17 +9,18 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import Image from "next/image"
-import React, { useEffect } from "react" // Agregar useEffect
+import React, { useEffect, useCallback } from "react"
 
-import { toast } from "sonner" // Importar Sonner
+import { toast } from "sonner"
 
-import { UsuarioTabla } from "../../types/table" // Ajustar ruta
-import { RangoEstadisticas } from "../../types/graphic" // Ajusta la ruta según tu estructura
+import { UsuarioTabla } from "../../types/table"
+import { RangoEstadisticas } from "../../types/graphic"
 import { useUsuariosTabla } from "../../hooks/useTable"
 
 interface WelcomeUsersProps {
   rango: RangoEstadisticas
   onRangoChange: (rango: RangoEstadisticas) => void
+  onUsuariosChange: (usuarios: UsuarioTabla[]) => void // ← Agregar esta línea
 }
 
 // Opciones del select con sus labels
@@ -29,13 +30,49 @@ const rangoOptions = [
   { value: "mes" as const, label: "Últimos 30 días", icon: "" },
 ] as const
 
+// 🔥 FUNCIÓN FIJA con logs detallados
+const calculateDateFilters = (rango: RangoEstadisticas) => {
+  const now = new Date()
+  const startDate = new Date()
+
+  console.log("🚀 calculateDateFilters ejecutándose con rango:", rango)
+
+  switch (rango) {
+    case "dia":
+      startDate.setDate(now.getDate() - 7) // 7 días
+      break
+    case "semana":
+      startDate.setDate(now.getDate() - 21) // 21 días
+      break
+    case "mes":
+      startDate.setDate(now.getDate() - 60) // 60 días
+      break
+    default:
+      startDate.setDate(now.getDate() - 30)
+  }
+
+  const result = {
+    fechaInicio: startDate.toISOString(),
+    fechaFin: now.toISOString(),
+  }
+
+  console.log("📅 calculateDateFilters resultado:", {
+    rango,
+    desde: startDate.toLocaleDateString("es-ES"),
+    hasta: now.toLocaleDateString("es-ES"),
+    fechaInicio: result.fechaInicio,
+    fechaFin: result.fechaFin,
+  })
+
+  return result
+}
+
 // Utilidades para generar CSV
 const generateUsersCSV = (users: UsuarioTabla[]): string => {
   if (!users || users.length === 0) {
     throw new Error("No hay usuarios para exportar")
   }
 
-  // Definir headers en español
   const headers = [
     "Nombre",
     "Email",
@@ -50,7 +87,6 @@ const generateUsersCSV = (users: UsuarioTabla[]): string => {
     "Activo",
   ]
 
-  // Mapear datos de usuarios a formato CSV
   const csvData = users.map((user) => ({
     Nombre: user.nombre || "N/A",
     Email: user.email || "N/A",
@@ -69,14 +105,12 @@ const generateUsersCSV = (users: UsuarioTabla[]): string => {
     Activo: user.isActive ? "Sí" : "No",
   }))
 
-  // Generar CSV
   const csvRows = [
-    headers.join(","), // Header row
+    headers.join(","),
     ...csvData.map((row) =>
       headers
         .map((header) => {
           const value = row[header as keyof typeof row]
-          // Escapar valores que contienen comas o comillas
           if (
             typeof value === "string" &&
             (value.includes(",") || value.includes('"'))
@@ -106,59 +140,85 @@ const downloadFile = (
   document.body.appendChild(link)
   link.click()
 
-  // Cleanup
   document.body.removeChild(link)
   window.URL.revokeObjectURL(url)
 }
 
-const WelcomeUsers = ({ rango, onRangoChange }: WelcomeUsersProps) => {
-  // Hook para obtener usuarios (sin auto-fetch)
+const WelcomeUsers = ({
+  rango,
+  onRangoChange,
+  onUsuariosChange,
+}: WelcomeUsersProps) => {
+  console.log("🎯 WelcomeUsers render - rango:", rango)
+
   const { usuarios, loading, fetchUsuarios } = useUsuariosTabla({}, false)
 
-  // Cargar usuarios al montar el componente
-  useEffect(() => {
-    fetchUsuarios({
-      limit: 50, // Cargar algunos usuarios iniciales
-      sortBy: "fechaRegistro",
-      sortOrder: "desc",
-    })
-  }, [])
+  // 🔥 Función estable para evitar dependencias cambiantes
+  const fetchUsuariosConFiltros = useCallback(
+    (rangoParam: RangoEstadisticas) => {
+      console.log(
+        "🔄 fetchUsuariosConFiltros ejecutándose con rango:",
+        rangoParam
+      )
 
-  // Obtener el label actual basado en el rango seleccionado
+      const dateRange = calculateDateFilters(rangoParam)
+
+      fetchUsuarios({
+        limit: 50,
+        sortBy: "fechaRegistro",
+        sortOrder: "desc",
+        fechaInicio: dateRange.fechaInicio,
+        fechaFin: dateRange.fechaFin,
+      })
+    },
+    [fetchUsuarios]
+  )
+
+  // 🔥 useEffect con dependencias correctas
+  useEffect(() => {
+    console.log("⚡ useEffect ejecutándose - rango:", rango)
+    fetchUsuariosConFiltros(rango)
+  }, [rango, fetchUsuariosConFiltros])
+
+  // 🔥 NUEVO: Pasar usuarios al padre cuando cambien
+  useEffect(() => {
+    if (usuarios && usuarios.length > 0) {
+      console.log("📤 Pasando usuarios al padre:", usuarios.length)
+      onUsuariosChange(usuarios)
+    }
+  }, [usuarios, onUsuariosChange])
+
   const currentRangoLabel =
     rangoOptions.find((option) => option.value === rango)?.label ||
     "Últimos 30 días"
 
-  // Función de descarga de reportes
   const handleDownloadReport = async () => {
     try {
-      console.log("Iniciando descarga de reporte de usuarios para:", rango)
-      console.log("Usuarios disponibles:", usuarios.length)
+      console.log("📥 Iniciando descarga - rango:", rango)
 
-      // Si no hay usuarios cargados, cargarlos primero
+      const dateRange = calculateDateFilters(rango)
+
+      const loadingToast = toast.loading("Cargando usuarios...", {
+        description: `Obteniendo usuarios de ${currentRangoLabel.toLowerCase()}`,
+      })
+
+      await fetchUsuarios({
+        limit: 9999,
+        sortBy: "fechaRegistro",
+        sortOrder: "desc",
+        fechaInicio: dateRange.fechaInicio,
+        fechaFin: dateRange.fechaFin,
+      })
+
+      toast.dismiss(loadingToast)
+
       if (!usuarios || usuarios.length === 0) {
-        const loadingToast = toast.loading("Cargando usuarios...", {
-          description: "Obteniendo datos de usuarios",
+        toast.error("No hay datos", {
+          description: `No se encontraron usuarios para ${currentRangoLabel.toLowerCase()}`,
         })
-
-        await fetchUsuarios({
-          limit: 9999, // Traer todos los usuarios
-          sortBy: "fechaRegistro",
-          sortOrder: "desc",
-        })
-
-        toast.dismiss(loadingToast)
-
-        // Verificar nuevamente después de cargar
-        if (!usuarios || usuarios.length === 0) {
-          toast.error("No hay datos", {
-            description: "No se encontraron usuarios para generar el reporte",
-          })
-          return
-        }
+        return
       }
 
-      // Mostrar loading para generación
       const generatingToast = toast.loading(
         "Generando reporte de usuarios...",
         {
@@ -166,26 +226,6 @@ const WelcomeUsers = ({ rango, onRangoChange }: WelcomeUsersProps) => {
         }
       )
 
-      // Si ya tenemos usuarios pero queremos todos para el reporte
-      if (usuarios.length < 100) {
-        // Asumir que menos de 100 significa que hay más
-        await fetchUsuarios({
-          limit: 9999, // Traer todos los usuarios
-          sortBy: "fechaRegistro",
-          sortOrder: "desc",
-        })
-      }
-
-      // Verificar que tengamos usuarios para procesar
-      if (usuarios.length === 0) {
-        toast.dismiss(generatingToast)
-        toast.error("No hay datos", {
-          description: "No se encontraron usuarios para generar el reporte",
-        })
-        return
-      }
-
-      // Generar estadísticas adicionales
       const usuariosActivos = usuarios.filter((u) => u.isActive).length
       const usuariosVerificados = usuarios.filter((u) => u.verificado).length
       const totalReservas = usuarios.reduce(
@@ -197,7 +237,6 @@ const WelcomeUsers = ({ rango, onRangoChange }: WelcomeUsersProps) => {
         0
       )
 
-      // Agregar resumen al inicio del CSV
       const resumenData = [
         { Métrica: "Período del reporte", Valor: currentRangoLabel },
         {
@@ -210,6 +249,12 @@ const WelcomeUsers = ({ rango, onRangoChange }: WelcomeUsersProps) => {
             minute: "2-digit",
           }),
         },
+        {
+          Métrica: "Rango de fechas",
+          Valor: `${new Date(dateRange.fechaInicio).toLocaleDateString(
+            "es-ES"
+          )} - ${new Date(dateRange.fechaFin).toLocaleDateString("es-ES")}`,
+        },
         { Métrica: "Total de usuarios", Valor: usuarios.length.toString() },
         { Métrica: "Usuarios activos", Valor: usuariosActivos.toString() },
         {
@@ -221,30 +266,25 @@ const WelcomeUsers = ({ rango, onRangoChange }: WelcomeUsersProps) => {
           Valor: totalReservas.toString(),
         },
         { Métrica: "Total plazas publicadas", Valor: totalPlazas.toString() },
-        { Métrica: "", Valor: "" }, // Fila vacía como separador
+        { Métrica: "", Valor: "" },
       ]
 
-      // Generar nombre de archivo
       const timestamp = new Date()
         .toISOString()
         .slice(0, 19)
         .replace(/[:-]/g, "")
       const filename = `reporte_usuarios_${rango}_${timestamp}.csv`
 
-      // Generar CSV con resumen + datos detallados
       const resumenCSV = resumenData
         .map((row) => `${row.Métrica},${row.Valor}`)
         .join("\n")
       const usuariosCSV = generateUsersCSV(usuarios)
       const finalCSV = resumenCSV + "\n" + usuariosCSV
 
-      // Descargar archivo
       downloadFile(finalCSV, filename, "text/csv")
 
-      // Cerrar loading toast
       toast.dismiss(generatingToast)
 
-      // Toast de éxito
       toast.success("Reporte generado", {
         description: `Se descargó "${filename}" con ${
           usuarios.length
@@ -252,19 +292,14 @@ const WelcomeUsers = ({ rango, onRangoChange }: WelcomeUsersProps) => {
         duration: 5000,
       })
 
-      console.log("Reporte de usuarios generado:", {
+      console.log("✅ Reporte generado:", {
         filename,
         totalUsuarios: usuarios.length,
         rango,
-        estadisticas: {
-          activos: usuariosActivos,
-          verificados: usuariosVerificados,
-          totalReservas,
-          totalPlazas,
-        },
+        dateRange,
       })
     } catch (error) {
-      console.error("Error generando reporte de usuarios:", error)
+      console.error("❌ Error en reporte:", error)
       toast.error("Error al generar reporte", {
         description:
           error instanceof Error
@@ -280,7 +315,6 @@ const WelcomeUsers = ({ rango, onRangoChange }: WelcomeUsersProps) => {
       <h1 className="font-semibold text-2xl">Usuarios</h1>
 
       <div className="flex flex-row gap-3 mt-4">
-        {/* SELECT DINÁMICO CONECTADO */}
         <Select
           value={rango}
           onValueChange={onRangoChange}
@@ -314,7 +348,6 @@ const WelcomeUsers = ({ rango, onRangoChange }: WelcomeUsersProps) => {
           </SelectContent>
         </Select>
 
-        {/* BOTÓN DE DESCARGA CON FUNCIONALIDAD */}
         <Button
           variant="outline"
           className="w-46 h-11 rounded-full"
@@ -330,13 +363,6 @@ const WelcomeUsers = ({ rango, onRangoChange }: WelcomeUsersProps) => {
           {loading ? "Cargando..." : "Descargar reporte"}
         </Button>
       </div>
-
-      {/* Info de debug/estado */}
-      {usuarios.length > 0 && !loading && (
-        <div className="mt-4 text-xs text-muted-foreground">
-          {usuarios.length} usuarios disponibles para reporte
-        </div>
-      )}
     </div>
   )
 }
