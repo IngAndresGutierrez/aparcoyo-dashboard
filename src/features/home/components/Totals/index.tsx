@@ -1,16 +1,46 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client"
 
+import React from "react"
 import { Card } from "@/components/ui/card"
 import { ArrowUp, ArrowDown, Loader2 } from "lucide-react"
-import { useFinancialStats } from "../../hooks/useFinanzas"
+import { TimeFilter } from "../../hooks/useMetrics"
 
+// ✅ NUEVA INTERFAZ: Recibe props en lugar de usar hooks internos
 interface UsersTotalsCardsProps {
+  timeFilter: TimeFilter
+  setTimeFilter: (filter: TimeFilter) => void
+  metrics: any
+  financialData: any
+  loading: boolean
+  error: string | null
   isAdmin?: boolean // Para determinar si usar estadísticas de plataforma o balance personal
 }
 
-const UsersTotalsCards = ({ isAdmin = false }: UsersTotalsCardsProps) => {
-  const { data, loading, error, refetch, isConnected } =
-    useFinancialStats(isAdmin)
+// ✅ MODIFICADO: Convertir TimeFilter a string para mostrar
+const getDisplayRange = (timeFilter: TimeFilter): string => {
+  switch (timeFilter) {
+    case "day":
+      return "día"
+    case "week":
+      return "semana"
+    case "month":
+      return "mes"
+    default:
+      return "mes"
+  }
+}
+
+const UsersTotalsCards = ({
+  timeFilter,
+  financialData,
+  loading,
+  error,
+  isAdmin = false,
+}: UsersTotalsCardsProps) => {
+  // ✅ REMOVIDO: const { data, loading, error, refetch, isConnected } = useFinancialStats(isAdmin)
+  // ✅ NUEVO: Usar financialData desde props
+  const data = financialData
 
   // Formatear números con moneda
   const formatCurrency = (amount: number, currency: string = "€") => {
@@ -32,31 +62,38 @@ const UsersTotalsCards = ({ isAdmin = false }: UsersTotalsCardsProps) => {
   const ingresosTrend = getTrendDisplay(data?.porcentajeCambioIngresos || 0)
   const comisionesTrend = getTrendDisplay(data?.porcentajeCambioComisiones || 0)
 
+  // Debug para verificar datos recibidos
+  React.useEffect(() => {
+    console.log("💰 UsersTotalsCards - Props recibidas:", {
+      timeFilter,
+      loading,
+      error,
+      ingresos: data?.ingresosTotales,
+      comisiones: data?.comisionesPagadas,
+      isAdmin,
+    })
+  }, [timeFilter, loading, error, data, isAdmin])
+
   if (loading) {
     return (
       <Card className="w-full max-w-sm lg:h-130 flex justify-center items-center">
         <div className="flex items-center space-x-2">
           <Loader2 className="w-6 h-6 animate-spin" />
-          <span>Cargando...</span>
+          <span>Cargando datos financieros...</span>
         </div>
       </Card>
     )
   }
 
-  if (error || !isConnected) {
+  if (error) {
     return (
       <Card className="w-full max-w-sm lg:h-130 flex justify-center items-center">
         <div className="flex flex-col items-center space-y-4 p-4">
           <div className="text-center">
-            <p className="text-red-500 mb-2 text-sm">
-              {error || "Error de conexión"}
+            <p className="text-red-500 mb-2 text-sm">{error}</p>
+            <p className="text-xs text-muted-foreground">
+              Error cargando datos para {getDisplayRange(timeFilter)}
             </p>
-            <button
-              onClick={refetch}
-              className="px-3 py-2 bg-blue-500 text-white rounded text-sm hover:bg-blue-600"
-            >
-              Reintentar
-            </button>
           </div>
         </div>
       </Card>
@@ -64,9 +101,14 @@ const UsersTotalsCards = ({ isAdmin = false }: UsersTotalsCardsProps) => {
   }
 
   return (
-    <Card className="w-full max-w-sm h-full min-h-[400px] lg:min-h-[500px] flex justify-center items-center lg:p-3 p-10">
-      {" "}
-      {/* ← Cambiar por esto */}
+    <Card className="w-full max-w-sm h-full min-h-[400px] lg:min-h-[500px] flex flex-col justify-center items-center lg:p-3 p-10">
+      {/* ✅ NUEVO: Indicador del filtro activo */}
+      <div className="w-full mb-4 text-center">
+        <span className="text-xs bg-green-100 text-green-600 px-2 py-1 rounded-full">
+          {getDisplayRange(timeFilter)}
+        </span>
+      </div>
+
       <div className="flex lg:flex-col lg:p-4 lg:gap-y-24 flex-row gap-x-12">
         {/* Primer bloque - Ingresos totales */}
         <div className="flex flex-col items-center">
@@ -102,6 +144,15 @@ const UsersTotalsCards = ({ isAdmin = false }: UsersTotalsCardsProps) => {
           </div>
         </div>
       </div>
+
+      {/* ✅ DEBUG: Mostrar estado actual */}
+      {process.env.NODE_ENV === "development" && (
+        <div className="w-full mt-4 p-2 bg-green-50 rounded text-xs">
+          <strong>DEBUG UsersTotalsCards:</strong> Filtro: {timeFilter} |
+          Ingresos: €{data?.ingresosTotales || 0} | Loading:{" "}
+          {loading ? "Sí" : "No"} | Error: {error || "Ninguno"}
+        </div>
+      )}
     </Card>
   )
 }

@@ -164,7 +164,7 @@ const WelcomeUsers = ({
       const dateRange = calculateDateFilters(rangoParam)
 
       fetchUsuarios({
-        limit: 50,
+        limit: 999,
         sortBy: "fechaRegistro",
         sortOrder: "desc",
         fechaInicio: dateRange.fechaInicio,

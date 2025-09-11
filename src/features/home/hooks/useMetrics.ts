@@ -1,27 +1,17 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-// hooks/useMetrics.ts
-import { useState, useEffect } from "react"
+// hooks/useMetrics.ts - CON FILTRADO DEL LADO DEL CLIENTE
+import { useState, useEffect, useCallback } from "react"
 
 const API_BASE_URL = "https://aparcoyo-back.onrender.com"
 
-// Tipo para el filtro de tiempo
 export type TimeFilter = "day" | "week" | "month"
 
-// Interfaces para las respuestas de la API
-interface ApiResponse {
-  total?: number
-  count?: number
-  data?: any[]
-}
-
-// Tipo para una métrica individual
 interface MetricState {
   value: number
   loading: boolean
   error: string | null
 }
 
-// Tipo para todas las métricas
 interface MetricsState {
   users: MetricState
   plazas: MetricState
@@ -29,13 +19,6 @@ interface MetricsState {
   totalReservas: MetricState
 }
 
-// Tipo para el endpoint
-interface Endpoint {
-  key: keyof MetricsState
-  url: string
-}
-
-// Tipo de retorno del hook
 interface UseMetricsReturn {
   metrics: MetricsState
   loading: boolean
@@ -45,7 +28,21 @@ interface UseMetricsReturn {
   refetch: () => Promise<void>
 }
 
-// Función para obtener el token de autenticación
+// Cache global para datos completos
+let dataCache: {
+  users: any[] | null
+  reservas: any[] | null
+  plazas: any[] | null
+  activeReservas: any | null
+  lastFetch: number | null
+} = {
+  users: null,
+  reservas: null,
+  plazas: null,
+  activeReservas: null,
+  lastFetch: null,
+}
+
 const getAuthToken = (): string | null => {
   if (typeof window !== "undefined") {
     return (
@@ -57,32 +54,94 @@ const getAuthToken = (): string | null => {
   return null
 }
 
-// Función para obtener parámetros de fecha según el filtro
-const getDateParams = (filter: TimeFilter): string => {
+// Función para obtener rango de fechas según filtro
+const getDateRange = (
+  filter: TimeFilter
+): { startDate: Date; endDate: Date } => {
   const now = new Date()
   let startDate: Date
 
   switch (filter) {
     case "day":
-      // Últimas 24 horas
       startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000)
       break
     case "week":
-      // Últimos 7 días
       startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
       break
     case "month":
-      // Últimos 30 días
       startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
       break
     default:
       startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
   }
 
-  const startDateString = startDate.toISOString().split("T")[0]
-  const endDateString = now.toISOString().split("T")[0]
+  return { startDate, endDate: now }
+}
 
-  return `?startDate=${startDateString}&endDate=${endDateString}`
+// Cargar todos los datos desde la API
+const loadAllData = async (): Promise<void> => {
+  const token = getAuthToken()
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    Accept: "application/json",
+  }
+
+  if (token) {
+    headers.Authorization = `Bearer ${token}`
+  }
+
+  try {
+    const [usersRes, reservasRes, plazasRes, activeRes] = await Promise.all([
+      fetch(
+        `${API_BASE_URL}/apa/usuarios?limit=9999&sortBy=fechaRegistro&sort`,
+        { headers }
+      ),
+      fetch(`${API_BASE_URL}/apa/reservas`, { headers }),
+      fetch(`${API_BASE_URL}/apa/plazas`, { headers }),
+      fetch(`${API_BASE_URL}/apa/plazas/estadisticas?tipo=ocupadas`, {
+        headers,
+      }),
+    ])
+
+    // Procesar usuarios
+    if (usersRes.ok) {
+      const usersData = await usersRes.json()
+      const usersArray =
+        usersData.ok && Array.isArray(usersData.data) ? usersData.data : []
+      dataCache.users = usersArray
+      if (typeof window !== "undefined") {
+        ;(window as any).dataCache = dataCache
+      }
+    }
+
+    // Procesar reservas
+    if (reservasRes.ok) {
+      const reservasData = await reservasRes.json()
+      const reservasArray =
+        reservasData.ok && Array.isArray(reservasData.data)
+          ? reservasData.data
+          : []
+      dataCache.reservas = reservasArray
+    }
+
+    // Procesar plazas
+    if (plazasRes.ok) {
+      const plazasData = await plazasRes.json()
+      const plazasArray =
+        plazasData.ok && Array.isArray(plazasData.data) ? plazasData.data : []
+      dataCache.plazas = plazasArray
+    }
+
+    // Procesar reservas activas
+    if (activeRes.ok) {
+      dataCache.activeReservas = await activeRes.json()
+    }
+
+    dataCache.lastFetch = Date.now()
+  } catch (error) {
+    console.error("Error cargando datos:", error)
+    throw error
+  }
 }
 
 export const useMetrics = (): UseMetricsReturn => {
@@ -97,185 +156,152 @@ export const useMetrics = (): UseMetricsReturn => {
   const [globalLoading, setGlobalLoading] = useState<boolean>(true)
   const [globalError, setGlobalError] = useState<string | null>(null)
 
-  // Función helper para extraer el valor según la estructura de la respuesta
-  const extractValue = (data: unknown): number => {
-    if (Array.isArray(data)) {
-      return data.length
+  // Aplicar filtros sobre los datos cacheados
+  const applyFilters = useCallback((filter: TimeFilter) => {
+    if (!dataCache.users && !dataCache.reservas) {
+      return
     }
 
-    if (data && typeof data === "object") {
-      const apiResponse = data as ApiResponse
+    const { startDate, endDate } = getDateRange(filter)
+    const usersArray = dataCache.users || []
+    const reservasArray = dataCache.reservas || []
 
-      if (typeof apiResponse.total === "number") {
-        return apiResponse.total
+    // 1. Filtrar reservas por fechaInicio/fechaFin
+    const filteredReservas = reservasArray.filter((reserva) => {
+      const dateValue = reserva.fechaInicio || reserva.fechaFin
+
+      if (!dateValue) {
+        return false
       }
 
-      if (typeof apiResponse.count === "number") {
-        return apiResponse.count
+      const itemDate = new Date(dateValue)
+
+      if (isNaN(itemDate.getTime())) {
+        return false
       }
 
-      if (Array.isArray(apiResponse.data)) {
-        return apiResponse.data.length
-      }
-    }
+      return itemDate >= startDate && itemDate <= endDate
+    })
 
-    if (typeof data === "number") {
-      return data
-    }
+    // 2. Usuarios que tienen reservas en el período
 
-    return 0
-  }
+    // 3. Plazas totales (estáticas)
+    const plazasArray = dataCache.plazas || []
+    const totalPlazas = plazasArray.length
 
-  const fetchMetrics = async (): Promise<void> => {
+    // 4. Plazas activas basadas en reservas filtradas
+    const plazasActivasIds = new Set(
+      filteredReservas
+        .filter(
+          (reserva) =>
+            reserva.estado === "pendiente" ||
+            reserva.estado === "activa" ||
+            reserva.estado === "confirmada" ||
+            reserva.estado === "ocupada"
+        )
+        .map((reserva) => reserva.plaza?.id)
+        .filter(Boolean)
+    )
+
+    const activeReservasCount = plazasActivasIds.size
+
+    // 5. Actualizar métricas
+    setMetrics({
+      users: {
+        value: usersArray.length, // Mostrar todos los usuarios registrados (50)
+        loading: false,
+        error: null,
+      },
+      plazas: {
+        value: totalPlazas,
+        loading: false,
+        error: null,
+      },
+      activeReservas: {
+        value: activeReservasCount,
+        loading: false,
+        error: null,
+      },
+      totalReservas: {
+        value: filteredReservas.length,
+        loading: false,
+        error: null,
+      },
+    })
+  }, [])
+
+  // Función principal de fetch
+  const fetchMetrics = useCallback(async (): Promise<void> => {
     try {
       setGlobalLoading(true)
       setGlobalError(null)
 
-      // Obtener parámetros de fecha según el filtro seleccionado
-      const dateParams = getDateParams(timeFilter)
+      // Solo cargar datos si no están en cache o son muy antiguos (5 minutos)
+      const cacheAge = dataCache.lastFetch
+        ? Date.now() - dataCache.lastFetch
+        : Infinity
+      const shouldRefreshCache =
+        !dataCache.users || !dataCache.reservas || cacheAge > 5 * 60 * 1000
 
-      const endpoints: Endpoint[] = [
-        { key: "users", url: `${API_BASE_URL}/apa/usuarios${dateParams}` },
-        { key: "plazas", url: `${API_BASE_URL}/apa/plazas` }, // Las plazas no cambian por tiempo
-        {
-          key: "activeReservas",
-          url: `${API_BASE_URL}/apa/plazas/estadisticas?tipo=ocupadas${dateParams.replace(
-            "?",
-            "&"
-          )}`,
-        },
-        {
-          key: "totalReservas",
-          url: `${API_BASE_URL}/apa/reservas${dateParams}`,
-        },
-      ]
-
-      const token = getAuthToken()
-
-      const headers: Record<string, string> = {
-        "Content-Type": "application/json",
-        Accept: "application/json",
+      if (shouldRefreshCache) {
+        await loadAllData()
       }
 
-      if (token) {
-        headers.Authorization = `Bearer ${token}`
-      }
-
-      const results = await Promise.allSettled(
-        endpoints.map((endpoint) =>
-          fetch(endpoint.url, {
-            method: "GET",
-            headers,
-            credentials: "omit",
-          })
-        )
-      )
-
-      const newMetrics: MetricsState = { ...metrics }
-
-      for (let i = 0; i < results.length; i++) {
-        const result = results[i]
-        const endpoint = endpoints[i]
-
-        if (result.status === "fulfilled" && result.value.ok) {
-          try {
-            const data: unknown = await result.value.json()
-
-            newMetrics[endpoint.key] = {
-              value: extractValue(data),
-              loading: false,
-              error: null,
-            }
-          } catch (jsonError) {
-            console.error(`Error parsing JSON for ${endpoint.key}:`, jsonError)
-            newMetrics[endpoint.key] = {
-              value: 0,
-              loading: false,
-              error: "Error parsing response",
-            }
-          }
-        } else {
-          let errorMessage = "Network error"
-
-          if (result.status === "fulfilled") {
-            const status = result.value.status
-            const statusText = result.value.statusText || ""
-
-            switch (status) {
-              case 400:
-                errorMessage = "Bad Request - Verificar endpoint"
-                break
-              case 401:
-                errorMessage = "No autorizado - Token inválido o requerido"
-                break
-              case 403:
-                errorMessage = "Acceso prohibido - Permisos insuficientes"
-                break
-              case 404:
-                errorMessage = "Endpoint no encontrado"
-                break
-              case 429:
-                errorMessage = "Demasiadas peticiones - Intenta más tarde"
-                break
-              case 500:
-                errorMessage = "Error interno del servidor"
-                break
-              default:
-                errorMessage = `HTTP ${status} ${statusText}`
-            }
-
-            console.error(`Error fetching ${endpoint.key}:`, {
-              status,
-              statusText,
-              url: endpoint.url,
-              hasToken: !!token,
-            })
-          }
-
-          newMetrics[endpoint.key] = {
-            value: 0,
-            loading: false,
-            error: errorMessage,
-          }
-        }
-      }
-
-      setMetrics(newMetrics)
+      // Aplicar filtros sobre los datos cargados
+      applyFilters(timeFilter)
     } catch (error) {
-      console.error("Error fetching metrics:", error)
       const errorMessage =
-        error instanceof Error ? error.message : "Failed to fetch metrics"
+        error instanceof Error ? error.message : "Error cargando métricas"
       setGlobalError(errorMessage)
 
-      setMetrics((prev) => {
-        const errorMetrics: MetricsState = {} as MetricsState
-
-        for (const key in prev) {
-          const metricKey = key as keyof MetricsState
-          errorMetrics[metricKey] = {
-            ...prev[metricKey],
-            loading: false,
-            error: "Network error",
-          }
-        }
-
-        return errorMetrics
+      // Resetear métricas en caso de error
+      setMetrics({
+        users: { value: 0, loading: false, error: "Error cargando datos" },
+        plazas: { value: 0, loading: false, error: "Error cargando datos" },
+        activeReservas: {
+          value: 0,
+          loading: false,
+          error: "Error cargando datos",
+        },
+        totalReservas: {
+          value: 0,
+          loading: false,
+          error: "Error cargando datos",
+        },
       })
     } finally {
       setGlobalLoading(false)
     }
-  }
+  }, [timeFilter, applyFilters])
 
-  // Refetch cuando cambia el filtro de tiempo
+  // Efecto para carga inicial
   useEffect(() => {
     fetchMetrics()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [timeFilter])
+  }, [])
 
-  // Función para cambiar el filtro y refrescar datos
+  // Efecto para cambios de filtro
+  useEffect(() => {
+    if (dataCache.users || dataCache.reservas) {
+      applyFilters(timeFilter)
+    }
+  }, [timeFilter, applyFilters])
+
+  // Función para cambiar filtro
   const handleTimeFilterChange = (filter: TimeFilter) => {
     setTimeFilter(filter)
   }
+
+  // Función de refetch
+  const handleRefetch = useCallback(async () => {
+    dataCache = {
+      users: null,
+      reservas: null,
+      plazas: null,
+      activeReservas: null,
+      lastFetch: null,
+    }
+    await fetchMetrics()
+  }, [fetchMetrics])
 
   return {
     metrics,
@@ -283,6 +309,6 @@ export const useMetrics = (): UseMetricsReturn => {
     error: globalError,
     timeFilter,
     setTimeFilter: handleTimeFilterChange,
-    refetch: fetchMetrics,
+    refetch: handleRefetch,
   }
 }
