@@ -117,17 +117,6 @@ export function GraphicsHome({
 
   const isPositiveGrowth = crecimiento >= 0
 
-  // Debug para verificar datos recibidos
-  React.useEffect(() => {
-    console.log("📊 GraphicsHome - Props recibidas:", {
-      timeFilter,
-      loading,
-      error,
-      usuariosTotales: data?.usuariosTotales,
-      metricsData: metricsData?.users?.value,
-    })
-  }, [timeFilter, loading, error, data, metricsData])
-
   // Estado de carga
   if (loading) {
     return (
@@ -281,13 +270,6 @@ export function GraphicsHome({
       </CardFooter>
 
       {/* ✅ DEBUG: Mostrar estado actual */}
-      {process.env.NODE_ENV === "development" && (
-        <div className="mx-4 mb-4 p-2 bg-blue-50 rounded text-xs">
-          <strong>DEBUG GraphicsHome:</strong> Filtro: {timeFilter} | Usuarios:{" "}
-          {data?.usuariosTotales} | Loading: {loading ? "Sí" : "No"} | Error:{" "}
-          {error || "Ninguno"}
-        </div>
-      )}
     </Card>
   )
 }

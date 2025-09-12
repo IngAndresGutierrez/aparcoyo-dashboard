@@ -62,18 +62,6 @@ const UsersTotalsCards = ({
   const ingresosTrend = getTrendDisplay(data?.porcentajeCambioIngresos || 0)
   const comisionesTrend = getTrendDisplay(data?.porcentajeCambioComisiones || 0)
 
-  // Debug para verificar datos recibidos
-  React.useEffect(() => {
-    console.log("💰 UsersTotalsCards - Props recibidas:", {
-      timeFilter,
-      loading,
-      error,
-      ingresos: data?.ingresosTotales,
-      comisiones: data?.comisionesPagadas,
-      isAdmin,
-    })
-  }, [timeFilter, loading, error, data, isAdmin])
-
   if (loading) {
     return (
       <Card className="w-full max-w-sm lg:h-130 flex justify-center items-center">
@@ -144,15 +132,6 @@ const UsersTotalsCards = ({
           </div>
         </div>
       </div>
-
-      {/* ✅ DEBUG: Mostrar estado actual */}
-      {process.env.NODE_ENV === "development" && (
-        <div className="w-full mt-4 p-2 bg-green-50 rounded text-xs">
-          <strong>DEBUG UsersTotalsCards:</strong> Filtro: {timeFilter} |
-          Ingresos: €{data?.ingresosTotales || 0} | Loading:{" "}
-          {loading ? "Sí" : "No"} | Error: {error || "Ninguno"}
-        </div>
-      )}
     </Card>
   )
 }

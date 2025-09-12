@@ -97,8 +97,6 @@ const WelcomeComponent: React.FC<WelcomeProps> = ({
   setTimeFilter,
   metrics,
   loading,
-  error,
-  
 }) => {
   const { user, loading: userLoading, error: userError } = useUser()
 
@@ -145,13 +143,6 @@ const WelcomeComponent: React.FC<WelcomeProps> = ({
   const handleTimeFilterChange = (filter: TimeFilter) => {
     console.log(`🔄 Welcome: Cambiando filtro a ${filter}`)
     setTimeFilter(filter)
-
-    toast.info("Filtro actualizado", {
-      description: `Mostrando datos para ${timeFilterOptions
-        .find((opt) => opt.value === filter)
-        ?.label.toLowerCase()}`,
-      duration: 2000,
-    })
   }
 
   // Función de descarga de reportes (sin cambios grandes)
@@ -328,23 +319,8 @@ const WelcomeComponent: React.FC<WelcomeProps> = ({
       )}
 
       {/* Mostrar preview de métricas disponibles */}
-      {!loading && metrics && (
-        <div className="mt-4 text-xs text-muted-foreground">
-          Datos listos: {metrics.users?.value || 0} usuarios •{" "}
-          {metrics.plazas?.value || 0} plazas •{" "}
-          {metrics.totalReservas?.value || 0} reservas
-          {userError && " • Perfil: datos parciales"}
-        </div>
-      )}
 
       {/* ✅ DEBUG: Mostrar estado actual */}
-      {process.env.NODE_ENV === "development" && (
-        <div className="mt-2 p-2 bg-blue-50 rounded text-xs">
-          <strong>DEBUG:</strong> Filtro: {timeFilter} | Loading:{" "}
-          {loading ? "Sí" : "No"} | Usuarios: {metrics?.users?.value || 0} |
-          Error: {error || "Ninguno"}
-        </div>
-      )}
     </div>
   )
 }

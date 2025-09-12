@@ -147,66 +147,6 @@ const Homepage: React.FC = () => {
         <div className="mt-5">
           <TableReports />
         </div>
-
-        {/* Debug section para verificar sincronización */}
-        {process.env.NODE_ENV === "development" && (
-          <div className="mt-4 p-3 bg-gray-100 rounded-lg text-xs font-mono">
-            <div className="font-semibold mb-2 text-green-600">
-              ✅ Estado de Sincronización:
-            </div>
-            <div className="grid grid-cols-3 gap-4">
-              <div>
-                <div className="font-semibold text-blue-600 mb-1">
-                  📊 Métricas:
-                </div>
-                <div>
-                  Filtro:{" "}
-                  <span className="font-semibold">
-                    {metricsData.timeFilter}
-                  </span>
-                </div>
-                <div>Loading: {metricsData.loading ? "⏳" : "✅"}</div>
-                <div>Usuarios: {metricsData.metrics.users.value}</div>
-                <div>Reservas: {metricsData.metrics.totalReservas.value}</div>
-              </div>
-              <div>
-                <div className="font-semibold text-green-600 mb-1">
-                  💰 Financiero:
-                </div>
-                <div>
-                  Filtro:{" "}
-                  <span className="font-semibold">
-                    {financialData.timeFilter}
-                  </span>
-                </div>
-                <div>Loading: {financialData.loading ? "⏳" : "✅"}</div>
-                <div>Ingresos: €{financialData.data?.ingresosTotales || 0}</div>
-                <div>
-                  Comisiones: €{financialData.data?.comisionesPagadas || 0}
-                </div>
-              </div>
-              <div>
-                <div className="font-semibold text-purple-600 mb-1">
-                  🔄 Sincronización:
-                </div>
-                <div className="space-y-1">
-                  <div>
-                    Filtros:{" "}
-                    {metricsData.timeFilter === financialData.timeFilter ? (
-                      <span className="text-green-600">✅ Sincronizados</span>
-                    ) : (
-                      <span className="text-red-600">❌ Desincronizados</span>
-                    )}
-                  </div>
-                  <div>Estado: {isLoading ? "⏳ Cargando" : "✅ Listo"}</div>
-                  <div>
-                    Errores: {hasError ? "❌ Hay errores" : "✅ Sin errores"}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </AppSidebarDashboard>
   )

@@ -6,7 +6,6 @@ import React from "react"
 import MetricCard from "@/features/shared/components/MetricCard"
 import { TimeFilter } from "../../hooks/useMetrics"
 
-// ✅ NUEVO: Props interface
 interface MetricsCardsProps {
   timeFilter: TimeFilter
   setTimeFilter: (filter: TimeFilter) => void
@@ -25,43 +24,26 @@ interface CardItem {
   period?: string
 }
 
-// ✅ MODIFICADO: Componente recibe props en lugar de usar useMetrics
 const MetricsCardsListHome: React.FC<MetricsCardsProps> = ({
   timeFilter,
- 
   metrics,
   loading,
   error,
   refetch,
 }) => {
-  // ❌ REMOVIDO: const { metrics, loading, error, timeFilter, refetch } = useMetrics()
-
-  // ✅ DEBUG: Ver si recibe las props correctamente
-  React.useEffect(() => {
-    console.log("📊 MetricsCards - Props recibidas:", {
-      timeFilter,
-      loading,
-      usuarios: metrics?.users?.value || 0,
-      plazas: metrics?.plazas?.value || 0,
-      reservasActivas: metrics?.activeReservas?.value || 0,
-      reservasTotales: metrics?.totalReservas?.value || 0,
-    })
-  }, [timeFilter, loading, metrics])
-
   const getPeriodLabel = () => {
     switch (timeFilter) {
       case "day":
-        return "últimas 24h"
+        return "hoy"
       case "week":
-        return "últimos 7 días"
+        return "esta semana"
       case "month":
-        return "últimos 30 días"
+        return "este mes"
       default:
         return "período actual"
     }
   }
 
-  // ✅ MODIFICADO: Usar optional chaining para props
   const cardsItems: CardItem[] = [
     {
       title: "Usuarios totales",
@@ -73,7 +55,6 @@ const MetricsCardsListHome: React.FC<MetricsCardsProps> = ({
       icon: "/home/arrow-up.svg",
       percentage: "+100%",
       hasError: !!metrics?.users?.error,
-      period: getPeriodLabel(),
     },
     {
       title: "Plazas totales",
@@ -85,7 +66,6 @@ const MetricsCardsListHome: React.FC<MetricsCardsProps> = ({
       icon: "/home/arrow-up.svg",
       percentage: "+25%",
       hasError: !!metrics?.plazas?.error,
-      period: "total disponible",
     },
     {
       title: "Plazas con reserva activa",
@@ -93,19 +73,10 @@ const MetricsCardsListHome: React.FC<MetricsCardsProps> = ({
         ? "..."
         : metrics?.activeReservas?.error
         ? "Error"
-        : `${(metrics?.activeReservas?.value || 0).toLocaleString()}${
-            (metrics?.plazas?.value || 0) > 0
-              ? ` (${(
-                  ((metrics?.activeReservas?.value || 0) /
-                    metrics.plazas.value) *
-                  100
-                ).toFixed(1)}%)`
-              : ""
-          }`,
+        : (metrics?.activeReservas?.value || 0).toLocaleString(),
       icon: "/home/arrow-down.svg",
       percentage: "-10%",
       hasError: !!metrics?.activeReservas?.error,
-      period: getPeriodLabel(),
     },
     {
       title: "Reservas totales",
@@ -117,7 +88,6 @@ const MetricsCardsListHome: React.FC<MetricsCardsProps> = ({
       icon: "/home/arrow-down.svg",
       percentage: "-8%",
       hasError: !!metrics?.totalReservas?.error,
-      period: getPeriodLabel(),
     },
   ]
 
@@ -213,34 +183,10 @@ const MetricsCardsListHome: React.FC<MetricsCardsProps> = ({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold">Métricas Generales</h3>
-        <div className="text-sm text-muted-foreground flex items-center gap-2">
-          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-primary/10 text-primary">
-            📅 {getPeriodLabel()}
-          </span>
-          <button
-            onClick={refetch}
-            className="p-1 hover:bg-gray-100 rounded transition-colors"
-            title="Actualizar datos"
-          >
-            🔄
-          </button>
-        </div>
-      </div>
-
+      <div className="flex items-center justify-between"></div>
       <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {renderCards}
       </div>
-
-      {/* DEBUG temporal */}
-      {process.env.NODE_ENV === "development" && (
-        <div className="mt-2 p-2 bg-yellow-50 rounded text-xs">
-          <strong>DEBUG Cards:</strong> Filtro: {timeFilter} | Loading:{" "}
-          {loading ? "Sí" : "No"} | Usuarios: {metrics?.users?.value || 0} |
-          Reservas: {metrics?.totalReservas?.value || 0}
-        </div>
-      )}
     </div>
   )
 }

@@ -1,47 +1,83 @@
 "use client"
 
 import MetricCard from "@/features/shared/components/MetricCard"
-import { Users, MapPin, CheckCircle, Loader2 } from "lucide-react"
+import { Loader2 } from "lucide-react"
 import { useUsuariosStats } from "../../hooks/useUsers"
 
-// 🔥 NUEVA INTERFAZ para estadísticas calculadas
-interface EstadisticasCalculadas {
-  usuariosTotales: number
-  usuariosActivos: number
-  usuariosConPlaza: number
-  usuariosNuevos: number
-  usuariosConReserva: number
-  periodoActual: number
-  periodoAnterior: number
+interface UsuarioTabla {
+  email: string
+  fechaRegistro: string
+  reservasHechas: number
+  plazasPublicadas: number
+  // ... otras propiedades
 }
 
 interface MetricsCardsListProps {
   rango?: "dia" | "semana" | "mes"
-  estadisticasCalculadas?: EstadisticasCalculadas // 🔥 Nueva prop opcional
+  usuariosFiltrados?: UsuarioTabla[] // Datos ya filtrados por fecha
 }
 
 const MetricsCardsList = ({
   rango = "mes",
-  estadisticasCalculadas,
+  usuariosFiltrados = [],
 }: MetricsCardsListProps) => {
-  // 🔥 USAR estadísticas calculadas si están disponibles, sino el hook original
   const { data: hookData, loading, error } = useUsuariosStats(rango)
 
-  // Priorizar estadísticas calculadas sobre datos del hook
-  const data = estadisticasCalculadas || hookData
+  // Función para calcular estadísticas desde usuarios filtrados
+  const calcularEstadisticasLocales = () => {
+    if (usuariosFiltrados.length === 0) {
+      return {
+        usuariosNuevos: 0,
+        usuariosConPlaza: 0,
+        usuariosConReserva: 0,
+        usuariosTotales: 0,
+      }
+    }
 
-  console.log("📊 MetricsCardsList - usando datos:", {
-    tipoFuente: estadisticasCalculadas ? "calculadas" : "hook",
-    usuariosNuevos: data?.usuariosNuevos || 0,
-    usuariosConPlaza: data?.usuariosConPlaza || 0,
-    usuariosConReserva: data?.usuariosConReserva || 0,
-    rango,
-  })
+    // Calcular fecha límite para "nuevos" según el rango
+    const now = new Date()
+    const fechaLimite = new Date()
 
-  // Calcular crecimiento basado en períodos
+    switch (rango) {
+      case "dia":
+        fechaLimite.setDate(now.getDate() - 1)
+        break
+      case "semana":
+        fechaLimite.setDate(now.getDate() - 7)
+        break
+      case "mes":
+        fechaLimite.setMonth(now.getMonth() - 1)
+        break
+    }
 
-  // 🔥 SOLO mostrar loading si no hay estadísticas calculadas Y está cargando
-  if (loading && !estadisticasCalculadas) {
+    const usuariosNuevos = usuariosFiltrados.filter((usuario) => {
+      const fechaRegistro = new Date(usuario.fechaRegistro)
+      return fechaRegistro >= fechaLimite
+    }).length
+
+    const usuariosConPlaza = usuariosFiltrados.filter(
+      (usuario) => (usuario.plazasPublicadas || 0) > 0
+    ).length
+
+    const usuariosConReserva = usuariosFiltrados.filter(
+      (usuario) => (usuario.reservasHechas || 0) > 0
+    ).length
+
+    return {
+      usuariosNuevos,
+      usuariosConPlaza,
+      usuariosConReserva,
+      usuariosTotales: usuariosFiltrados.length,
+    }
+  }
+
+  // Si hay usuarios filtrados, usar cálculos locales
+  const usarCalculosLocales = usuariosFiltrados.length > 0
+  const estadisticasLocales = usarCalculosLocales
+    ? calcularEstadisticasLocales()
+    : null
+
+  if (loading && !usarCalculosLocales) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {[1, 2, 3].map((index) => (
@@ -56,8 +92,7 @@ const MetricsCardsList = ({
     )
   }
 
-  // 🔥 SOLO mostrar error si no hay estadísticas calculadas Y hay error
-  if (error && !estadisticasCalculadas) {
+  if (error && !usarCalculosLocales) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {[
@@ -76,77 +111,76 @@ const MetricsCardsList = ({
     )
   }
 
-  // 🔥 MEJORAR cálculo de porcentajes usando datos más realistas
-  const calcularPorcentajeRealista = (
-    valor: number,
-    total: number,
-    tipo: string
-  ) => {
+  const calcularPorcentajeCrecimiento = (
+    actual: number,
+    anterior: number
+  ): string => {
+    if (anterior === 0) return actual > 0 ? "+100%" : "0%"
+    const crecimiento = ((actual - anterior) / anterior) * 100
+    const signo = crecimiento >= 0 ? "+" : ""
+    return `${signo}${crecimiento.toFixed(1)}%`
+  }
+
+  const calcularPorcentajeDelTotal = (valor: number, total: number): string => {
     if (total === 0) return "0%"
-
     const porcentaje = (valor / total) * 100
-
-    // Para usuarios nuevos, usar una estimación de crecimiento
-    if (tipo === "nuevos") {
-      const estimacionCrecimiento =
-        valor > 0 ? Math.min(porcentaje * 2, 100) : 0
-      return `+${estimacionCrecimiento.toFixed(1)}%`
-    }
-
-    // Para otros casos, mostrar porcentaje del total
     return `${porcentaje.toFixed(1)}%`
   }
 
-  // Datos con cálculos mejorados
+  // Usar datos calculados localmente o del hook
+  const datos = estadisticasLocales || {
+    usuariosNuevos: hookData?.usuariosNuevos || 0,
+    usuariosConPlaza: hookData?.usuariosConPlaza || 0,
+    usuariosConReserva: hookData?.usuariosConReserva || 0,
+    usuariosTotales: hookData?.usuariosTotales || 1,
+  }
+
   const cardsItems = [
     {
       title: "Usuarios nuevos este periodo",
-      value: data?.usuariosNuevos?.toString() || "0",
-      icon: <Users className="h-4 w-4 text-blue-600" />,
-      percentage: calcularPorcentajeRealista(
-        data?.usuariosNuevos || 0,
-        data?.usuariosTotales || 1,
-        "nuevos"
-      ),
+      value: datos.usuariosNuevos.toLocaleString(),
+      percentage: usarCalculosLocales
+        ? `+${calcularPorcentajeDelTotal(
+            datos.usuariosNuevos,
+            datos.usuariosTotales
+          )}`
+        : calcularPorcentajeCrecimiento(
+            hookData?.periodoActual || 0,
+            hookData?.periodoAnterior || 0
+          ),
     },
     {
       title: "Publicado al menos una plaza",
-      value: data?.usuariosConPlaza?.toString() || "0",
-      icon: <MapPin className="h-4 w-4 text-green-600" />,
-      percentage: calcularPorcentajeRealista(
-        data?.usuariosConPlaza || 0,
-        data?.usuariosTotales || 1,
-        "plazas"
+      value: datos.usuariosConPlaza.toLocaleString(),
+      percentage: calcularPorcentajeDelTotal(
+        datos.usuariosConPlaza,
+        datos.usuariosTotales
       ),
     },
     {
       title: "Usuarios con reservas completadas",
-      value: data?.usuariosConReserva?.toString() || "0",
-      icon: <CheckCircle className="h-4 w-4 text-purple-600" />,
-      percentage: calcularPorcentajeRealista(
-        data?.usuariosConReserva || 0,
-        data?.usuariosTotales || 1,
-        "reservas"
+      value: datos.usuariosConReserva.toLocaleString(),
+      percentage: calcularPorcentajeDelTotal(
+        datos.usuariosConReserva,
+        datos.usuariosTotales
       ),
     },
   ]
 
-  const renderCards = cardsItems.map((item, index) => {
-    return (
-      <MetricCard
-        key={index}
-        title={item.title}
-        value={item.value}
-        percentage={item.percentage}
-        // Si tu MetricCard acepta un prop para el icono, descomenta la siguiente línea:
-        // icon={item.icon}
-      />
-    )
-  })
-
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-      {renderCards}
+    <div className="space-y-2">
+      {/* Remover este indicador para producción */}
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {cardsItems.map((item, index) => (
+          <MetricCard
+            key={index}
+            title={item.title}
+            value={item.value}
+            percentage={item.percentage}
+          />
+        ))}
+      </div>
     </div>
   )
 }

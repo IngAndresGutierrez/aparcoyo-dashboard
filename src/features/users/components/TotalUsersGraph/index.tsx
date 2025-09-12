@@ -24,6 +24,18 @@ import { useUsuariosStats } from "../../hooks/useUsers"
 export const description =
   "Gráfico de usuarios totales con datos en tiempo real"
 
+interface UsuarioTabla {
+  email: string
+  fechaRegistro: string
+  reservasHechas: number
+  plazasPublicadas: number
+}
+
+interface TotalUsersGraphProps {
+  rango?: "dia" | "semana" | "mes"
+  usuariosFiltrados?: UsuarioTabla[]
+}
+
 // Datos de ejemplo para el gráfico
 const generateChartData = (usuariosTotales: number) => {
   const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun"]
@@ -47,37 +59,78 @@ const chartConfig = {
   },
 } satisfies ChartConfig
 
-// 🔥 NUEVA INTERFAZ: Soporte para estadísticas calculadas
-interface EstadisticasCalculadas {
-  usuariosTotales: number
-  usuariosActivos: number
-  usuariosConPlaza: number
-  usuariosNuevos: number
-  usuariosConReserva: number
-  periodoActual: number
-  periodoAnterior: number
-}
-
-interface TotalUsersGraphProps {
-  rango?: "dia" | "semana" | "mes"
-  estadisticasCalculadas?: EstadisticasCalculadas // 🔥 Nueva prop opcional
-}
-
 export function TotalUsersGraph({
   rango = "mes",
-  estadisticasCalculadas,
+  usuariosFiltrados = [],
 }: TotalUsersGraphProps) {
-  // 🔥 USAR estadísticas calculadas si están disponibles, sino el hook original
   const { data: hookData, loading, error } = useUsuariosStats(rango)
 
-  // Priorizar estadísticas calculadas sobre datos del hook
-  const data = estadisticasCalculadas || hookData
+  // Calcular estadísticas desde usuarios filtrados
+  const calcularEstadisticasLocales = () => {
+    if (usuariosFiltrados.length === 0) {
+      return {
+        usuariosTotales: 0,
+        usuariosNuevos: 0,
+        usuariosConPlaza: 0,
+        periodoActual: 0,
+        periodoAnterior: 0,
+      }
+    }
 
-  console.log("📊 TotalUsersGraph - usando datos:", {
-    tipoFuente: estadisticasCalculadas ? "calculadas" : "hook",
-    usuariosTotales: data?.usuariosTotales || 0,
-    rango,
-  })
+    // Calcular fecha límite para "nuevos" según el rango
+    const now = new Date()
+    const fechaLimite = new Date()
+
+    switch (rango) {
+      case "dia":
+        fechaLimite.setDate(now.getDate() - 1)
+        break
+      case "semana":
+        fechaLimite.setDate(now.getDate() - 7)
+        break
+      case "mes":
+        fechaLimite.setMonth(now.getMonth() - 1)
+        break
+    }
+
+    const usuariosNuevos = usuariosFiltrados.filter((usuario) => {
+      const fechaRegistro = new Date(usuario.fechaRegistro)
+      return fechaRegistro >= fechaLimite
+    }).length
+
+    const usuariosConPlaza = usuariosFiltrados.filter(
+      (usuario) => (usuario.plazasPublicadas || 0) > 0
+    ).length
+
+    const usuariosTotales = usuariosFiltrados.length
+
+    // Simular crecimiento para el porcentaje
+    const periodoAnterior = Math.max(1, Math.floor(usuariosTotales * 0.85))
+    const periodoActual = usuariosTotales
+
+    return {
+      usuariosTotales,
+      usuariosNuevos,
+      usuariosConPlaza,
+      periodoActual,
+      periodoAnterior,
+    }
+  }
+
+  // Si hay usuarios filtrados, usar cálculos locales
+  const usarCalculosLocales = usuariosFiltrados.length > 0
+  const estadisticasLocales = usarCalculosLocales
+    ? calcularEstadisticasLocales()
+    : null
+
+  // Usar datos calculados localmente o del hook
+  const data = estadisticasLocales || {
+    usuariosTotales: hookData?.usuariosTotales || 0,
+    usuariosNuevos: hookData?.usuariosNuevos || 0,
+    usuariosConPlaza: hookData?.usuariosConPlaza || 0,
+    periodoActual: hookData?.periodoActual || 0,
+    periodoAnterior: hookData?.periodoAnterior || 0,
+  }
 
   // Calcular crecimiento basado en períodos
   const crecimiento = data
@@ -91,8 +144,7 @@ export function TotalUsersGraph({
   // Calcular datos del gráfico
   const chartData = data ? generateChartData(data.usuariosTotales) : []
 
-  // 🔥 SOLO mostrar loading si no hay estadísticas calculadas Y está cargando
-  if (loading && !estadisticasCalculadas) {
+  if (loading && !usarCalculosLocales) {
     return (
       <Card className="">
         <CardHeader className="pb-2">
@@ -116,8 +168,7 @@ export function TotalUsersGraph({
     )
   }
 
-  // 🔥 SOLO mostrar error si no hay estadísticas calculadas Y hay error
-  if (error && !estadisticasCalculadas) {
+  if (error && !usarCalculosLocales) {
     return (
       <Card className="">
         <CardHeader className="pb-2">
@@ -146,17 +197,13 @@ export function TotalUsersGraph({
     )
   }
 
-  // 🔥 MOSTRAR datos (ya sea calculados o del hook)
   return (
     <Card className="">
       <CardHeader className="pb-2">
         <div className="flex items-center gap-2 pt-1">
-          {/* Número total de usuarios */}
           <span className="text-2xl font-bold text-primary">
-            {data?.usuariosTotales?.toLocaleString() || 0}
+            {data.usuariosTotales.toLocaleString()}
           </span>
-
-          {/* Porcentaje de crecimiento */}
           <div
             className={`flex items-center text-sm font-medium ${
               isPositiveGrowth ? "text-[#61AA12]" : "text-red-500"
@@ -224,8 +271,8 @@ export function TotalUsersGraph({
               <TrendingUp className="h-4 w-4" />
             </div>
             <div className="text-muted-foreground flex items-center gap-2 leading-none">
-              {data?.usuariosConPlaza || 0} con plazas •{" "}
-              {data?.usuariosNuevos || 0} nuevos • Rango: {rango}
+              {data.usuariosConPlaza} con plazas • {data.usuariosNuevos} nuevos
+              • Rango: {rango}
             </div>
           </div>
         </div>
