@@ -1,32 +1,13 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+
 import {
+  UsuarioTabla,
   UsuariosTablaParams,
   UsuariosTablaResponse,
-  UsuarioTabla,
+  UsuariosEstadisticasResponse,
 } from "../types/table"
 
 const API_BASE_URL = "https://aparcoyo-back.onrender.com"
-
-// 🛠️ Interface para la respuesta del endpoint de estadísticas
-interface EstadisticasResponse {
-  ok: boolean
-  data: {
-    usuariosNuevos: number
-    usuariosConPlaza: number
-    usuariosConReserva: number
-    usuariosTotales: number
-    periodoActual: number
-    periodoAnterior: number
-    usuarios: Array<{
-      nombre: string
-      email: string
-      fechaRegistro: string
-      reservasHechas: number
-      plazasPublicadas: number
-    }>
-  }
-  msg: string | null
-}
 
 // 🛠️ Interface para usuarios básicos (con UID)
 interface UsuariosBasicosResponse {
@@ -44,6 +25,52 @@ interface UsuariosBasicosResponse {
   limit?: number
 }
 
+// 🔥 NUEVA FUNCIÓN: Filtrar usuarios por rango de fechas
+const filterUsuariosByDateRange = (
+  usuarios: UsuarioTabla[],
+  fechaInicio?: string,
+  fechaFin?: string
+): UsuarioTabla[] => {
+  if (!fechaInicio || !fechaFin) {
+    return usuarios // Si no hay filtros de fecha, devolver todos
+  }
+
+  const startDate = new Date(fechaInicio)
+  const endDate = new Date(fechaFin)
+
+  console.log(`🔍 Filtrando usuarios por fecha:`, {
+    fechaInicio: startDate.toLocaleDateString(),
+    fechaFin: endDate.toLocaleDateString(),
+    totalUsuarios: usuarios.length,
+  })
+
+  const usuariosFiltrados = usuarios.filter((usuario) => {
+    if (!usuario.fechaRegistro) {
+      console.log(`⚠️ Usuario sin fecha de registro: ${usuario.email}`)
+      return false
+    }
+
+    const fechaUsuario = new Date(usuario.fechaRegistro)
+    const enRango = fechaUsuario >= startDate && fechaUsuario <= endDate
+
+    if (!enRango) {
+      console.log(
+        `📅 Usuario fuera del rango: ${
+          usuario.email
+        } - ${fechaUsuario.toLocaleDateString()}`
+      )
+    }
+
+    return enRango
+  })
+
+  console.log(
+    `✅ Usuarios filtrados: ${usuariosFiltrados.length} de ${usuarios.length}`
+  )
+
+  return usuariosFiltrados
+}
+
 export class UsuariosTablaService {
   /**
    * Obtiene el token de autenticación desde localStorage
@@ -57,7 +84,7 @@ export class UsuariosTablaService {
   }
 
   /**
-   * 🛠️ MÉTODO PRINCIPAL ACTUALIZADO: Combina datos básicos + estadísticas
+   * 🛠️ MÉTODO PRINCIPAL ACTUALIZADO: Combina datos básicos + estadísticas + filtros de fecha
    * @param params - Parámetros de filtrado y paginación
    * @returns Promise con la lista de usuarios completa
    */
@@ -78,17 +105,38 @@ export class UsuariosTablaService {
     console.log(`🔗 Iniciando obtención de usuarios completos...`)
     console.log(`🔑 Token disponible: Sí`)
 
+    // 🔥 EXTRAER filtros de fecha para procesarlos aparte
+    const { fechaInicio, fechaFin, ...backendParams } = params
+
+    if (fechaInicio && fechaFin) {
+      console.log(`📅 Filtros de fecha detectados:`, {
+        desde: new Date(fechaInicio).toLocaleDateString(),
+        hasta: new Date(fechaFin).toLocaleDateString(),
+      })
+    }
+
     try {
       // 1️⃣ OBTENER DATOS BÁSICOS (con UIDs, isActive, rol, paginación)
+      // 🔥 NO enviar filtros de fecha al backend (no los soporta)
       const basicQueryParams = new URLSearchParams()
-      if (params.page) basicQueryParams.append("page", params.page.toString())
-      if (params.limit)
-        basicQueryParams.append("limit", params.limit.toString())
-      if (params.search) basicQueryParams.append("search", params.search)
-      if (params.estado) basicQueryParams.append("estado", params.estado)
-      if (params.sortBy) basicQueryParams.append("sortBy", params.sortBy)
-      if (params.sortOrder)
-        basicQueryParams.append("sortOrder", params.sortOrder)
+      if (backendParams.page)
+        basicQueryParams.append("page", backendParams.page.toString())
+      if (backendParams.limit)
+        basicQueryParams.append("limit", backendParams.limit.toString())
+      if (backendParams.search)
+        basicQueryParams.append("search", backendParams.search)
+      if (backendParams.estado)
+        basicQueryParams.append("estado", backendParams.estado)
+      if (backendParams.sortBy)
+        basicQueryParams.append("sortBy", backendParams.sortBy)
+      if (backendParams.sortOrder)
+        basicQueryParams.append("sortOrder", backendParams.sortOrder)
+
+      // 🔥 IMPORTANTE: Si hay filtros de fecha, traer TODOS los usuarios para filtrar
+      if (fechaInicio && fechaFin) {
+        basicQueryParams.set("limit", "9999") // Traer todos los usuarios
+        basicQueryParams.delete("page") // Sin paginación del backend
+      }
 
       const basicUrl = `${API_BASE_URL}/apa/usuarios${
         basicQueryParams.toString() ? `?${basicQueryParams.toString()}` : ""
@@ -112,8 +160,6 @@ export class UsuariosTablaService {
 
       const basicData: UsuariosBasicosResponse = await basicResponse.json()
 
-      // En tu UsuariosTablaService, agrega este log después de obtener basicData:
-
       if (!basicData.ok) {
         throw new Error(basicData.msg || "Error en datos básicos")
       }
@@ -135,7 +181,7 @@ export class UsuariosTablaService {
 
       console.log(`📡 Response status (estadísticas): ${statsResponse.status}`)
 
-      let statsData: EstadisticasResponse | null = null
+      let statsData: UsuariosEstadisticasResponse | null = null
 
       if (statsResponse.ok) {
         statsData = await statsResponse.json()
@@ -168,9 +214,9 @@ export class UsuariosTablaService {
             email: usuarioBasico.email,
             rol: usuarioBasico.rol as any,
             isActive: usuarioBasico.isActive,
-            fechaRegistro: stats?.fechaRegistro ?? "", // ← AQUÍ ESTÁ LA FECHA
-            reservasHechas: stats?.reservasHechas || 0, // ← AQUÍ LAS RESERVAS
-            plazasPublicadas: stats?.plazasPublicadas || 0, // ← AQUÍ LAS PLAZAS
+            fechaRegistro: stats?.fechaRegistro ?? "",
+            reservasHechas: stats?.reservasHechas || 0,
+            plazasPublicadas: stats?.plazasPublicadas || 0,
             // Para compatibilidad con nombres anteriores:
             totalReservas: stats?.reservasHechas || 0,
             totalPlazas: stats?.plazasPublicadas || 0,
@@ -184,25 +230,67 @@ export class UsuariosTablaService {
         `✅ Usuarios combinados exitosamente: ${usuariosCombinados.length}`
       )
 
+      // 4️⃣ 🔥 APLICAR FILTROS DE FECHA DEL LADO DEL CLIENTE
+      let usuariosFinales = usuariosCombinados
+
+      if (fechaInicio && fechaFin) {
+        usuariosFinales = filterUsuariosByDateRange(
+          usuariosCombinados,
+          fechaInicio,
+          fechaFin
+        )
+        console.log(
+          `🔍 Después del filtro de fecha: ${usuariosFinales.length} usuarios`
+        )
+      }
+
+      // 5️⃣ 🔥 APLICAR PAGINACIÓN DEL LADO DEL CLIENTE (si se filtraron por fecha)
+      let usuariosPaginados = usuariosFinales
+      let totalFinal = usuariosFinales.length
+      let pageFinal = params.page || 1
+      let limitFinal = params.limit || 10
+
+      if (fechaInicio && fechaFin) {
+        // Aplicar paginación manualmente
+        const startIndex = (pageFinal - 1) * limitFinal
+        const endIndex = startIndex + limitFinal
+        usuariosPaginados = usuariosFinales.slice(startIndex, endIndex)
+
+        console.log(
+          `📄 Paginación aplicada: página ${pageFinal}, mostrando ${usuariosPaginados.length} de ${totalFinal}`
+        )
+      } else {
+        // Usar paginación del backend
+        totalFinal =
+          statsData?.data?.usuariosTotales ||
+          basicData.total ||
+          usuariosCombinados.length
+        pageFinal = basicData.page || params.page || 1
+        limitFinal = basicData.limit || params.limit || 10
+      }
+
       // Debug: mostrar ejemplo
-      if (usuariosCombinados.length > 0) {
-        console.log(`🔍 Ejemplo de usuario combinado:`, {
-          email: usuariosCombinados[0].email,
-          fechaRegistro: usuariosCombinados[0].fechaRegistro,
-          reservasHechas: usuariosCombinados[0].reservasHechas,
-          uid: usuariosCombinados[0].uid,
+      if (usuariosPaginados.length > 0) {
+        console.log(`🔍 Ejemplo de usuario final:`, {
+          email: usuariosPaginados[0].email,
+          fechaRegistro: usuariosPaginados[0].fechaRegistro,
+          reservasHechas: usuariosPaginados[0].reservasHechas,
+          uid: usuariosPaginados[0].uid,
         })
       }
 
       return {
         ok: true,
-        data: usuariosCombinados,
-        msg: statsData
-          ? "Usuarios con estadísticas completas"
-          : "Usuarios sin estadísticas",
-        total: statsData?.data?.usuariosTotales || 38, // ← El total va aquí
-        page: basicData.page || params.page || 1, // ← La página va aquí
-        limit: basicData.limit || params.limit || 10,
+        data: usuariosPaginados,
+        msg:
+          fechaInicio && fechaFin
+            ? `Usuarios filtrados por fecha (${usuariosFinales.length} encontrados)`
+            : statsData
+            ? "Usuarios con estadísticas completas"
+            : "Usuarios sin estadísticas",
+        total: totalFinal,
+        page: pageFinal,
+        limit: limitFinal,
       }
     } catch (error) {
       console.error(`❌ Error en UsuariosTablaService.getUsuarios:`, error)
@@ -218,6 +306,40 @@ export class UsuariosTablaService {
 
       throw error
     }
+  }
+
+  /**
+   * 🔥 NUEVO: Método auxiliar para obtener usuarios por rango
+   */
+  static async getUsuariosByRango(
+    rango: "dia" | "semana" | "mes",
+    additionalParams: Omit<UsuariosTablaParams, "fechaInicio" | "fechaFin"> = {}
+  ): Promise<UsuariosTablaResponse> {
+    const now = new Date()
+    const startDate = new Date()
+
+    switch (rango) {
+      case "dia":
+        startDate.setDate(now.getDate() - 1)
+        break
+      case "semana":
+        startDate.setDate(now.getDate() - 7)
+        break
+      case "mes":
+        startDate.setDate(now.getDate() - 30)
+        break
+    }
+
+    console.log(`📅 Obteniendo usuarios por rango ${rango}:`, {
+      desde: startDate.toLocaleDateString(),
+      hasta: now.toLocaleDateString(),
+    })
+
+    return this.getUsuarios({
+      ...additionalParams,
+      fechaInicio: startDate.toISOString(),
+      fechaFin: now.toISOString(),
+    })
   }
 
   /**
@@ -241,7 +363,6 @@ export class UsuariosTablaService {
     const url = `${API_BASE_URL}/apa/usuarios/estadisticas`
 
     console.log(`🔗 Obteniendo usuarios desde estadísticas: ${url}`)
-    console.log(`🔑 Token disponible: Sí`)
 
     try {
       const response = await fetch(url, {
@@ -250,21 +371,13 @@ export class UsuariosTablaService {
         signal: AbortSignal.timeout(30000),
       })
 
-      console.log(`📡 Response status: ${response.status}`)
-
-      if (response.status === 401) {
-        throw new Error("No autorizado. Verifica tu token de autenticación.")
-      }
-
       if (!response.ok) {
         throw new Error(
           `Error HTTP: ${response.status} - ${response.statusText}`
         )
       }
 
-      const data: EstadisticasResponse = await response.json()
-
-      console.log(`✅ Estadísticas obtenidas:`, data)
+      const data: UsuariosEstadisticasResponse = await response.json()
 
       if (!data.ok || !data.data || !data.data.usuarios) {
         throw new Error(data.msg || "Error al obtener estadísticas de usuarios")
@@ -273,42 +386,47 @@ export class UsuariosTablaService {
       // Convertir usuarios de estadísticas al formato de tabla
       const usuariosConvertidos: UsuarioTabla[] = data.data.usuarios.map(
         (usuario, index) => ({
-          uid: `temp_${index}_${Date.now()}`, // UID temporal
+          uid: `temp_${index}_${Date.now()}`,
           nombre: usuario.nombre,
           email: usuario.email,
-          fechaRegistro: usuario.fechaRegistro, // ← FECHA REAL
-          reservasHechas: usuario.reservasHechas, // ← RESERVAS REALES
-          plazasPublicadas: usuario.plazasPublicadas, // ← PLAZAS REALES
-          isActive: true, // Por defecto (no disponible en estadísticas)
-          rol: "usuario", // Por defecto (no disponible en estadísticas)
-          // Para compatibilidad:
+          fechaRegistro: usuario.fechaRegistro,
+          reservasHechas: usuario.reservasHechas,
+          plazasPublicadas: usuario.plazasPublicadas,
+          isActive: true,
+          rol: "usuario" as any,
           totalReservas: usuario.reservasHechas,
           totalPlazas: usuario.plazasPublicadas,
         })
       )
 
-      // Aplicar filtros en frontend (el endpoint de estadísticas puede no soportarlos)
+      // 🔥 APLICAR FILTROS DE FECHA
+      const { fechaInicio, fechaFin, ...otherParams } = params
       let usuariosFiltrados = usuariosConvertidos
 
-      if (params.search) {
-        const searchTerm = params.search.toLowerCase().trim()
-        usuariosFiltrados = usuariosConvertidos.filter(
+      if (fechaInicio && fechaFin) {
+        usuariosFiltrados = filterUsuariosByDateRange(
+          usuariosConvertidos,
+          fechaInicio,
+          fechaFin
+        )
+      }
+
+      // Aplicar otros filtros
+      if (otherParams.search) {
+        const searchTerm = otherParams.search.toLowerCase().trim()
+        usuariosFiltrados = usuariosFiltrados.filter(
           (usuario) =>
             usuario.nombre.toLowerCase().includes(searchTerm) ||
             usuario.email.toLowerCase().includes(searchTerm)
         )
       }
 
-      // Aplicar paginación en frontend
+      // Aplicar paginación
       const page = params.page || 1
       const limit = params.limit || 10
       const startIndex = (page - 1) * limit
       const endIndex = startIndex + limit
       const usuariosPaginados = usuariosFiltrados.slice(startIndex, endIndex)
-
-      console.log(
-        `✅ Usuarios procesados: ${usuariosPaginados.length} de ${usuariosFiltrados.length}`
-      )
 
       return {
         ok: true,
@@ -320,24 +438,12 @@ export class UsuariosTablaService {
       }
     } catch (error) {
       console.error(`❌ Error en getUsuariosDesdeEstadisticas:`, error)
-
-      if (
-        error instanceof TypeError &&
-        error.message.includes("Failed to fetch")
-      ) {
-        throw new Error(
-          `No se puede conectar al servidor. Verifica que el backend esté corriendo en: ${API_BASE_URL}`
-        )
-      }
-
       throw error
     }
   }
 
   /**
    * Obtiene un usuario específico por ID
-   * @param id - ID del usuario
-   * @returns Promise con los datos del usuario
    */
   static async getUsuarioById(
     id: string

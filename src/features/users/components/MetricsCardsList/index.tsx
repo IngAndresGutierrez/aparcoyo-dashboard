@@ -1,26 +1,85 @@
 "use client"
 
 import MetricCard from "@/features/shared/components/MetricCard"
-import { Users, MapPin, CheckCircle, Loader2 } from "lucide-react" // ← ICONOS
+import { Loader2 } from "lucide-react"
 import { useUsuariosStats } from "../../hooks/useUsers"
+
+interface UsuarioTabla {
+  email: string
+  fechaRegistro: string
+  reservasHechas: number
+  plazasPublicadas: number
+  // ... otras propiedades
+}
 
 interface MetricsCardsListProps {
   rango?: "dia" | "semana" | "mes"
+  usuariosFiltrados?: UsuarioTabla[] // Datos ya filtrados por fecha
 }
 
-const MetricsCardsList = ({ rango = "mes" }: MetricsCardsListProps) => {
-  const { data, loading, error } = useUsuariosStats(rango) // ← USAR EL HOOK
+const MetricsCardsList = ({
+  rango = "mes",
+  usuariosFiltrados = [],
+}: MetricsCardsListProps) => {
+  const { data: hookData, loading, error } = useUsuariosStats(rango)
 
-  // Calcular crecimiento basado en períodos
-  const calcularCrecimiento = (actual: number, anterior: number) => {
-    if (anterior === 0) return actual > 0 ? 100 : 0
-    return (actual / anterior) * 100 - 100
+  // Función para calcular estadísticas desde usuarios filtrados
+  const calcularEstadisticasLocales = () => {
+    if (usuariosFiltrados.length === 0) {
+      return {
+        usuariosNuevos: 0,
+        usuariosConPlaza: 0,
+        usuariosConReserva: 0,
+        usuariosTotales: 0,
+      }
+    }
+
+    // Calcular fecha límite para "nuevos" según el rango
+    const now = new Date()
+    const fechaLimite = new Date()
+
+    switch (rango) {
+      case "dia":
+        fechaLimite.setDate(now.getDate() - 1)
+        break
+      case "semana":
+        fechaLimite.setDate(now.getDate() - 7)
+        break
+      case "mes":
+        fechaLimite.setMonth(now.getMonth() - 1)
+        break
+    }
+
+    const usuariosNuevos = usuariosFiltrados.filter((usuario) => {
+      const fechaRegistro = new Date(usuario.fechaRegistro)
+      return fechaRegistro >= fechaLimite
+    }).length
+
+    const usuariosConPlaza = usuariosFiltrados.filter(
+      (usuario) => (usuario.plazasPublicadas || 0) > 0
+    ).length
+
+    const usuariosConReserva = usuariosFiltrados.filter(
+      (usuario) => (usuario.reservasHechas || 0) > 0
+    ).length
+
+    return {
+      usuariosNuevos,
+      usuariosConPlaza,
+      usuariosConReserva,
+      usuariosTotales: usuariosFiltrados.length,
+    }
   }
 
-  // Loading state
-  if (loading) {
+  // Si hay usuarios filtrados, usar cálculos locales
+  const usarCalculosLocales = usuariosFiltrados.length > 0
+  const estadisticasLocales = usarCalculosLocales
+    ? calcularEstadisticasLocales()
+    : null
+
+  if (loading && !usarCalculosLocales) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-100">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {[1, 2, 3].map((index) => (
           <div
             key={index}
@@ -33,8 +92,7 @@ const MetricsCardsList = ({ rango = "mes" }: MetricsCardsListProps) => {
     )
   }
 
-  // Error state
-  if (error) {
+  if (error && !usarCalculosLocales) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {[
@@ -53,62 +111,76 @@ const MetricsCardsList = ({ rango = "mes" }: MetricsCardsListProps) => {
     )
   }
 
-  // Datos reales del backend
+  const calcularPorcentajeCrecimiento = (
+    actual: number,
+    anterior: number
+  ): string => {
+    if (anterior === 0) return actual > 0 ? "+100%" : "0%"
+    const crecimiento = ((actual - anterior) / anterior) * 100
+    const signo = crecimiento >= 0 ? "+" : ""
+    return `${signo}${crecimiento.toFixed(1)}%`
+  }
+
+  const calcularPorcentajeDelTotal = (valor: number, total: number): string => {
+    if (total === 0) return "0%"
+    const porcentaje = (valor / total) * 100
+    return `${porcentaje.toFixed(1)}%`
+  }
+
+  // Usar datos calculados localmente o del hook
+  const datos = estadisticasLocales || {
+    usuariosNuevos: hookData?.usuariosNuevos || 0,
+    usuariosConPlaza: hookData?.usuariosConPlaza || 0,
+    usuariosConReserva: hookData?.usuariosConReserva || 0,
+    usuariosTotales: hookData?.usuariosTotales || 1,
+  }
+
   const cardsItems = [
     {
       title: "Usuarios nuevos este periodo",
-      value: data?.usuariosNuevos?.toString() || "0", // ← DATO REAL
-      icon: <Users className="h-4 w-4 text-blue-600" />,
-      percentage: `+${calcularCrecimiento(
-        data?.usuariosNuevos || 0,
-        Math.max((data?.usuariosTotales || 0) - (data?.usuariosNuevos || 0), 1)
-      ).toFixed(1)}%`,
+      value: datos.usuariosNuevos.toLocaleString(),
+      percentage: usarCalculosLocales
+        ? `+${calcularPorcentajeDelTotal(
+            datos.usuariosNuevos,
+            datos.usuariosTotales
+          )}`
+        : calcularPorcentajeCrecimiento(
+            hookData?.periodoActual || 0,
+            hookData?.periodoAnterior || 0
+          ),
     },
     {
       title: "Publicado al menos una plaza",
-      value: data?.usuariosConPlaza?.toString() || "0", // ← DATO REAL
-      icon: <MapPin className="h-4 w-4 text-green-600" />,
-      percentage: `+${calcularCrecimiento(
-        data?.usuariosConPlaza || 0,
-        Math.max(
-          (data?.usuariosTotales || 0) - (data?.usuariosConPlaza || 0),
-          1
-        )
-      ).toFixed(1)}%`,
+      value: datos.usuariosConPlaza.toLocaleString(),
+      percentage: calcularPorcentajeDelTotal(
+        datos.usuariosConPlaza,
+        datos.usuariosTotales
+      ),
     },
     {
       title: "Usuarios con reservas completadas",
-      value: data?.usuariosConReserva?.toString() || "0", // ← DATO REAL
-      icon: <CheckCircle className="h-4 w-4 text-purple-600" />,
-      percentage:
-        data?.usuariosConReserva === 0
-          ? "0%"
-          : `+${calcularCrecimiento(
-              data?.usuariosConReserva || 0,
-              Math.max(
-                (data?.usuariosTotales || 0) - (data?.usuariosConReserva || 0),
-                1
-              )
-            ).toFixed(1)}%`,
+      value: datos.usuariosConReserva.toLocaleString(),
+      percentage: calcularPorcentajeDelTotal(
+        datos.usuariosConReserva,
+        datos.usuariosTotales
+      ),
     },
   ]
 
-  const renderCards = cardsItems.map((item, index) => {
-    return (
-      <MetricCard
-        key={index}
-        title={item.title}
-        value={item.value}
-        percentage={item.percentage}
-        // Si tu MetricCard acepta un prop para el icono, descomenta la siguiente línea:
-        // icon={item.icon}
-      />
-    )
-  })
-
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-      {renderCards}
+    <div className="space-y-2">
+      {/* Remover este indicador para producción */}
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {cardsItems.map((item, index) => (
+          <MetricCard
+            key={index}
+            title={item.title}
+            value={item.value}
+            percentage={item.percentage}
+          />
+        ))}
+      </div>
     </div>
   )
 }
