@@ -24,7 +24,19 @@ import { useUsuariosStats } from "../../hooks/useUsers"
 export const description =
   "Gráfico de usuarios totales con datos en tiempo real"
 
-// Datos de ejemplo para el gráfico (en producción vendrían del API)
+interface UsuarioTabla {
+  email: string
+  fechaRegistro: string
+  reservasHechas: number
+  plazasPublicadas: number
+}
+
+interface TotalUsersGraphProps {
+  rango?: "dia" | "semana" | "mes"
+  usuariosFiltrados?: UsuarioTabla[]
+}
+
+// Datos de ejemplo para el gráfico
 const generateChartData = (usuariosTotales: number) => {
   const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun"]
   const baseValue = Math.max(usuariosTotales - 20, 5)
@@ -39,23 +51,86 @@ const generateChartData = (usuariosTotales: number) => {
 const chartConfig = {
   activos: {
     label: "Usuarios Activos",
-    color: "#0E47E1", // azul principal
+    color: "#0E47E1",
   },
   nuevos: {
     label: "Usuarios Nuevos",
-    color: "#9A75E5", // púrpura
+    color: "#9A75E5",
   },
 } satisfies ChartConfig
 
-interface TotalUsersGraphProps {
-  rango?: "dia" | "semana" | "mes"
-}
+export function TotalUsersGraph({
+  rango = "mes",
+  usuariosFiltrados = [],
+}: TotalUsersGraphProps) {
+  const { data: hookData, loading, error } = useUsuariosStats(rango)
 
-export function TotalUsersGraph({ rango = "mes" }: TotalUsersGraphProps) {
-  const { data, loading, error } = useUsuariosStats(rango)
+  // Calcular estadísticas desde usuarios filtrados
+  const calcularEstadisticasLocales = () => {
+    if (usuariosFiltrados.length === 0) {
+      return {
+        usuariosTotales: 0,
+        usuariosNuevos: 0,
+        usuariosConPlaza: 0,
+        periodoActual: 0,
+        periodoAnterior: 0,
+      }
+    }
 
-  // Calcular datos del gráfico
-  const chartData = data ? generateChartData(data.usuariosTotales) : []
+    // Calcular fecha límite para "nuevos" según el rango
+    const now = new Date()
+    const fechaLimite = new Date()
+
+    switch (rango) {
+      case "dia":
+        fechaLimite.setDate(now.getDate() - 1)
+        break
+      case "semana":
+        fechaLimite.setDate(now.getDate() - 7)
+        break
+      case "mes":
+        fechaLimite.setMonth(now.getMonth() - 1)
+        break
+    }
+
+    const usuariosNuevos = usuariosFiltrados.filter((usuario) => {
+      const fechaRegistro = new Date(usuario.fechaRegistro)
+      return fechaRegistro >= fechaLimite
+    }).length
+
+    const usuariosConPlaza = usuariosFiltrados.filter(
+      (usuario) => (usuario.plazasPublicadas || 0) > 0
+    ).length
+
+    const usuariosTotales = usuariosFiltrados.length
+
+    // Simular crecimiento para el porcentaje
+    const periodoAnterior = Math.max(1, Math.floor(usuariosTotales * 0.85))
+    const periodoActual = usuariosTotales
+
+    return {
+      usuariosTotales,
+      usuariosNuevos,
+      usuariosConPlaza,
+      periodoActual,
+      periodoAnterior,
+    }
+  }
+
+  // Si hay usuarios filtrados, usar cálculos locales
+  const usarCalculosLocales = usuariosFiltrados.length > 0
+  const estadisticasLocales = usarCalculosLocales
+    ? calcularEstadisticasLocales()
+    : null
+
+  // Usar datos calculados localmente o del hook
+  const data = estadisticasLocales || {
+    usuariosTotales: hookData?.usuariosTotales || 0,
+    usuariosNuevos: hookData?.usuariosNuevos || 0,
+    usuariosConPlaza: hookData?.usuariosConPlaza || 0,
+    periodoActual: hookData?.periodoActual || 0,
+    periodoAnterior: hookData?.periodoAnterior || 0,
+  }
 
   // Calcular crecimiento basado en períodos
   const crecimiento = data
@@ -66,8 +141,10 @@ export function TotalUsersGraph({ rango = "mes" }: TotalUsersGraphProps) {
 
   const isPositiveGrowth = crecimiento >= 0
 
-  // Estado de carga
-  if (loading) {
+  // Calcular datos del gráfico
+  const chartData = data ? generateChartData(data.usuariosTotales) : []
+
+  if (loading && !usarCalculosLocales) {
     return (
       <Card className="">
         <CardHeader className="pb-2">
@@ -91,8 +168,7 @@ export function TotalUsersGraph({ rango = "mes" }: TotalUsersGraphProps) {
     )
   }
 
-  // Estado de error
-  if (error) {
+  if (error && !usarCalculosLocales) {
     return (
       <Card className="">
         <CardHeader className="pb-2">
@@ -124,17 +200,10 @@ export function TotalUsersGraph({ rango = "mes" }: TotalUsersGraphProps) {
   return (
     <Card className="">
       <CardHeader className="pb-2">
-        <CardTitle className="text-sm text-muted-foreground font-medium">
-          Usuarios totales
-        </CardTitle>
-
         <div className="flex items-center gap-2 pt-1">
-          {/* Número total de usuarios */}
           <span className="text-2xl font-bold text-primary">
-            {data?.usuariosTotales?.toLocaleString() || 0}
+            {data.usuariosTotales.toLocaleString()}
           </span>
-
-          {/* Porcentaje de crecimiento */}
           <div
             className={`flex items-center text-sm font-medium ${
               isPositiveGrowth ? "text-[#61AA12]" : "text-red-500"
@@ -202,8 +271,8 @@ export function TotalUsersGraph({ rango = "mes" }: TotalUsersGraphProps) {
               <TrendingUp className="h-4 w-4" />
             </div>
             <div className="text-muted-foreground flex items-center gap-2 leading-none">
-              {data?.usuariosConPlaza || 0} con plazas •{" "}
-              {data?.usuariosNuevos || 0} nuevos • Rango: {rango}
+              {data.usuariosConPlaza} con plazas • {data.usuariosNuevos} nuevos
+              • Rango: {rango}
             </div>
           </div>
         </div>

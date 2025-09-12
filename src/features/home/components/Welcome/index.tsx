@@ -13,8 +13,18 @@ import { toast } from "sonner"
 
 import Image from "next/image"
 import React from "react"
-import { TimeFilter, useMetrics } from "../../hooks/useMetrics"
+import { TimeFilter } from "../../hooks/useMetrics"
 import { useUser } from "@/features/login/hooks/useLoggoutUsers"
+
+// Props que recibe el componente desde el padre
+interface WelcomeProps {
+  timeFilter: TimeFilter
+  setTimeFilter: (filter: TimeFilter) => void
+  metrics: any
+  loading: boolean
+  error: string | null
+  refetch: () => Promise<void>
+}
 
 // Opciones del selector con labels amigables
 const timeFilterOptions = [
@@ -35,7 +45,7 @@ const timeFilterOptions = [
   },
 ]
 
-// Utilidades para generar reportes CSV
+// Utilidades para generar reportes CSV (sin cambios)
 const generateCSV = (data: any[]): string => {
   if (!data || data.length === 0) {
     throw new Error("No hay datos para exportar")
@@ -81,9 +91,24 @@ const downloadFile = (
   window.URL.revokeObjectURL(url)
 }
 
-const Welcome = () => {
-  const { timeFilter, setTimeFilter, loading, metrics } = useMetrics()
-  const { user, loading: userLoading, error: userError } = useUser() // Usar el hook completo
+// ✅ MODIFICADO: Welcome ahora recibe props del componente padre
+const WelcomeComponent: React.FC<WelcomeProps> = ({
+  timeFilter,
+  setTimeFilter,
+  metrics,
+  loading,
+}) => {
+  const { user, loading: userLoading, error: userError } = useUser()
+
+  // ✅ DEBUG: Ver cuando cambian las props
+  React.useEffect(() => {
+    console.log("👋 Welcome - Props recibidas:", {
+      timeFilter,
+      loading,
+      users: metrics?.users?.value,
+      totalReservas: metrics?.totalReservas?.value,
+    })
+  }, [timeFilter, loading, metrics])
 
   // Obtener el nombre del usuario o mostrar un fallback apropiado
   const getUserName = () => {
@@ -91,7 +116,6 @@ const Welcome = () => {
     if (userError && !user) return "Usuario"
     if (!user) return "Usuario"
 
-    // Extraer el primer nombre si es un nombre completo
     const firstName = user.name.split(" ")[0]
     return firstName
   }
@@ -115,7 +139,13 @@ const Welcome = () => {
     return option?.label || "Últimos 30 días"
   }
 
-  // Función de descarga de reportes actualizada con datos del usuario
+  // ✅ MODIFICADO: Función para cambiar filtro con debug
+  const handleTimeFilterChange = (filter: TimeFilter) => {
+    console.log(`🔄 Welcome: Cambiando filtro a ${filter}`)
+    setTimeFilter(filter)
+  }
+
+  // Función de descarga de reportes (sin cambios grandes)
   const handleDownloadReport = () => {
     if (!metrics || loading) {
       toast.error("No hay datos", {
@@ -131,7 +161,6 @@ const Welcome = () => {
         description: "Preparando datos para descarga",
       })
 
-      // Incluir información del usuario en el reporte
       const reportData = {
         Período: getCurrentLabel(),
         "Generado por": user?.name || "Usuario no identificado",
@@ -146,32 +175,32 @@ const Welcome = () => {
           hour: "2-digit",
           minute: "2-digit",
         }),
-        "Total de usuarios": metrics.users.value || 0,
-        "Estado usuarios": metrics.users.error
+        "Total de usuarios": metrics.users?.value || 0,
+        "Estado usuarios": metrics.users?.error
           ? `Error: ${metrics.users.error}`
           : "OK",
-        "Total de plazas": metrics.plazas.value || 0,
-        "Estado plazas": metrics.plazas.error
+        "Total de plazas": metrics.plazas?.value || 0,
+        "Estado plazas": metrics.plazas?.error
           ? `Error: ${metrics.plazas.error}`
           : "OK",
-        "Reservas activas": metrics.activeReservas.value || 0,
-        "Estado reservas activas": metrics.activeReservas.error
+        "Reservas activas": metrics.activeReservas?.value || 0,
+        "Estado reservas activas": metrics.activeReservas?.error
           ? `Error: ${metrics.activeReservas.error}`
           : "OK",
-        "Total de reservas": metrics.totalReservas.value || 0,
-        "Estado total reservas": metrics.totalReservas.error
+        "Total de reservas": metrics.totalReservas?.value || 0,
+        "Estado total reservas": metrics.totalReservas?.error
           ? `Error: ${metrics.totalReservas.error}`
           : "OK",
         "Porcentaje de plazas ocupadas":
-          metrics.plazas.value > 0
+          metrics.plazas?.value > 0
             ? `${(
-                (metrics.activeReservas.value / metrics.plazas.value) *
+                (metrics.activeReservas?.value / metrics.plazas.value) *
                 100
               ).toFixed(1)}%`
             : "0%",
         "Promedio reservas por usuario":
-          metrics.users.value > 0
-            ? (metrics.totalReservas.value / metrics.users.value).toFixed(2)
+          metrics.users?.value > 0
+            ? (metrics.totalReservas?.value / metrics.users.value).toFixed(2)
             : "0",
       }
 
@@ -229,7 +258,7 @@ const Welcome = () => {
       <div className="flex flex-row gap-3 mt-4">
         <Select
           value={timeFilter}
-          onValueChange={(value: TimeFilter) => setTimeFilter(value)}
+          onValueChange={handleTimeFilterChange}
         >
           <SelectTrigger className="w-48 h-9 rounded-full border border-border">
             <div className="flex items-center gap-2">
@@ -290,15 +319,10 @@ const Welcome = () => {
       )}
 
       {/* Mostrar preview de métricas disponibles */}
-      {!loading && metrics && (
-        <div className="mt-4 text-xs text-muted-foreground">
-          Datos listos: {metrics.users.value} usuarios • {metrics.plazas.value}{" "}
-          plazas • {metrics.totalReservas.value} reservas
-          {userError && " • Perfil: datos parciales"}
-        </div>
-      )}
+
+      {/* ✅ DEBUG: Mostrar estado actual */}
     </div>
   )
 }
 
-export default Welcome
+export default WelcomeComponent

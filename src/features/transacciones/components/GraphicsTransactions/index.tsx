@@ -20,7 +20,6 @@ import {
 } from "@/components/ui/chart"
 import { usePlatformStats } from "../../hooks/useTransaction"
 
-
 export const description = "Gráfica de ingresos brutos generados"
 
 const chartConfig = {
@@ -48,15 +47,9 @@ const formatPercentage = (value: number) => {
 }
 
 export function GraphTransactions() {
-  const { 
-    loading, 
-    error, 
-    statistics, 
-    chartData, 
-    refetch 
-  } = usePlatformStats({
+  const { loading, error, statistics, chartData, refetch } = usePlatformStats({
     refetchInterval: 5 * 60 * 1000, // Refetch cada 5 minutos
-  });
+  })
 
   // Estados de carga y error
   if (loading) {
@@ -91,17 +84,17 @@ export function GraphTransactions() {
   }
 
   // Datos del API
-  const ingresosBrutos = statistics?.ingresosBrutos || 0;
-  const percentageChange = statistics?.percentageChange || 0;
-  const isPositiveGrowth = percentageChange >= 0;
+  const ingresosBrutos = statistics?.ingresosBrutos || 0
+  const percentageChange = statistics?.percentageChange || 0
+  const isPositiveGrowth = percentageChange >= 0
 
   // Formatear el período mostrado
   const getDateRange = () => {
-    if (chartData.length === 0) return "Sin datos";
-    const firstDate = chartData[0]?.date;
-    const lastDate = chartData[chartData.length - 1]?.date;
-    return `${firstDate} - ${lastDate}`;
-  };
+    if (chartData.length === 0) return "Sin datos"
+    const firstDate = chartData[0]?.date
+    const lastDate = chartData[chartData.length - 1]?.date
+    return `${firstDate} - ${lastDate}`
+  }
 
   return (
     <Card className="">
@@ -194,7 +187,7 @@ export function GraphTransactions() {
           <div className="grid gap-2">
             <div className="flex items-center gap-2 leading-none font-medium">
               {isPositiveGrowth ? "Creciendo" : "Decreciendo"}{" "}
-              {formatPercentage(Math.abs(percentageChange))} 
+              {formatPercentage(Math.abs(percentageChange))}
               <TrendingUp className="h-4 w-4" />
             </div>
             <div className="text-muted-foreground flex items-center gap-2 leading-none">

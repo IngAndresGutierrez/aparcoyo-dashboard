@@ -28,6 +28,7 @@ export const useUsuariosStats = (
   const fetchEstadisticas = useCallback(async () => {
     setLoading(true)
     setError(null)
+    setData(null) // Limpiar datos anteriores para evitar mostrar data obsoleta
 
     try {
       const response = await UsuariosService.getEstadisticas(rango)
@@ -41,7 +42,7 @@ export const useUsuariosStats = (
 
       setError(errorMessage)
       setIsConnected(false)
-      setData(null) // Limpiar datos anteriores en caso de error
+      setData(null) // Mantener datos limpios en caso de error
 
       console.error(`❌ Error en useUsuariosStats:`, err)
     } finally {
