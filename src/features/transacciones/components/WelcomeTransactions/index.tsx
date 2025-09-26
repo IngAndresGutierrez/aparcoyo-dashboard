@@ -9,8 +9,8 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import Image from "next/image"
-import React, { useState, useEffect } from "react"
-import { toast } from "sonner" // Importar Sonner
+import React, { useState } from "react"
+import { toast } from "sonner"
 import { Transaction } from "../../types/transaction"
 import { usePlatformStats } from "../../hooks/useTransaction"
 
@@ -19,6 +19,13 @@ type PeriodType = "day" | "week" | "month"
 
 // Tipo que espera el backend/hook
 type BackendPeriodType = "daily" | "weekly" | "monthly" | "yearly"
+
+// Props del componente
+interface WelcomeTransactionsProps {
+  rango?: PeriodType
+  onRangoChange?: (rango: PeriodType) => void
+  onTransaccionesChange?: (transacciones: Transaction[]) => void
+}
 
 // Función para mapear entre los dos tipos
 const mapPeriodToBackend = (period: PeriodType): BackendPeriodType => {
@@ -59,7 +66,6 @@ const generateTransactionsCSV = (transactions: Transaction[]): string => {
     throw new Error("No hay transacciones para exportar")
   }
 
-  // Definir headers en español
   const headers = [
     "Número de Factura",
     "Importe",
@@ -67,20 +73,14 @@ const generateTransactionsCSV = (transactions: Transaction[]): string => {
     "Estado",
     "Cliente",
     "Tipo de Transacción",
-    "Importe Numérico", // Para análisis
+    "Importe Numérico",
   ]
 
-  // Mapear datos de transacciones a formato CSV
   const csvData = transactions.map((transaction) => {
-    // Convertir importe a número para análisis
     const importeNumerico =
-      typeof transaction.importe === "number"
-        ? transaction.importe
-        : parseFloat(
-            String(transaction.importe || "0").replace(/[^\d.-]/g, "")
-          ) || 0
+      parseFloat(String(transaction.importe || "0").replace(/[^\d.-]/g, "")) ||
+      0
 
-    // Formatear fecha si es necesario
     const fechaFormateada = transaction.fecha
       ? new Date(transaction.fecha).toLocaleDateString("es-ES", {
           year: "numeric",
@@ -102,14 +102,12 @@ const generateTransactionsCSV = (transactions: Transaction[]): string => {
     }
   })
 
-  // Generar CSV
   const csvRows = [
-    headers.join(","), // Header row
+    headers.join(","),
     ...csvData.map((row) =>
       headers
         .map((header) => {
           const value = row[header as keyof typeof row]
-          // Escapar valores que contienen comas o comillas
           if (
             typeof value === "string" &&
             (value.includes(",") || value.includes('"'))
@@ -139,29 +137,32 @@ const downloadFile = (
   document.body.appendChild(link)
   link.click()
 
-  // Cleanup
   document.body.removeChild(link)
   window.URL.revokeObjectURL(url)
 }
 
-const WelcomeTransactions = () => {
+const WelcomeTransactions = ({
+  onRangoChange,
+  onTransaccionesChange,
+}: WelcomeTransactionsProps) => {
   const [selectedPeriod, setSelectedPeriod] = useState<PeriodType>("month")
   const { loading, transactions, statistics, fetchStatsByPeriod } =
     usePlatformStats({
-      autoFetch: false, // ← Agregar esta línea
+      autoFetch: true, // Cambiar a true para fetch automático
     })
 
-  // Cargar datos iniciales al montar el componente
-  useEffect(() => {
-    fetchStatsByPeriod(mapPeriodToBackend(selectedPeriod))
-  }, [selectedPeriod, fetchStatsByPeriod])
-
-  // Manejar cambio de período
-  const handlePeriodChange = async (period: string) => {
+  // Manejar cambio de período - SIN useEffect, solo setState
+  const handlePeriodChange = (period: string) => {
     const newPeriod = period as PeriodType
     setSelectedPeriod(newPeriod)
-    console.log("🔄 Cambiando período de transacciones a:", newPeriod)
-    await fetchStatsByPeriod(mapPeriodToBackend(newPeriod))
+    onRangoChange?.(newPeriod)
+
+    fetchStatsByPeriod(mapPeriodToBackend(newPeriod))
+
+    // Notificar inmediatamente si hay transacciones
+    if (transactions && onTransaccionesChange) {
+      onTransaccionesChange(transactions)
+    }
   }
 
   // Obtener el label actual basado en el período seleccionado
@@ -172,23 +173,14 @@ const WelcomeTransactions = () => {
   // Función de descarga de reportes
   const handleDownloadReport = async () => {
     try {
-      console.log(
-        "Iniciando descarga de reporte de transacciones para:",
-        selectedPeriod
-      )
-      console.log("Transacciones disponibles:", transactions?.length || 0)
-
-      // Si no hay transacciones cargadas, cargarlas primero
       if (!transactions || transactions.length === 0) {
         const loadingToast = toast.loading("Cargando transacciones...", {
           description: "Obteniendo datos de transacciones",
         })
 
         await fetchStatsByPeriod(mapPeriodToBackend(selectedPeriod))
-
         toast.dismiss(loadingToast)
 
-        // Verificar nuevamente después de cargar
         if (!transactions || transactions.length === 0) {
           toast.error("No hay datos", {
             description:
@@ -198,7 +190,6 @@ const WelcomeTransactions = () => {
         }
       }
 
-      // Mostrar loading para generación
       const generatingToast = toast.loading(
         "Generando reporte de transacciones...",
         {
@@ -206,7 +197,6 @@ const WelcomeTransactions = () => {
         }
       )
 
-      // Verificar que tengamos transacciones para procesar
       if (transactions.length === 0) {
         toast.dismiss(generatingToast)
         toast.error("No hay datos", {
@@ -216,14 +206,9 @@ const WelcomeTransactions = () => {
         return
       }
 
-      // Generar estadísticas adicionales
       const totalTransacciones = transactions.length
-
-      // Calcular estadísticas financieras
       const importesNumericos = transactions.map((t) => {
-        return typeof t.importe === "number"
-          ? t.importe
-          : parseFloat(String(t.importe || "0").replace(/[^\d.-]/g, "")) || 0
+        return parseFloat(String(t.importe || "0").replace(/[^\d.-]/g, "")) || 0
       })
 
       const totalImporte = importesNumericos.reduce(
@@ -234,14 +219,12 @@ const WelcomeTransactions = () => {
       const importeMaximo = Math.max(...importesNumericos)
       const importeMinimo = Math.min(...importesNumericos)
 
-      // Estadísticas por estado
       const estadosCounts = transactions.reduce((acc, t) => {
         const estado = t.estado || "Sin estado"
         acc[estado] = (acc[estado] || 0) + 1
         return acc
       }, {} as Record<string, number>)
 
-      // Estadísticas por tipo
       const tiposCounts = transactions.reduce((acc, t) => {
         const tipo = t.tipo || "Sin tipo"
         acc[tipo] = (acc[tipo] || 0) + 1
@@ -250,7 +233,6 @@ const WelcomeTransactions = () => {
 
       const clientesUnicos = new Set(transactions.map((t) => t.cliente)).size
 
-      // Agregar resumen al inicio del CSV
       const resumenData = [
         { Métrica: "Período del reporte", Valor: currentPeriodLabel },
         {
@@ -292,22 +274,21 @@ const WelcomeTransactions = () => {
           })}`,
         },
         { Métrica: "Clientes únicos", Valor: clientesUnicos.toString() },
-        { Métrica: "", Valor: "" }, // Fila vacía como separador
+        { Métrica: "", Valor: "" },
         { Métrica: "ESTADÍSTICAS POR ESTADO", Valor: "" },
         ...Object.entries(estadosCounts).map(([estado, count]) => ({
           Métrica: `Estado: ${estado}`,
           Valor: count.toString(),
         })),
-        { Métrica: "", Valor: "" }, // Fila vacía como separador
+        { Métrica: "", Valor: "" },
         { Métrica: "ESTADÍSTICAS POR TIPO", Valor: "" },
         ...Object.entries(tiposCounts).map(([tipo, count]) => ({
           Métrica: `Tipo: ${tipo}`,
           Valor: count.toString(),
         })),
-        { Métrica: "", Valor: "" }, // Fila vacía como separador
+        { Métrica: "", Valor: "" },
       ]
 
-      // Agregar estadísticas de la plataforma si están disponibles
       if (statistics) {
         resumenData.push(
           { Métrica: "ESTADÍSTICAS DE PLATAFORMA", Valor: "" },
@@ -347,18 +328,16 @@ const WelcomeTransactions = () => {
             Métrica: "Cambio porcentual",
             Valor: `${statistics.percentageChange?.toFixed(2) || "0"}%`,
           },
-          { Métrica: "", Valor: "" } // Fila vacía como separador
+          { Métrica: "", Valor: "" }
         )
       }
 
-      // Generar nombre de archivo
       const timestamp = new Date()
         .toISOString()
         .slice(0, 19)
         .replace(/[:-]/g, "")
       const filename = `reporte_transacciones_${selectedPeriod}_${timestamp}.csv`
 
-      // Generar CSV con resumen + datos detallados
       const resumenCSV = resumenData
         .map((row) => `${row.Métrica},${row.Valor}`)
         .join("\n")
@@ -366,32 +345,14 @@ const WelcomeTransactions = () => {
       const transaccionesCSV = generateTransactionsCSV(transactions)
       const finalCSV = resumenCSV + "\n" + transaccionesCSV
 
-      // Descargar archivo
       downloadFile(finalCSV, filename, "text/csv")
-
-      // Cerrar loading toast
       toast.dismiss(generatingToast)
 
-      // Toast de éxito
       toast.success("Reporte generado", {
         description: `Se descargó "${filename}" con ${totalTransacciones} transacciones para ${currentPeriodLabel.toLowerCase()}`,
         duration: 5000,
       })
-
-      console.log("Reporte de transacciones generado:", {
-        filename,
-        totalTransacciones,
-        período: selectedPeriod,
-        estadísticas: {
-          totalImporte,
-          importePromedio,
-          clientesUnicos,
-          estadosCounts,
-          tiposCounts,
-        },
-      })
     } catch (error) {
-      console.error("Error generando reporte de transacciones:", error)
       toast.error("Error al generar reporte", {
         description:
           error instanceof Error
@@ -407,7 +368,6 @@ const WelcomeTransactions = () => {
       <h1 className="font-semibold text-2xl">Transacciones</h1>
 
       <div className="flex flex-row gap-3 mt-4">
-        {/* Select de período */}
         <Select
           value={selectedPeriod}
           onValueChange={handlePeriodChange}
@@ -445,7 +405,6 @@ const WelcomeTransactions = () => {
           </SelectContent>
         </Select>
 
-        {/* Botón de descarga con funcionalidad completa */}
         <Button
           variant="outline"
           className="w-46 h-11 rounded-full"
@@ -463,14 +422,12 @@ const WelcomeTransactions = () => {
         </Button>
       </div>
 
-      {/* Info de debug/estado */}
       {transactions && transactions.length > 0 && !loading && (
         <div className="mt-4 text-xs text-muted-foreground">
           {transactions.length} transacciones disponibles para reporte
         </div>
       )}
 
-      {/* Mostrar estadísticas básicas si están disponibles */}
       {statistics && !loading && (
         <div className="mt-4 text-xs text-muted-foreground">
           Ingresos netos: $
