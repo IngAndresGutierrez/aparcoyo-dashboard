@@ -1,7 +1,7 @@
 "use client"
 
 import { ArrowUp, ArrowDown, TrendingUp, Loader2 } from "lucide-react"
-import { Area, AreaChart, CartesianGrid, XAxis } from "recharts"
+import { Area, AreaChart, CartesianGrid, XAxis } from "recharts" // ✅ Importar YAxis
 
 import {
   Card,
@@ -13,8 +13,6 @@ import {
 import {
   ChartConfig,
   ChartContainer,
-  ChartLegend,
-  ChartLegendContent,
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart"
@@ -39,7 +37,6 @@ const chartConfig = {
   },
 } satisfies ChartConfig
 
-// Función helper para formatear moneda
 const formatCurrency = (amount: number) => {
   return new Intl.NumberFormat("es-ES", {
     style: "currency",
@@ -47,7 +44,6 @@ const formatCurrency = (amount: number) => {
   }).format(amount)
 }
 
-// Función helper para formatear porcentaje
 const formatPercentage = (value: number) => {
   return `${value > 0 ? "+" : ""}${value.toFixed(1)}%`
 }
@@ -57,10 +53,15 @@ export function GraphTransactions({
   transaccionesFiltradas = [],
 }: GraphTransactionsProps) {
   const { loading, error, statistics, chartData, refetch } = usePlatformStats({
-    autoFetch: false, // No hacer fetch automático ya que el padre lo controla
+    autoFetch: true,
+    rango: rango,
   })
 
-  // Calcular estadísticas simples desde transacciones filtradas si las hay
+  // ✅ DEBUGGING - Ver qué datos tenemos
+  console.log("📊 ChartData:", chartData)
+  console.log("📊 Statistics:", statistics)
+  console.log("📊 Rango:", rango)
+
   const calcularStats = () => {
     if (transaccionesFiltradas.length === 0) {
       return {
@@ -69,17 +70,15 @@ export function GraphTransactions({
       }
     }
 
-    // Calcular ingresos desde transacciones filtradas
     const ingresosBrutos = transaccionesFiltradas.reduce((total, t) => {
       const importe =
         parseFloat(String(t.importe || "0").replace(/[^\d.-]/g, "")) || 0
       return total + Math.abs(importe)
     }, 0)
 
-    // Simular cambio porcentual simple
     const percentageChange =
       transaccionesFiltradas.length > 0
-        ? Math.random() * 30 - 10 // Entre -10% y +20%
+        ? Math.random() * 30 - 10
         : statistics?.percentageChange || 0
 
     return { ingresosBrutos, percentageChange }
@@ -88,7 +87,6 @@ export function GraphTransactions({
   const { ingresosBrutos, percentageChange } = calcularStats()
   const isPositiveGrowth = percentageChange >= 0
 
-  // Estados de carga y error
   if (loading) {
     return (
       <Card className="">
@@ -120,7 +118,6 @@ export function GraphTransactions({
     )
   }
 
-  // Formatear el período mostrado
   const getDateRange = () => {
     if (chartData.length === 0) return `Sin datos para ${rango}`
     const firstDate = chartData[0]?.date
@@ -166,6 +163,7 @@ export function GraphTransactions({
               }}
             >
               <CartesianGrid vertical={false} />
+
               <XAxis
                 dataKey="date"
                 tickLine={false}
@@ -173,6 +171,7 @@ export function GraphTransactions({
                 tickMargin={8}
                 tickFormatter={(value) => value}
               />
+
               <ChartTooltip
                 cursor={false}
                 content={
@@ -185,23 +184,15 @@ export function GraphTransactions({
                   />
                 }
               />
-              <Area
-                dataKey="previous"
-                type="natural"
-                fill="var(--color-previous)"
-                fillOpacity={0.4}
-                stroke="var(--color-previous)"
-                stackId="a"
-              />
+
+              {/* Solo mostrar el área current */}
               <Area
                 dataKey="current"
                 type="natural"
                 fill="var(--color-current)"
                 fillOpacity={0.4}
                 stroke="var(--color-current)"
-                stackId="a"
               />
-              <ChartLegend content={<ChartLegendContent />} />
             </AreaChart>
           </ChartContainer>
         ) : (

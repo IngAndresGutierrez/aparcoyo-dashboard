@@ -9,25 +9,20 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import Image from "next/image"
-import React, { useState } from "react"
+import React, { useEffect, useState, useMemo } from "react"
 import { toast } from "sonner"
 import { Transaction } from "../../types/transaction"
 import { usePlatformStats } from "../../hooks/useTransaction"
 
-// Tipo para los períodos de la UI
 type PeriodType = "day" | "week" | "month"
-
-// Tipo que espera el backend/hook
 type BackendPeriodType = "daily" | "weekly" | "monthly" | "yearly"
 
-// Props del componente
 interface WelcomeTransactionsProps {
   rango?: PeriodType
   onRangoChange?: (rango: PeriodType) => void
   onTransaccionesChange?: (transacciones: Transaction[]) => void
 }
 
-// Función para mapear entre los dos tipos
 const mapPeriodToBackend = (period: PeriodType): BackendPeriodType => {
   switch (period) {
     case "day":
@@ -41,7 +36,6 @@ const mapPeriodToBackend = (period: PeriodType): BackendPeriodType => {
   }
 }
 
-// Opciones de período actualizadas
 const periodOptions = [
   {
     value: "day" as const,
@@ -60,7 +54,41 @@ const periodOptions = [
   },
 ]
 
-// Utilidades para generar CSV de transacciones
+const filtrarTransaccionesPorRango = (
+  transacciones: Transaction[],
+  periodo: PeriodType
+): Transaction[] => {
+  if (!transacciones || transacciones.length === 0) return []
+
+  const hoy = new Date()
+  hoy.setHours(0, 0, 0, 0)
+
+  return transacciones.filter((t) => {
+    if (!t.fecha) return false
+
+    const fechaTransaccion = new Date(t.fecha)
+    fechaTransaccion.setHours(0, 0, 0, 0)
+
+    switch (periodo) {
+      case "day":
+        return fechaTransaccion.getTime() === hoy.getTime()
+
+      case "week":
+        const hace7Dias = new Date(hoy)
+        hace7Dias.setDate(hoy.getDate() - 7)
+        return fechaTransaccion >= hace7Dias && fechaTransaccion <= hoy
+
+      case "month":
+        const hace30Dias = new Date(hoy)
+        hace30Dias.setDate(hoy.getDate() - 30)
+        return fechaTransaccion >= hace30Dias && fechaTransaccion <= hoy
+
+      default:
+        return true
+    }
+  })
+}
+
 const generateTransactionsCSV = (transactions: Transaction[]): string => {
   if (!transactions || transactions.length === 0) {
     throw new Error("No hay transacciones para exportar")
@@ -130,64 +158,61 @@ const downloadFile = (
 ) => {
   const blob = new Blob([content], { type: contentType })
   const url = window.URL.createObjectURL(blob)
-
   const link = document.createElement("a")
   link.href = url
   link.download = filename
   document.body.appendChild(link)
   link.click()
-
   document.body.removeChild(link)
   window.URL.revokeObjectURL(url)
 }
 
 const WelcomeTransactions = ({
+  rango = "month",
   onRangoChange,
   onTransaccionesChange,
 }: WelcomeTransactionsProps) => {
-  const [selectedPeriod, setSelectedPeriod] = useState<PeriodType>("month")
+  const [selectedPeriod, setSelectedPeriod] = useState<PeriodType>(rango)
+
   const { loading, transactions, statistics, fetchStatsByPeriod } =
     usePlatformStats({
-      autoFetch: true, // Cambiar a true para fetch automático
+      autoFetch: true,
+      rango: selectedPeriod,
     })
 
-  // Manejar cambio de período - SIN useEffect, solo setState
+  const transaccionesFiltradas = useMemo(() => {
+    return filtrarTransaccionesPorRango(transactions || [], selectedPeriod)
+  }, [transactions, selectedPeriod])
+
+  useEffect(() => {
+    if (transaccionesFiltradas.length > 0 && onTransaccionesChange) {
+      onTransaccionesChange(transaccionesFiltradas)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [transaccionesFiltradas.length])
+
   const handlePeriodChange = (period: string) => {
     const newPeriod = period as PeriodType
     setSelectedPeriod(newPeriod)
-    onRangoChange?.(newPeriod)
+
+    if (onRangoChange) {
+      onRangoChange(newPeriod)
+    }
 
     fetchStatsByPeriod(mapPeriodToBackend(newPeriod))
-
-    // Notificar inmediatamente si hay transacciones
-    if (transactions && onTransaccionesChange) {
-      onTransaccionesChange(transactions)
-    }
   }
 
-  // Obtener el label actual basado en el período seleccionado
   const currentPeriodLabel =
     periodOptions.find((option) => option.value === selectedPeriod)?.label ||
     "Últimos 30 días"
 
-  // Función de descarga de reportes
   const handleDownloadReport = async () => {
     try {
-      if (!transactions || transactions.length === 0) {
-        const loadingToast = toast.loading("Cargando transacciones...", {
-          description: "Obteniendo datos de transacciones",
+      if (!transaccionesFiltradas || transaccionesFiltradas.length === 0) {
+        toast.error("No hay datos", {
+          description: "No se encontraron transacciones para este período",
         })
-
-        await fetchStatsByPeriod(mapPeriodToBackend(selectedPeriod))
-        toast.dismiss(loadingToast)
-
-        if (!transactions || transactions.length === 0) {
-          toast.error("No hay datos", {
-            description:
-              "No se encontraron transacciones para generar el reporte",
-          })
-          return
-        }
+        return
       }
 
       const generatingToast = toast.loading(
@@ -197,17 +222,8 @@ const WelcomeTransactions = ({
         }
       )
 
-      if (transactions.length === 0) {
-        toast.dismiss(generatingToast)
-        toast.error("No hay datos", {
-          description:
-            "No se encontraron transacciones para generar el reporte",
-        })
-        return
-      }
-
-      const totalTransacciones = transactions.length
-      const importesNumericos = transactions.map((t) => {
+      const totalTransacciones = transaccionesFiltradas.length
+      const importesNumericos = transaccionesFiltradas.map((t) => {
         return parseFloat(String(t.importe || "0").replace(/[^\d.-]/g, "")) || 0
       })
 
@@ -219,19 +235,21 @@ const WelcomeTransactions = ({
       const importeMaximo = Math.max(...importesNumericos)
       const importeMinimo = Math.min(...importesNumericos)
 
-      const estadosCounts = transactions.reduce((acc, t) => {
+      const estadosCounts = transaccionesFiltradas.reduce((acc, t) => {
         const estado = t.estado || "Sin estado"
         acc[estado] = (acc[estado] || 0) + 1
         return acc
       }, {} as Record<string, number>)
 
-      const tiposCounts = transactions.reduce((acc, t) => {
+      const tiposCounts = transaccionesFiltradas.reduce((acc, t) => {
         const tipo = t.tipo || "Sin tipo"
         acc[tipo] = (acc[tipo] || 0) + 1
         return acc
       }, {} as Record<string, number>)
 
-      const clientesUnicos = new Set(transactions.map((t) => t.cliente)).size
+      const clientesUnicos = new Set(
+        transaccionesFiltradas.map((t) => t.cliente)
+      ).size
 
       const resumenData = [
         { Métrica: "Período del reporte", Valor: currentPeriodLabel },
@@ -342,7 +360,7 @@ const WelcomeTransactions = ({
         .map((row) => `${row.Métrica},${row.Valor}`)
         .join("\n")
 
-      const transaccionesCSV = generateTransactionsCSV(transactions)
+      const transaccionesCSV = generateTransactionsCSV(transaccionesFiltradas)
       const finalCSV = resumenCSV + "\n" + transaccionesCSV
 
       downloadFile(finalCSV, filename, "text/csv")
@@ -416,17 +434,19 @@ const WelcomeTransactions = ({
             alt="download"
             width={20}
             height={20}
-            className=""
           />
           {loading ? "Cargando..." : "Descargar reporte"}
         </Button>
       </div>
 
-      {transactions && transactions.length > 0 && !loading && (
-        <div className="mt-4 text-xs text-muted-foreground">
-          {transactions.length} transacciones disponibles para reporte
-        </div>
-      )}
+      {transaccionesFiltradas &&
+        transaccionesFiltradas.length > 0 &&
+        !loading && (
+          <div className="mt-4 text-xs text-muted-foreground">
+            {transaccionesFiltradas.length} transacciones disponibles para
+            reporte
+          </div>
+        )}
 
       {statistics && !loading && (
         <div className="mt-4 text-xs text-muted-foreground">
