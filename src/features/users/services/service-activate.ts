@@ -2,7 +2,7 @@
 // services/activateUser.ts - CORREGIDO
 import axios from "axios"
 
-const API_BASE_URL = "https://aparcoyo-back.onrender.com"
+const API_BASE_URL = "https://kns.aparcoyo.com"
 
 export const activateUserService = async (
   userId: string | number

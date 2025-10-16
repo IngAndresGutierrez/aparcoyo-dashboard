@@ -2,7 +2,7 @@
 // hooks/useMetrics.ts - CON FILTRADO DEL LADO DEL CLIENTE
 import { useState, useEffect, useCallback } from "react"
 
-const API_BASE_URL = "https://aparcoyo-back.onrender.com"
+const API_BASE_URL = "https://kns.aparcoyo.com"
 
 export type TimeFilter = "day" | "week" | "month"
 

@@ -5,7 +5,7 @@
 
 // const ButtonGoogleLogin = () => {
 //   const handleGoogleLogin = () => {
-//     window.location.href = "https://aparcoyo-back.onrender.com/apa/auth/google"
+//     window.location.href = "https://kns.aparcoyo.com/apa/auth/google"
 //   }
 
 //   return (

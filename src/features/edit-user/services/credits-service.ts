@@ -7,7 +7,7 @@ import {
   EditarBalanceRequest,
 } from "../types/credits-edit"
 
-const API_BASE_URL = "https://aparcoyo-back.onrender.com"
+const API_BASE_URL = "https://kns.aparcoyo.com"
 
 class CreditosService {
   private async fetchWithErrorHandling<T>(

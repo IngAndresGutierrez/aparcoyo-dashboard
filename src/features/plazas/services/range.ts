@@ -3,7 +3,7 @@
 import axios from "axios"
 import { EstadisticasBackendResponse } from "../types/range"
 
-const BASE_URL = "https://aparcoyo-back.onrender.com/apa"
+const BASE_URL = "https://kns.aparcoyo.com/apa"
 
 export const getPlazasStatsByRangeServiceAlt = async (
   rango: "dia" | "semana" | "mes",

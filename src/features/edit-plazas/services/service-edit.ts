@@ -11,7 +11,7 @@ interface PlazaModalError {
 }
 
 const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "https://aparcoyo-back.onrender.com"
+  process.env.NEXT_PUBLIC_API_URL || "https://kns.aparcoyo.com"
 
 function getHeaders(): Record<string, string> {
   const headers: Record<string, string> = {

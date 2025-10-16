@@ -51,7 +51,7 @@ const UserPlazas: React.FC<UserPlazasProps> = ({ userId }) => {
         console.log(`🏢 Obteniendo plazas del usuario ${userId}...`)
 
         const response = await fetch(
-          `https://aparcoyo-back.onrender.com/apa/plazas/usuario/${userId}`,
+          `https://kns.aparcoyo.com/apa/plazas/usuario/${userId}`,
           {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -131,7 +131,7 @@ const UserPlazas: React.FC<UserPlazasProps> = ({ userId }) => {
       console.log(`🗑️ Eliminando plaza: ${plaza.id}`)
 
       const response = await fetch(
-        `https://aparcoyo-back.onrender.com/apa/plazas/${plaza.id}`,
+        `https://kns.aparcoyo.com/apa/plazas/${plaza.id}`,
         {
           method: "DELETE",
           headers: {

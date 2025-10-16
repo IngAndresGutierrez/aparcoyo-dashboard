@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react"
 import { TimeFilter } from "./useMetrics"
 
-const API_BASE_URL = "https://aparcoyo-back.onrender.com"
+const API_BASE_URL = "https://kns.aparcoyo.com"
 
 // Cache para datos financieros
 let financialCache: {

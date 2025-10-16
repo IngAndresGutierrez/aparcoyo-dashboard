@@ -4,7 +4,7 @@ import axios from "axios"
 import { EstadisticasReservasResponse } from "../types/reservas-range"
 import { ReservasTableResponse } from "../types"
 
-const BASE_URL = "https://aparcoyo-back.onrender.com/apa/reservas"
+const BASE_URL = "https://kns.aparcoyo.com/apa/reservas"
 
 // Tipo para la respuesta completa del API
 interface ApiResponse {

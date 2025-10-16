@@ -4,7 +4,7 @@ import {
   ReportesResponse,
 } from "../types/reports-table"
 
-const BASE_URL = "https://aparcoyo-back.onrender.com"
+const BASE_URL = "https://kns.aparcoyo.com"
 
 class ReportesError extends Error {
   public code?: string
@@ -74,9 +74,9 @@ export class ReportesService {
     tipoReporte?: string
   ): Promise<ReportesResponse> {
     const params = new URLSearchParams()
-    
+
     if (filtroFecha) params.append("periodo", filtroFecha)
-    
+
     // ✨ NUEVO: Agregar tipoReporte si se proporciona
     if (tipoReporte) params.append("tipoReporte", tipoReporte)
 

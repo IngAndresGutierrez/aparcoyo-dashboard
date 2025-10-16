@@ -1,8 +1,10 @@
+/* eslint-disable @next/next/no-img-element */
 "use client"
 
 import { ColumnDef, RowData } from "@tanstack/react-table"
-import { MoreHorizontal, Loader2, Edit, Trash2 } from "lucide-react" // ✨ AGREGADOS Edit y Trash2
+import { MoreHorizontal, Loader2, Edit, Trash2 } from "lucide-react"
 import Image from "next/image"
+import { useState } from "react"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -27,8 +29,77 @@ declare module "@tanstack/react-table" {
 interface ColumnProps {
   onEliminarPlaza: (id: string, nombre: string) => Promise<void>
   deletingId: string | null
-  // Agregar función de navegación opcional
   onEditarPlaza?: (id: string) => void
+}
+
+// Componente para la imagen de la plaza
+const PlazaImage = ({ url, alt }: { url?: string; alt: string }) => {
+  const [error, setError] = useState(false)
+
+  if (!url || error) {
+    return (
+      <Image
+        src="/home/home-03.svg"
+        alt="plaza"
+        width={20}
+        height={20}
+        className="w-5 h-5"
+      />
+    )
+  }
+
+  return (
+    <img
+      src={url}
+      alt={alt}
+      className="w-full h-full object-cover"
+      onError={() => {
+        console.log("❌ Error al cargar imagen de plaza:", url)
+        setError(true)
+      }}
+      onLoad={() => {
+        console.log("✅ Imagen de plaza cargada:", url)
+      }}
+    />
+  )
+}
+
+// Componente para el avatar del propietario
+const PropietarioAvatar = ({
+  foto,
+  nombre,
+}: {
+  foto?: string
+  nombre: string
+}) => {
+  const [error, setError] = useState(false)
+
+  if (!foto || error) {
+    return (
+      <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+        <span className="text-sm font-medium text-blue-600">
+          {getInitial(nombre)}
+        </span>
+      </div>
+    )
+  }
+
+  return (
+    <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0">
+      <img
+        src={foto}
+        alt={nombre}
+        className="w-full h-full object-cover"
+        onError={() => {
+          console.log("❌ Error al cargar foto de propietario:", foto)
+          setError(true)
+        }}
+        onLoad={() => {
+          console.log("✅ Foto de propietario cargada:", foto)
+        }}
+      />
+    </div>
+  )
 }
 
 export const createColumns = ({
@@ -40,41 +111,46 @@ export const createColumns = ({
     id: "select",
     header: () => <input type="checkbox" />,
     cell: () => <input type="checkbox" />,
-    // Sin meta.responsive para que siempre sea visible
   },
   {
     accessorKey: "direccion",
     header: "Plaza",
-    cell: ({ row }) => (
-      <div className="flex items-center gap-3">
-        <div className="w-10 h-10 bg-gray-200 rounded-lg flex items-center justify-center flex-shrink-0">
-          <Image
-            src="/home/home-03.svg"
-            alt="plaza"
-            width={20}
-            height={20}
-            className="w-5 h-5"
-          />
-        </div>
-        <div className="flex flex-col">
-          <span className="font-medium text-sm text-gray-900">
-            {row.original.direccion}
-          </span>
-          <div className="flex items-center gap-1">
-            <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
-            <span className="text-xs text-gray-500 capitalize">
-              {formatPlazaType(row.original.tipo)}
+    cell: ({ row }) => {
+      const plaza = row.original
+      const primeraImagen = plaza.archivos?.[0]?.url
+
+      console.log("🏠 Plaza:", {
+        direccion: plaza.direccion,
+        archivos: plaza.archivos,
+        primeraImagen: primeraImagen,
+      })
+
+      return (
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-gray-200 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden">
+            <PlazaImage
+              url={primeraImagen}
+              alt={plaza.direccion}
+            />
+          </div>
+          <div className="flex flex-col">
+            <span className="font-medium text-sm text-gray-900">
+              {plaza.direccion}
             </span>
+            <div className="flex items-center gap-1">
+              <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+              <span className="text-xs text-gray-500 capitalize">
+                {formatPlazaType(plaza.tipo)}
+              </span>
+            </div>
           </div>
         </div>
-      </div>
-    ),
-    // Sin meta.responsive para que siempre sea visible
+      )
+    },
   },
   {
     header: "Reservas",
     cell: () => <span className="text-sm font-medium">0</span>,
-    // Sin meta.responsive para que siempre sea visible
   },
   {
     accessorKey: "precio",
@@ -84,23 +160,14 @@ export const createColumns = ({
         {formatPrice(row.original.precio)}
       </span>
     ),
-    meta: { responsive: true }, // Ocultar en responsive
+    meta: { responsive: true },
   },
   {
     accessorKey: "disponibilidadDesde",
     header: "Fecha de publicación",
     cell: ({ row }) => {
       const fecha = row.original.disponibilidadDesde
-      console.log("🔍 Debug fecha:", {
-        fechaRaw: fecha,
-        fechaParsed: new Date(fecha),
-        fechaFormateada: new Date(fecha).toLocaleDateString("es-ES", {
-          day: "2-digit",
-          month: "short",
-          year: "numeric",
-        }),
-        zonaHoraria: Intl.DateTimeFormat().resolvedOptions().timeZone,
-      })
+
       if (!fecha) {
         return <span className="text-sm text-gray-400">Sin fecha</span>
       }
@@ -125,29 +192,37 @@ export const createColumns = ({
         return <span className="text-sm text-red-400">Error en fecha</span>
       }
     },
-    meta: { responsive: true }, // Ocultar en responsive
+    meta: { responsive: true },
   },
   {
     accessorKey: "propietario",
     header: "Propietario",
-    cell: ({ row }) => (
-      <div className="flex items-center gap-2">
-        <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-          <span className="text-sm font-medium text-blue-600">
-            {getInitial(row.original.propietario.nombre)}
-          </span>
+    cell: ({ row }) => {
+      const propietario = row.original.propietario
+
+      console.log("👤 Propietario:", {
+        nombre: propietario.nombre,
+        foto: propietario.foto,
+      })
+
+      return (
+        <div className="flex items-center gap-2">
+          <PropietarioAvatar
+            foto={propietario.foto}
+            nombre={propietario.nombre}
+          />
+          <div className="flex flex-col">
+            <span className="text-sm font-medium text-gray-900">
+              {propietario.nombre}
+            </span>
+            <span className="text-xs text-gray-500 truncate max-w-[120px]">
+              {propietario.email}
+            </span>
+          </div>
         </div>
-        <div className="flex flex-col">
-          <span className="text-sm font-medium text-gray-900">
-            {row.original.propietario.nombre}
-          </span>
-          <span className="text-xs text-gray-500 truncate max-w-[120px]">
-            {row.original.propietario.email}
-          </span>
-        </div>
-      </div>
-    ),
-    meta: { responsive: true }, // Ocultar en responsive
+      )
+    },
+    meta: { responsive: true },
   },
   {
     id: "actions",
@@ -155,7 +230,6 @@ export const createColumns = ({
       const plaza = row.original
       const isDeleting = deletingId === plaza.id
 
-      // Función para manejar la navegación a editar
       const handleEditClick = () => {
         if (onEditarPlaza) {
           onEditarPlaza(plaza.id)
@@ -178,7 +252,6 @@ export const createColumns = ({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            {/* ✨ ITEM EDITAR CON ICONO */}
             <DropdownMenuItem
               disabled={isDeleting}
               onClick={handleEditClick}
@@ -188,7 +261,6 @@ export const createColumns = ({
               <span className="text-gray-700">Editar plaza</span>
             </DropdownMenuItem>
 
-            {/* ✨ ITEM ELIMINAR CON ICONO */}
             <DropdownMenuItem
               className="flex items-center gap-2 text-red-600 focus:text-red-600"
               onClick={() => onEliminarPlaza(plaza.id, plaza.direccion)}
@@ -210,12 +282,11 @@ export const createColumns = ({
         </DropdownMenu>
       )
     },
-    meta: { responsive: true }, // Ocultar en responsive
+    meta: { responsive: true },
   },
 ]
 
-// VERSIÓN DE COMPATIBILIDAD (si no quieres cambiar mucho código)
-// Exporta las columnas por defecto sin funcionalidad de eliminar
+// VERSIÓN DE COMPATIBILIDAD
 export const columns: ColumnDef<Plaza>[] = createColumns({
   onEliminarPlaza: async (id: string, nombre: string) => {
     console.log(
@@ -225,5 +296,4 @@ export const columns: ColumnDef<Plaza>[] = createColumns({
   deletingId: null,
 })
 
-// EXPORTAR TAMBIÉN LA FUNCIÓN PARA BACKWARD COMPATIBILITY
 export default createColumns

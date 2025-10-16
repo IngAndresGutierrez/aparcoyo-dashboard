@@ -1,11 +1,10 @@
+/* eslint-disable @next/next/no-img-element */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client"
 
 import * as React from "react"
-//import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { User } from "lucide-react"
-import Image from "next/image"
 
 interface UserHeaderProps {
   userId: string
@@ -15,43 +14,6 @@ const UserHeader: React.FC<UserHeaderProps> = ({ userId }) => {
   const [usuario, setUsuario] = React.useState<any>(null)
   const [loading, setLoading] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
-  const [photoUrl, setPhotoUrl] = React.useState<string | null>(null)
-  const [photoLoading, setPhotoLoading] = React.useState(true)
-
-  // Función para obtener la foto de perfil
-  const fetchUserPhoto = async (userId: string) => {
-    try {
-      const token =
-        localStorage.getItem("token") || localStorage.getItem("authToken")
-
-      console.log(`🖼️ Obteniendo foto para usuario: ${userId}`)
-
-      const response = await fetch(
-        `https://aparcoyo-back.onrender.com/apa/archivos/perfil/foto/${userId}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      )
-
-      if (response.ok) {
-        // Si la respuesta es exitosa, creamos una URL del blob
-        const blob = await response.blob()
-        const imageUrl = URL.createObjectURL(blob)
-        setPhotoUrl(imageUrl)
-        console.log(`✅ Foto obtenida exitosamente`)
-      } else {
-        console.log(`📷 No se encontró foto de perfil (${response.status})`)
-        setPhotoUrl(null)
-      }
-    } catch (err) {
-      console.error("❌ Error al obtener foto:", err)
-      setPhotoUrl(null)
-    } finally {
-      setPhotoLoading(false)
-    }
-  }
 
   React.useEffect(() => {
     const fetchUser = async () => {
@@ -60,13 +22,10 @@ const UserHeader: React.FC<UserHeaderProps> = ({ userId }) => {
           localStorage.getItem("token") || localStorage.getItem("authToken")
 
         console.log(`🔍 INICIANDO fetch para usuario: ${userId}`)
-        console.log(`🔑 Token disponible: ${token ? "SÍ" : "NO"}`)
-        console.log(
-          `🔗 URL: https://aparcoyo-back.onrender.com/apa/usuarios/${userId}`
-        )
 
-        const response = await fetch(
-          `https://aparcoyo-back.onrender.com/apa/usuarios/${userId}`,
+        // Primero intentar GET individual
+        const responseIndividual = await fetch(
+          `https://kns.aparcoyo.com/apa/usuarios/${userId}`,
           {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -75,26 +34,65 @@ const UserHeader: React.FC<UserHeaderProps> = ({ userId }) => {
           }
         )
 
-        console.log(`📨 Response status: ${response.status}`)
-        console.log(`📨 Response OK: ${response.ok}`)
+        console.log(`📨 Response status: ${responseIndividual.status}`)
 
-        if (!response.ok) {
-          const errorText = await response.text()
+        if (!responseIndividual.ok) {
+          const errorText = await responseIndividual.text()
           console.error(`❌ Response error: ${errorText}`)
-          throw new Error(`Error ${response.status}: ${response.statusText}`)
+          throw new Error(
+            `Error ${responseIndividual.status}: ${responseIndividual.statusText}`
+          )
         }
 
-        const data = await response.json()
-        console.log(`✅ Usuario obtenido:`, data)
+        const dataIndividual = await responseIndividual.json()
+        const usuarioIndividual = dataIndividual.data || dataIndividual
 
-        setUsuario(data.data || data)
+        console.log(`✅ Usuario obtenido (individual):`, usuarioIndividual)
+        console.log(
+          `🖼️ Foto del usuario (individual):`,
+          usuarioIndividual?.foto
+        )
 
-        // Después de obtener el usuario, obtenemos su foto
-        await fetchUserPhoto(userId)
+        // Si no tiene foto, intentar obtenerla desde la lista
+        if (!usuarioIndividual.foto) {
+          console.log(`🔄 No hay foto en GET individual, consultando lista...`)
+
+          try {
+            const responseLista = await fetch(
+              `https://kns.aparcoyo.com/apa/usuarios`,
+              {
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                  "Content-Type": "application/json",
+                },
+              }
+            )
+
+            if (responseLista.ok) {
+              const dataLista = await responseLista.json()
+              const usuarios = dataLista.data || dataLista
+
+              // Buscar el usuario en la lista
+              const usuarioConFoto = Array.isArray(usuarios)
+                ? usuarios.find((u: any) => u.uid === userId)
+                : null
+
+              if (usuarioConFoto?.foto) {
+                console.log(`✅ Foto encontrada en lista:`, usuarioConFoto.foto)
+                usuarioIndividual.foto = usuarioConFoto.foto
+              } else {
+                console.log(`⚠️ Usuario no encontrado en lista o sin foto`)
+              }
+            }
+          } catch (err) {
+            console.warn(`⚠️ Error al obtener lista (no crítico):`, err)
+          }
+        }
+
+        setUsuario(usuarioIndividual)
       } catch (err) {
         console.error("❌ Error completo:", err)
         setError(err instanceof Error ? err.message : "Error desconocido")
-        setPhotoLoading(false)
       } finally {
         console.log("🏁 Finalizando fetch")
         setLoading(false)
@@ -107,18 +105,8 @@ const UserHeader: React.FC<UserHeaderProps> = ({ userId }) => {
     } else {
       console.log("❌ No hay userId")
       setLoading(false)
-      setPhotoLoading(false)
     }
   }, [userId])
-
-  // Cleanup: liberar la URL del blob cuando el componente se desmonte
-  React.useEffect(() => {
-    return () => {
-      if (photoUrl) {
-        URL.revokeObjectURL(photoUrl)
-      }
-    }
-  }, [photoUrl])
 
   if (loading) {
     return (
@@ -151,25 +139,48 @@ const UserHeader: React.FC<UserHeaderProps> = ({ userId }) => {
     )
   }
 
-  // Componente para el avatar
+  // Avatar con foto - construir URL ya que el GET individual no trae el campo foto
   const Avatar = () => {
-    if (photoLoading) {
-      return <Skeleton className="h-16 w-16 rounded-full" />
-    }
+    // Construir URL de foto basada en el patrón que usa el backend
+    const fotoUrl =
+      usuario.foto ||
+      `https://kns.aparcoyo.com/apa/archivos/perfil/foto/${usuario.uid}`
 
-    if (photoUrl) {
+    console.log("🖼️ Intentando cargar foto desde:", fotoUrl)
+    console.log("📋 Usuario completo:", usuario)
+    console.log("🆔 UID del usuario:", usuario.uid)
+    console.log("📸 Campo foto del usuario:", usuario.foto)
+
+    if (usuario.uid) {
       return (
-        <Image
-          width={20}
-          height={20}
-          src={photoUrl}
-          alt={`Foto de ${usuario.nombre || usuario.email}`}
-          className="h-16 w-16 rounded-full object-cover border-2 border-gray-200"
-          onError={() => {
-            console.log("❌ Error al cargar la imagen")
-            setPhotoUrl(null)
-          }}
-        />
+        <div className="h-16 w-16 rounded-full overflow-hidden border-2 border-gray-200 flex-shrink-0">
+          <img
+            src={fotoUrl}
+            alt={`Foto de ${usuario.nombre || usuario.email}`}
+            className="w-full h-full object-cover"
+            onError={(e) => {
+              console.log("❌ Error al cargar la imagen desde:", fotoUrl)
+              console.log("❌ Status de la imagen:", e.currentTarget.complete)
+              const target = e.currentTarget
+              target.style.display = "none"
+              const parent = target.parentElement
+              if (parent) {
+                const initial =
+                  usuario.nombre?.charAt(0)?.toUpperCase() ||
+                  usuario.email?.charAt(0)?.toUpperCase() ||
+                  "U"
+                parent.innerHTML = `
+                  <div class="h-16 w-16 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-xl font-bold">
+                    ${initial}
+                  </div>
+                `
+              }
+            }}
+            onLoad={() => {
+              console.log("✅ Imagen cargada exitosamente desde:", fotoUrl)
+            }}
+          />
+        </div>
       )
     }
 
@@ -187,10 +198,7 @@ const UserHeader: React.FC<UserHeaderProps> = ({ userId }) => {
   return (
     <div className="flex items-center justify-between mb-6">
       <div className="flex items-center space-x-4">
-        {/* Avatar con foto real o fallback */}
         <Avatar />
-
-        {/* Información del usuario */}
         <div>
           <h1 className="text-2xl font-bold">
             {usuario.nombre || "Sin nombre"}
@@ -198,15 +206,6 @@ const UserHeader: React.FC<UserHeaderProps> = ({ userId }) => {
           <p className="text-sm text-muted-foreground">{usuario.email}</p>
         </div>
       </div>
-
-      {/* Botón eliminar */}
-      {/* <Button
-        variant="destructive"
-        size="sm"
-      >
-        <Trash2 className="h-4 w-4 mr-2" />
-        Eliminar
-      </Button> */}
     </div>
   )
 }

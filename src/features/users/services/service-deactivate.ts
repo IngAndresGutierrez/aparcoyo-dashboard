@@ -2,7 +2,7 @@
 // services/deactivateUser.ts
 import axios from "axios"
 
-const API_BASE_URL = "https://aparcoyo-back.onrender.com"
+const API_BASE_URL = "https://kns.aparcoyo.com"
 
 export const deactivateUserService = async (
   userId: string | number
