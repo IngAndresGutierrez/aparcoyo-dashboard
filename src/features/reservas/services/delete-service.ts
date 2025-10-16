@@ -2,7 +2,7 @@
 
 import { DeleteReservaResponse } from "../types/delete"
 
-const API_BASE_URL = "https://aparcoyo-back.onrender.com"
+const API_BASE_URL = "https://kns.aparcoyo.com"
 
 export const reservaService = {
   // ... otros métodos existentes

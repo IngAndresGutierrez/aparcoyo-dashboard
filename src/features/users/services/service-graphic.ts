@@ -7,7 +7,7 @@ import {
   UsuarioEstadisticasResponse,
 } from "../types/graphic"
 
-const API_BASE_URL = "https://aparcoyo-back.onrender.com"
+const API_BASE_URL = "https://kns.aparcoyo.com"
 
 // 🔥 NUEVA FUNCIÓN: Misma lógica que calculateDateFilters
 const calculateStatsDateRange = (rango: RangoEstadisticas) => {

@@ -19,6 +19,7 @@ export interface UsuarioTabla {
   nombre: string
   email: string
   telefono?: string
+  foto?: string | null
   fechaRegistro: string
   estado?: "activo" | "inactivo" | "suspendido"
   // Cambiar estos nombres para coincidir con la API:

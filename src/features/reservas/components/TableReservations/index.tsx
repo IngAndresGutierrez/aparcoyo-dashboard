@@ -199,7 +199,7 @@ const ReservationsTable = () => {
         for (const reserva of selectedReservas) {
           try {
             const response = await fetch(
-              `https://aparcoyo-back.onrender.com/apa/reservas/${reserva.id}`,
+              `https://kns.aparcoyo.com/apa/reservas/${reserva.id}`,
               {
                 method: "DELETE",
                 headers: {
@@ -416,7 +416,7 @@ const ReservationsTable = () => {
         }
 
         const response = await fetch(
-          `https://aparcoyo-back.onrender.com/apa/reservas/${reservationToDelete.id}`,
+          `https://kns.aparcoyo.com/apa/reservas/${reservationToDelete.id}`,
           {
             method: "DELETE",
             headers: {

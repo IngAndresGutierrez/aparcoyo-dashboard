@@ -7,17 +7,19 @@ import {
   UsuariosEstadisticasResponse,
 } from "../types/table"
 
-const API_BASE_URL = "https://aparcoyo-back.onrender.com"
+const API_BASE_URL = "https://kns.aparcoyo.com"
 
 // 🛠️ Interface para usuarios básicos (con UID)
 interface UsuariosBasicosResponse {
   ok: boolean
   data: Array<{
+    fotoPerfil(arg0: string, fotoPerfil: any): unknown
     uid: string
     nombre: string
     email: string
     rol: string
     isActive: boolean
+    foto?: string | null // ← AGREGAR ESTA LÍNEA
   }>
   msg: string | null
   total?: number
@@ -160,6 +162,17 @@ export class UsuariosTablaService {
 
       const basicData: UsuariosBasicosResponse = await basicResponse.json()
 
+      // ✅ AGREGAR ESTOS LOGS:
+      console.log(
+        `🖼️ DATOS BÁSICOS COMPLETOS:`,
+        JSON.stringify(basicData.data[0], null, 2)
+      )
+      console.log(`📸 Primer usuario - campo foto:`, basicData.data[0]?.foto)
+      console.log(
+        `📸 Primer usuario - campo fotoPerfil:`,
+        basicData.data[0]?.fotoPerfil
+      )
+
       if (!basicData.ok) {
         throw new Error(basicData.msg || "Error en datos básicos")
       }
@@ -202,6 +215,11 @@ export class UsuariosTablaService {
       // 3️⃣ COMBINAR DATOS
       const usuariosCombinados: UsuarioTabla[] = basicData.data.map(
         (usuarioBasico) => {
+          console.log(`👤 Mapeando usuario:`, {
+            email: usuarioBasico.email,
+            foto_backend: usuarioBasico.foto,
+            fotoPerfil_resultado: usuarioBasico.foto || undefined,
+          })
           // Buscar estadísticas por email (solo si statsData existe)
           const stats = statsData?.data?.usuarios?.find(
             (stat) =>
@@ -214,10 +232,10 @@ export class UsuariosTablaService {
             email: usuarioBasico.email,
             rol: usuarioBasico.rol as any,
             isActive: usuarioBasico.isActive,
+            foto: usuarioBasico.foto || undefined, // ← AGREGAR ESTA LÍNEA
             fechaRegistro: stats?.fechaRegistro ?? "",
             reservasHechas: stats?.reservasHechas || 0,
             plazasPublicadas: stats?.plazasPublicadas || 0,
-            // Para compatibilidad con nombres anteriores:
             totalReservas: stats?.reservasHechas || 0,
             totalPlazas: stats?.plazasPublicadas || 0,
           }

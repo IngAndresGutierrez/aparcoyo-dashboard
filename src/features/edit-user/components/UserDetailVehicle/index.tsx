@@ -20,7 +20,7 @@ interface VehiculoLocal {
   modelo: string
   año?: number
   color?: string
-  tipoVehiculo?: 'auto' | 'moto' | 'camion' | 'furgoneta'
+  tipoVehiculo?: "auto" | "moto" | "camion" | "furgoneta"
   numeroMotor?: string
   numeroChasis?: string
   fechaRegistro?: string
@@ -28,7 +28,10 @@ interface VehiculoLocal {
   userId?: string
 }
 
-const UserVehiculos: React.FC<UserVehiculosProps> = ({ userId, isAdmin = false }) => {
+const UserVehiculos: React.FC<UserVehiculosProps> = ({
+  userId,
+  isAdmin = false,
+}) => {
   const [vehiculos, setVehiculos] = React.useState<VehiculoLocal[]>([])
   const [loading, setLoading] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
@@ -38,13 +41,14 @@ const UserVehiculos: React.FC<UserVehiculosProps> = ({ userId, isAdmin = false }
     try {
       setLoading(true)
       setError(null)
-      
-      const token = localStorage.getItem("token") || localStorage.getItem("authToken")
+
+      const token =
+        localStorage.getItem("token") || localStorage.getItem("authToken")
 
       // Decidir qué endpoint usar
-      let url = `https://aparcoyo-back.onrender.com/apa/vehiculos`
+      let url = `https://kns.aparcoyo.com/apa/vehiculos`
       if (isAdmin && userId) {
-        url = `https://aparcoyo-back.onrender.com/apa/vehiculos/admin/${userId}`
+        url = `https://kns.aparcoyo.com/apa/vehiculos/admin/${userId}`
       }
 
       const response = await fetch(url, {
@@ -65,7 +69,7 @@ const UserVehiculos: React.FC<UserVehiculosProps> = ({ userId, isAdmin = false }
       }
 
       const data = await response.json()
-      
+
       // Ajustar según la estructura de respuesta de tu API
       const vehiculosData = data.data || data.vehiculos || data || []
       setVehiculos(vehiculosData)
@@ -99,7 +103,7 @@ const UserVehiculos: React.FC<UserVehiculosProps> = ({ userId, isAdmin = false }
   }
 
   // Convertir vehiculos locales a formato del modal
-  const vehiculosParaModal = vehiculos.map(vehiculo => ({
+  const vehiculosParaModal = vehiculos.map((vehiculo) => ({
     id: vehiculo.id,
     userId: vehiculo.userId || userId,
     marca: vehiculo.marca,
@@ -107,11 +111,11 @@ const UserVehiculos: React.FC<UserVehiculosProps> = ({ userId, isAdmin = false }
     año: vehiculo.año || 0,
     placa: vehiculo.placa || vehiculo.matricula || "",
     color: vehiculo.color || "",
-    tipoVehiculo: vehiculo.tipoVehiculo || 'auto',
+    tipoVehiculo: vehiculo.tipoVehiculo || "auto",
     numeroMotor: vehiculo.numeroMotor,
     numeroChasis: vehiculo.numeroChasis,
     fechaRegistro: vehiculo.fechaRegistro || new Date().toISOString(),
-    isActive: vehiculo.isActive ?? true
+    isActive: vehiculo.isActive ?? true,
   }))
 
   if (loading) {
@@ -161,9 +165,9 @@ const UserVehiculos: React.FC<UserVehiculosProps> = ({ userId, isAdmin = false }
               Error al cargar vehículos
             </div>
             <div className="text-muted-foreground text-xs">{error}</div>
-            <Button 
-              variant="outline" 
-              size="sm" 
+            <Button
+              variant="outline"
+              size="sm"
               className="mt-2"
               onClick={fetchVehiculos}
             >

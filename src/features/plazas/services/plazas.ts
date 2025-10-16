@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import axios from "axios"
-import { PlazasResponse } from "../types"
 
-const BASE_URL = "https://aparcoyo-back.onrender.com/apa/plazas"
+
+const BASE_URL = "https://kns.aparcoyo.com/apa/plazas"
 
 // Obtener token - función helper reutilizable
 const getAuthToken = () => {
@@ -18,11 +18,47 @@ const getAuthHeaders = () => {
   }
 }
 
-// ✅ MÉTODO EXISTENTE
-export const getAllPlazasService = () => {
-  return axios.get<PlazasResponse>(`${BASE_URL}`, {
+// ✅ MÉTODO CON MAPEO DE img -> archivos
+export const getAllPlazasService = async () => {
+  const response = await axios.get<any>(`${BASE_URL}`, {
     headers: getAuthHeaders(),
   })
+
+  console.log("📦 Respuesta del backend:", response.data)
+
+  // Mapear 'img' a 'archivos' y convertir HTTP a HTTPS
+  if (response.data?.data) {
+    response.data.data = response.data.data.map((plaza: any) => {
+      // Convertir URLs de HTTP a HTTPS
+      const archivos = (plaza.img || []).map((img: any) => ({
+        ...img,
+        url: img.url?.replace(/^http:/, "https:"),
+      }))
+
+      console.log(`🏠 Plaza ${plaza.direccion}:`, {
+        tieneImg: !!plaza.img,
+        imgLength: plaza.img?.length,
+        primeraURL: archivos[0]?.url,
+      })
+
+      // Foto del propietario (si existe)
+      const propietarioFoto = plaza.propietario?.foto?.replace(
+        /^http:/,
+        "https:"
+      )
+
+      return {
+        ...plaza,
+        archivos, // Mapear img -> archivos
+        propietario: {
+          ...plaza.propietario,
+          foto: propietarioFoto,
+        },
+      }
+    })
+  }
+
+  return response as any
 }
 
 // 🆕 NUEVO - VERIFICAR SI UNA PLAZA PUEDE SER ELIMINADA
@@ -30,10 +66,8 @@ export const verificarEliminacionPlazaService = async (id: string) => {
   try {
     console.log(`🔍 Verificando si la plaza ${id} puede ser eliminada`)
 
-    // Intentar obtener reservas activas de la plaza
-    // Basándome en tu documentación, podría ser algo como:
     const response = await axios.get(
-      `https://aparcoyo-back.onrender.com/apa/reservas?plazaId=${id}&estado=activa`,
+      `https://kns.aparcoyo.com/apa/reservas?plazaId=${id}&estado=activa`,
       {
         headers: getAuthHeaders(),
         timeout: 10000,
@@ -61,10 +95,8 @@ export const verificarEliminacionPlazaService = async (id: string) => {
       error.message
     )
 
-    // Si el endpoint de verificación falla, permitir el intento
-    // El error real se manejará en eliminarPlazaService
     return {
-      puedeEliminar: true, // Asumir que sí se puede
+      puedeEliminar: true,
       reservasActivas: 0,
       motivo: null,
     }
@@ -80,7 +112,7 @@ export const eliminarPlazaService = (id: string) => {
   return axios
     .delete(`${BASE_URL}/${id}`, {
       headers: getAuthHeaders(),
-      timeout: 15000, // 15 segundos timeout
+      timeout: 15000,
     })
     .then((response) => {
       console.log(`✅ Respuesta exitosa:`, response.data)
@@ -97,7 +129,6 @@ export const eliminarPlazaService = (id: string) => {
         headers: error.config?.headers,
       })
 
-      // Log específico del mensaje del servidor
       if (error.response?.data) {
         console.error(`📝 Mensaje del servidor:`, error.response.data)
         if (error.response.data.message) {
@@ -118,11 +149,9 @@ export const eliminarPlazaService = (id: string) => {
 // 🆕 NUEVO - ELIMINAR CON VERIFICACIÓN PREVIA
 export const eliminarPlazaConVerificacionService = async (id: string) => {
   try {
-    // 1. Verificar si se puede eliminar
     const verificacion = await verificarEliminacionPlazaService(id)
 
     if (!verificacion.puedeEliminar) {
-      // Crear un error personalizado que simule la respuesta del servidor
       const error = new Error("Plaza tiene reservas activas") as any
       error.response = {
         status: 400,
@@ -135,10 +164,8 @@ export const eliminarPlazaConVerificacionService = async (id: string) => {
       throw error
     }
 
-    // 2. Si puede eliminar, proceder normalmente
     return await eliminarPlazaService(id)
   } catch (error) {
-    // Re-lanzar el error para que lo maneje el componente
     throw error
   }
 }

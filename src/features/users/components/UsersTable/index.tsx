@@ -1,6 +1,10 @@
+/* eslint-disable @next/next/no-img-element */
 "use client"
 
 import * as React from "react"
+import { Camera } from "lucide-react"
+
+import { useRef } from "react"
 import {
   ColumnDef,
   flexRender,
@@ -10,7 +14,6 @@ import {
 } from "@tanstack/react-table"
 import {
   MoreHorizontal,
-  User,
   Loader2,
   Search,
   X,
@@ -40,23 +43,53 @@ import { Badge } from "@/components/ui/badge"
 import { UsuarioTabla } from "../../types/table"
 import { useUserActions } from "../../hooks/useChange"
 import { useRouter } from "next/navigation"
+import { useUpdateProfilePhoto } from "../../hooks/usePhoto"
 
-// Avatar simple
+// Avatar con soporte para foto de perfil
 const UserAvatar: React.FC<{
   userName?: string
   userEmail: string
-}> = ({ userName, userEmail }) => {
+  photoUrl?: string
+}> = ({ userName, userEmail, photoUrl }) => {
+  if (photoUrl) {
+    return (
+      <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0 border border-gray-200">
+        <img
+          src={photoUrl}
+          alt={userName || userEmail}
+          className="w-full h-full object-cover"
+          onError={(e) => {
+            const target = e.currentTarget
+            target.style.display = "none"
+            const parent = target.parentElement
+            if (parent) {
+              const initial =
+                userName?.charAt(0)?.toUpperCase() ||
+                userEmail?.charAt(0)?.toUpperCase() ||
+                "U"
+              parent.innerHTML = `
+                <div class="w-full h-full bg-blue-100 flex items-center justify-center">
+                  <span class="text-blue-600 text-sm font-medium">${initial}</span>
+                </div>
+              `
+            }
+          }}
+        />
+      </div>
+    )
+  }
+
   return (
-    <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
-      {userName?.charAt(0)?.toUpperCase() ||
-        userEmail?.charAt(0)?.toUpperCase() || (
-          <User className="w-3 h-3 text-blue-600" />
-        )}
+    <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+      <span className="text-blue-600 text-sm font-medium">
+        {userName?.charAt(0)?.toUpperCase() ||
+          userEmail?.charAt(0)?.toUpperCase() ||
+          "U"}
+      </span>
     </div>
   )
 }
 
-// Extender la interfaz ColumnMeta
 declare module "@tanstack/react-table" {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   interface ColumnMeta<TData extends RowData, TValue> {
@@ -81,27 +114,35 @@ const formatDate = (dateString: string | null | undefined): string => {
   }
 }
 
-// 🔥 NUEVA INTERFAZ: Ahora recibe usuarios como prop
 interface UsersTableProps {
-  usuarios: UsuarioTabla[] // ← Nueva prop principal
+  usuarios: UsuarioTabla[]
   searchTerm?: string
   estadoFilter?: "activo" | "inactivo" | "suspendido"
 }
 
 const UsersTable = ({
-  usuarios: usuariosFromProps, // ← Recibir usuarios filtrados del padre
+  usuarios: usuariosFromProps,
   searchTerm: initialSearchTerm = "",
   estadoFilter,
 }: UsersTableProps) => {
-  // Estados - SIMPLIFICADOS
+  // Hooks para foto de perfil
+  const { updatePhoto, isLoading: isUploadingPhoto } = useUpdateProfilePhoto()
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [selectedUserId, setSelectedUserId] = React.useState<
+    string | number | null
+  >(null)
+
+  // Estados
   const [searchValue, setSearchValue] = React.useState(initialSearchTerm)
-  const [filteredUsuarios, setFilteredUsuarios] = React.useState<UsuarioTabla[]>([])
+  const [filteredUsuarios, setFilteredUsuarios] = React.useState<
+    UsuarioTabla[]
+  >([])
   const [currentPage, setCurrentPage] = React.useState(1)
   const itemsPerPage = 10
   const searchTimeoutRef = React.useRef<NodeJS.Timeout | undefined>(undefined)
   const router = useRouter()
 
-  // Hooks - SOLO para acciones de usuario
+  // Hook para acciones de usuario
   const {
     changeUserStatus,
     isLoading: isProcessing,
@@ -109,11 +150,97 @@ const UsersTable = ({
     success,
   } = useUserActions()
 
-  // 🔥 ACTUALIZAR cuando llegan usuarios del padre
+  // ✅ Función para manejar cambio de foto
+  const handlePhotoChange = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+    userId: string | number,
+    userName: string
+  ) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    const validTypes = [
+      "image/jpeg",
+      "image/jpg",
+      "image/png",
+      "image/gif",
+      "image/webp",
+    ]
+    if (!validTypes.includes(file.type)) {
+      toast.error("Formato inválido", {
+        description: "Solo se permiten imágenes JPG, PNG, GIF o WebP",
+      })
+      return
+    }
+
+    const maxSize = 5 * 1024 * 1024 // 5MB
+    if (file.size > maxSize) {
+      toast.error("Imagen muy grande", {
+        description: "La imagen no puede superar los 5MB",
+      })
+      return
+    }
+
+    const loadingToast = toast.loading("Subiendo foto...", {
+      description: "Actualizando foto de perfil",
+    })
+
+    try {
+      const response = await updatePhoto(userId, file)
+
+      toast.dismiss(loadingToast)
+
+      if (response) {
+        toast.success("Foto actualizada", {
+          description: `La foto de ${userName} se actualizó correctamente`,
+          duration: 4000,
+        })
+
+        // ✅ Extraer la URL correcta - el backend devuelve en data.foto
+        const photoUrl =
+          response.data?.foto ||
+          response.data?.fotoPerfil ||
+          response.data?.photoUrl ||
+          response.data?.url
+
+        console.log("🖼️ URL de foto extraída:", photoUrl)
+
+        if (photoUrl) {
+          setFilteredUsuarios((prev) =>
+            prev.map(
+              (user) =>
+                user.uid === userId ? { ...user, foto: photoUrl } : user // ✅ BIEN
+            )
+          )
+          console.log("✅ Estado actualizado con foto para usuario:", userId)
+        } else {
+          console.warn("⚠️ No se pudo extraer la URL de la foto")
+        }
+      }
+    } catch (error) {
+      toast.dismiss(loadingToast)
+      toast.error("Error al subir foto", {
+        description:
+          error instanceof Error ? error.message : "Error desconocido",
+      })
+    }
+
+    if (event.target) {
+      event.target.value = ""
+    }
+  }
+
+  // ✅ Función para abrir el selector de archivo
+  const openFileSelector = (userId: string | number) => {
+    setSelectedUserId(userId)
+    fileInputRef.current?.click()
+  }
+
+  // Actualizar cuando llegan usuarios del padre
   React.useEffect(() => {
     console.log("📊 UsersTable - usuarios recibidos:", usuariosFromProps.length)
     setFilteredUsuarios(usuariosFromProps)
-    setCurrentPage(1) // Reset a página 1 cuando cambien los datos
+    setCurrentPage(1)
   }, [usuariosFromProps])
 
   // Filtrar usuarios por búsqueda
@@ -135,7 +262,7 @@ const UsersTable = ({
       console.log("🔍 Filtrado por búsqueda:", {
         termino: searchTerm,
         total: usuariosFromProps.length,
-        filtrados: filtered.length
+        filtrados: filtered.length,
       })
 
       setFilteredUsuarios(filtered)
@@ -167,7 +294,7 @@ const UsersTable = ({
     }
   }
 
-  // Cambiar estado usuario - actualizar localmente
+  // Cambiar estado usuario
   const handleToggleUserStatus = async (
     userId: string | number,
     isCurrentlyActive: boolean
@@ -175,7 +302,6 @@ const UsersTable = ({
     try {
       await changeUserStatus(userId, isCurrentlyActive)
 
-      // Actualizar estado localmente
       const updateUserInList = (users: UsuarioTabla[]) =>
         users.map((user) =>
           user.uid === userId ? { ...user, isActive: !isCurrentlyActive } : user
@@ -202,7 +328,7 @@ const UsersTable = ({
   const usuariosPagina = filteredUsuarios.slice(startIndex, endIndex)
   const totalPages = Math.ceil(filteredUsuarios.length / itemsPerPage)
 
-  // Columnas - MEMOIZADAS
+  // Columnas
   const columns = React.useMemo<ColumnDef<UsuarioTabla>[]>(
     () => [
       {
@@ -218,6 +344,7 @@ const UsersTable = ({
             <UserAvatar
               userName={row.original.nombre}
               userEmail={row.original.email}
+              photoUrl={row.original.foto || undefined}
             />
             <div className="min-w-0">
               <span className="text-sm font-medium truncate block">
@@ -304,9 +431,9 @@ const UsersTable = ({
               <Button
                 variant="ghost"
                 className="h-8 w-8 p-0"
-                disabled={isProcessing}
+                disabled={isProcessing || isUploadingPhoto}
               >
-                {isProcessing ? (
+                {isProcessing || isUploadingPhoto ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
                   <MoreHorizontal className="h-4 w-4" />
@@ -314,6 +441,14 @@ const UsersTable = ({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                onClick={() => openFileSelector(row.original.uid)}
+                disabled={isUploadingPhoto}
+              >
+                <Camera className="mr-2 h-4 w-4" />
+                Cambiar foto
+              </DropdownMenuItem>
+
               <DropdownMenuItem
                 onClick={() => {
                   if (!row.original.isActive) {
@@ -343,6 +478,7 @@ const UsersTable = ({
                 <Edit className="mr-2 h-4 w-4" />
                 Editar usuario
               </DropdownMenuItem>
+
               <DropdownMenuItem
                 onClick={async () => {
                   const loadingToast = toast.loading(
@@ -402,7 +538,7 @@ const UsersTable = ({
         meta: { responsive: true },
       },
     ],
-    [isProcessing, router]
+    [isProcessing, isUploadingPhoto, router]
   )
 
   // Table instance
@@ -413,7 +549,6 @@ const UsersTable = ({
     manualPagination: true,
   })
 
-  // 🔥 LOADING/ERROR SIMPLIFICADOS - Solo mostrar si no hay usuarios
   if (usuariosFromProps.length === 0) {
     return (
       <div className="w-full">
@@ -422,7 +557,8 @@ const UsersTable = ({
             No hay usuarios disponibles
           </div>
           <div className="text-xs text-muted-foreground">
-            Los datos se están cargando o no hay usuarios en el rango seleccionado
+            Los datos se están cargando o no hay usuarios en el rango
+            seleccionado
           </div>
         </div>
       </div>
@@ -582,6 +718,22 @@ const UsersTable = ({
           </Button>
         </div>
       </div>
+
+      {/* ✅ Input de archivo oculto */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+        className="hidden"
+        onChange={(e) => {
+          if (selectedUserId) {
+            const usuario = filteredUsuarios.find(
+              (u) => u.uid === selectedUserId
+            )
+            handlePhotoChange(e, selectedUserId, usuario?.nombre || "Usuario")
+          }
+        }}
+      />
     </div>
   )
 }

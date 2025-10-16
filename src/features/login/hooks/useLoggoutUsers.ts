@@ -4,7 +4,7 @@
 import { useState, useEffect } from "react"
 import axios from "axios"
 
-const BASE_URL = "https://aparcoyo-back.onrender.com/apa"
+const BASE_URL = "https://kns.aparcoyo.com/apa"
 
 interface User {
   id: string

@@ -2,7 +2,7 @@
 
 import { PlatformStatsResponse } from "../types/transaction"
 
-const BASE_URL = "https://aparcoyo-back.onrender.com/apa"
+const BASE_URL = "https://kns.aparcoyo.com/apa"
 
 class PlatformStatsService {
   private token: string | null = null

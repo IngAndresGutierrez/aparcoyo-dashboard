@@ -8,7 +8,7 @@ interface ReviewAPIData {
   plaza: string // ID de la plaza como string
 }
 
-const API_BASE_URL = "https://aparcoyo-back.onrender.com"
+const API_BASE_URL = "https://kns.aparcoyo.com"
 const API_BASE = `${API_BASE_URL}/apa/resenas`
 
 // Función helper para obtener headers con auth

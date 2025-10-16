@@ -4,7 +4,7 @@
 import { ApiError, Plaza, Reserva } from "../types/table-reservas"
 
 const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "https://aparcoyo-back.onrender.com"
+  process.env.NEXT_PUBLIC_API_URL || "https://kns.aparcoyo.com"
 
 // Headers básicos - copiado del service que funciona
 function getHeaders(): Record<string, string> {

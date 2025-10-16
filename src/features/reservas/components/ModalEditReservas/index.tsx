@@ -67,12 +67,9 @@ const EditReservationModal: React.FC<EditReservationModalProps> = ({
       const token =
         localStorage.getItem("authToken") || localStorage.getItem("token")
 
-      const response = await fetch(
-        "https://aparcoyo-back.onrender.com/apa/plazas",
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      )
+      const response = await fetch("https://kns.aparcoyo.com/apa/plazas", {
+        headers: { Authorization: `Bearer ${token}` },
+      })
 
       if (response.ok) {
         const data = await response.json()
@@ -133,7 +130,7 @@ const EditReservationModal: React.FC<EditReservationModalProps> = ({
           console.log("🔍 Datos que vamos a enviar:", updateData)
 
           const response = await fetch(
-            `https://aparcoyo-back.onrender.com/apa/reservas/${reservationData.id}`,
+            `https://kns.aparcoyo.com/apa/reservas/${reservationData.id}`,
             {
               method: "PATCH",
               headers: {
