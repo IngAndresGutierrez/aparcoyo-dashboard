@@ -10,7 +10,7 @@ import {
   VehiculosResponse,
 } from "../types/edit-vehicle"
 
-const API_BASE_URL = "https://aparcoyo-back.onrender.com/apa"
+const API_BASE_URL = "https://kns.aparcoyo.com/apa"
 
 class VehiculosService {
   private getAuthHeaders() {

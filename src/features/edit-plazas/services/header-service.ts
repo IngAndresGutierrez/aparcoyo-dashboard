@@ -3,7 +3,7 @@
 
 import { PlazaDetailResponse } from "../types/header-plaza"
 
-const BASE_URL = "https://aparcoyo-back.onrender.com"
+const BASE_URL = "https://kns.aparcoyo.com"
 
 interface PlazaByIdParams {
   plazaId: string

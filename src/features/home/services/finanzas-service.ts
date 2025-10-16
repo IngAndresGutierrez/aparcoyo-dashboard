@@ -1,12 +1,14 @@
 // services/financial-service.ts (versión sin mock, solo API real)
-const API_BASE_URL = "https://aparcoyo-back.onrender.com"
+const API_BASE_URL = "https://kns.aparcoyo.com"
 
 // Función para obtener el token
 const getAuthToken = (): string | null => {
-  if (typeof window !== 'undefined') {
-    return localStorage.getItem('authToken') || 
-           localStorage.getItem('token') || 
-           localStorage.getItem('accessToken')
+  if (typeof window !== "undefined") {
+    return (
+      localStorage.getItem("authToken") ||
+      localStorage.getItem("token") ||
+      localStorage.getItem("accessToken")
+    )
   }
   return null
 }
@@ -36,10 +38,10 @@ export class FinancialService {
   static async getBalance(): Promise<BalanceResponse> {
     try {
       const token = getAuthToken()
-      
+
       const headers: Record<string, string> = {
         "Content-Type": "application/json",
-        "Accept": "application/json",
+        Accept: "application/json",
       }
 
       if (token) {
@@ -51,14 +53,14 @@ export class FinancialService {
       console.log(`🔄 Fetching reservas estadisticas: ${url}`)
 
       const response = await fetch(url, {
-        method: 'GET',
+        method: "GET",
         headers,
-        credentials: 'omit',
+        credentials: "omit",
       })
 
       if (!response.ok) {
         let errorMessage = `HTTP ${response.status}`
-        
+
         switch (response.status) {
           case 401:
             errorMessage = "No autorizado - Token requerido"
@@ -82,10 +84,12 @@ export class FinancialService {
 
       // Adaptar la respuesta de reservas estadísticas a formato de balance
       // Asumiendo que las reservas tienen información de ingresos
-      const totalReservas = Array.isArray(data.data) ? data.data.length : (data.totalReservas || 0)
-      const ingresosPorReserva = 25.50 // Precio promedio estimado, ajustar según tu lógica
-      const comisionPorcentaje = 0.10 // 10% de comisión, ajustar según tu modelo
-      
+      const totalReservas = Array.isArray(data.data)
+        ? data.data.length
+        : data.totalReservas || 0
+      const ingresosPorReserva = 25.5 // Precio promedio estimado, ajustar según tu lógica
+      const comisionPorcentaje = 0.1 // 10% de comisión, ajustar según tu modelo
+
       const ingresosTotales = totalReservas * ingresosPorReserva
       const comisionesPagadas = ingresosTotales * comisionPorcentaje
 
@@ -95,11 +99,10 @@ export class FinancialService {
         reservasCompletadas: totalReservas,
         porcentajeCambioIngresos: data.porcentajeCambio || 0,
         porcentajeCambioComisiones: data.porcentajeCambio || 0,
-        moneda: "€"
+        moneda: "€",
       }
-
     } catch (error) {
-      console.error('❌ Error en FinancialService.getBalance:', error)
+      console.error("❌ Error en FinancialService.getBalance:", error)
       throw error
     }
   }
@@ -109,10 +112,10 @@ export class FinancialService {
    */
   static async getBalanceWithFallback(): Promise<BalanceResponse> {
     const token = getAuthToken()
-    
+
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
-      "Accept": "application/json",
+      Accept: "application/json",
     }
 
     if (token) {
@@ -125,9 +128,9 @@ export class FinancialService {
       console.log(`🔄 Trying primary endpoint: ${balanceUrl}`)
 
       const response = await fetch(balanceUrl, {
-        method: 'GET',
+        method: "GET",
         headers,
-        credentials: 'omit',
+        credentials: "omit",
       })
 
       if (response.ok) {
@@ -135,27 +138,32 @@ export class FinancialService {
         console.log(`✅ Balance response (primary):`, data)
 
         return {
-          ingresosTotales: data.ingresosTotales || data.ingresos || data.total || 0,
+          ingresosTotales:
+            data.ingresosTotales || data.ingresos || data.total || 0,
           comisionesPagadas: data.comisionesPagadas || data.comisiones || 0,
           reservasCompletadas: data.reservasCompletadas || data.reservas || 0,
           porcentajeCambioIngresos: data.porcentajeCambioIngresos || 0,
           porcentajeCambioComisiones: data.porcentajeCambioComisiones || 0,
-          moneda: data.moneda || "€"
+          moneda: data.moneda || "€",
         }
       } else {
-        console.log(`⚠️  Primary endpoint failed with ${response.status}, using alternative calculation`)
+        console.log(
+          `⚠️  Primary endpoint failed with ${response.status}, using alternative calculation`
+        )
         throw new Error(`Primary endpoint failed: ${response.status}`)
       }
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (primaryError) {
       // No mostrar el error 500 como error, sino como info
-      console.log(`ℹ️  Using alternative calculation because primary endpoint is not available yet`)
+      console.log(
+        `ℹ️  Using alternative calculation because primary endpoint is not available yet`
+      )
 
       // Fallback: usar múltiples endpoints para construir el balance
       try {
         const [reservasResponse, usuariosResponse] = await Promise.all([
-          fetch(`${API_BASE_URL}/apa/reservas`, { method: 'GET', headers }),
-          fetch(`${API_BASE_URL}/apa/usuarios`, { method: 'GET', headers })
+          fetch(`${API_BASE_URL}/apa/reservas`, { method: "GET", headers }),
+          fetch(`${API_BASE_URL}/apa/usuarios`, { method: "GET", headers }),
         ])
 
         if (!reservasResponse.ok || !usuariosResponse.ok) {
@@ -169,14 +177,18 @@ export class FinancialService {
         console.log(`✅ Fallback data - Usuarios:`, usuariosData)
 
         // Calcular balance basado en reservas existentes
-        const totalReservas = Array.isArray(reservasData.data) ? reservasData.data.length : 0
+        const totalReservas = Array.isArray(reservasData.data)
+          ? reservasData.data.length
+          : 0
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const totalUsuarios = Array.isArray(usuariosData.data) ? usuariosData.data.length : 0
-        
+        const totalUsuarios = Array.isArray(usuariosData.data)
+          ? usuariosData.data.length
+          : 0
+
         // Estimaciones basadas en datos reales (ajustar según tu modelo de negocio)
-        const ingresoPromedioPorReserva = 30.00
+        const ingresoPromedioPorReserva = 30.0
         const comisionPorcentaje = 0.12
-        
+
         const ingresosTotales = totalReservas * ingresoPromedioPorReserva
         const comisionesPagadas = ingresosTotales * comisionPorcentaje
 
@@ -186,11 +198,10 @@ export class FinancialService {
           reservasCompletadas: totalReservas,
           porcentajeCambioIngresos: 15.5, // Estimado
           porcentajeCambioComisiones: 12.3, // Estimado
-          moneda: "€"
+          moneda: "€",
         }
-
       } catch (fallbackError) {
-        console.error('❌ Both primary and fallback failed:', fallbackError)
+        console.error("❌ Both primary and fallback failed:", fallbackError)
         throw new Error("No se pudieron obtener datos financieros")
       }
     }
@@ -202,10 +213,10 @@ export class FinancialService {
   static async getPlatformStatistics(): Promise<PlatformStatisticsResponse> {
     try {
       const token = getAuthToken()
-      
+
       const headers: Record<string, string> = {
         "Content-Type": "application/json",
-        "Accept": "application/json",
+        Accept: "application/json",
       }
 
       if (token) {
@@ -213,11 +224,12 @@ export class FinancialService {
       }
 
       // Usar múltiples endpoints que sabemos que funcionan
-      const [usuariosResponse, plazasResponse, reservasResponse] = await Promise.all([
-        fetch(`${API_BASE_URL}/apa/usuarios`, { method: 'GET', headers }),
-        fetch(`${API_BASE_URL}/apa/plazas`, { method: 'GET', headers }),
-        fetch(`${API_BASE_URL}/apa/reservas`, { method: 'GET', headers })
-      ])
+      const [usuariosResponse, plazasResponse, reservasResponse] =
+        await Promise.all([
+          fetch(`${API_BASE_URL}/apa/usuarios`, { method: "GET", headers }),
+          fetch(`${API_BASE_URL}/apa/plazas`, { method: "GET", headers }),
+          fetch(`${API_BASE_URL}/apa/reservas`, { method: "GET", headers }),
+        ])
 
       if (!usuariosResponse.ok || !plazasResponse.ok || !reservasResponse.ok) {
         throw new Error("Error obteniendo datos de plataforma")
@@ -225,22 +237,33 @@ export class FinancialService {
 
       const [usuariosData, plazasData, reservasData] = await Promise.all([
         usuariosResponse.json(),
-        plazasResponse.json(), 
-        reservasResponse.json()
+        plazasResponse.json(),
+        reservasResponse.json(),
       ])
 
-      console.log('✅ Platform data collected:', { usuariosData, plazasData, reservasData })
+      console.log("✅ Platform data collected:", {
+        usuariosData,
+        plazasData,
+        reservasData,
+      })
 
-      const totalUsuarios = Array.isArray(usuariosData.data) ? usuariosData.data.length : 0
+      const totalUsuarios = Array.isArray(usuariosData.data)
+        ? usuariosData.data.length
+        : 0
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const totalPlazas = Array.isArray(plazasData.data) ? plazasData.data.length : 0
-      const totalReservas = Array.isArray(reservasData.data) ? reservasData.data.length : 0
-      
+      const totalPlazas = Array.isArray(plazasData.data)
+        ? plazasData.data.length
+        : 0
+      const totalReservas = Array.isArray(reservasData.data)
+        ? reservasData.data.length
+        : 0
+
       // Cálculos para estadísticas de plataforma
-      const ingresoPromedioPorReserva = 30.00
+      const ingresoPromedioPorReserva = 30.0
       const comisionPorcentaje = 0.12
-      
-      const ingresosTotalesPlataforma = totalReservas * ingresoPromedioPorReserva
+
+      const ingresosTotalesPlataforma =
+        totalReservas * ingresoPromedioPorReserva
       const comisionesTotales = ingresosTotalesPlataforma * comisionPorcentaje
 
       return {
@@ -249,11 +272,13 @@ export class FinancialService {
         usuariosActivos: totalUsuarios,
         reservasTotales: totalReservas,
         porcentajeCambio: 18.7, // Estimado basado en crecimiento
-        moneda: "€"
+        moneda: "€",
       }
-
     } catch (error) {
-      console.error('❌ Error en FinancialService.getPlatformStatistics:', error)
+      console.error(
+        "❌ Error en FinancialService.getPlatformStatistics:",
+        error
+      )
       throw error
     }
   }

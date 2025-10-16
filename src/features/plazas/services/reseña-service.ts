@@ -11,8 +11,8 @@ class PlazaReviewsService {
   private resenasURL: string // ← Nueva URL para reseñas
 
   constructor() {
-    this.baseURL = "https://aparcoyo-back.onrender.com/apa/plazas"
-    this.resenasURL = "https://aparcoyo-back.onrender.com/apa/resenas" // ← Nueva URL
+    this.baseURL = "https://kns.aparcoyo.com/apa/plazas"
+    this.resenasURL = "https://kns.aparcoyo.com/apa/resenas" // ← Nueva URL
   }
 
   private getAuthToken(): string | null {

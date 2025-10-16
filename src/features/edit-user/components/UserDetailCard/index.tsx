@@ -59,13 +59,13 @@ const UserDetails: React.FC<UserDetailsProps> = ({ userId }) => {
           `📡 Obteniendo detalles del usuario ${userId} con ruta de admin...`
         )
         console.log(
-          `🔗 URL completa: https://aparcoyo-back.onrender.com/apa/usuarios/${userId}`
+          `🔗 URL completa: https://kns.aparcoyo.com/apa/usuarios/${userId}`
         )
         console.log(`🔑 Token presente:`, !!token)
 
         // 🔄 Probando con la ruta específica de admin que debería traer fecha
         const response = await fetch(
-          `https://aparcoyo-back.onrender.com/apa/usuarios/${userId}`,
+          `https://kns.aparcoyo.com/apa/usuarios/${userId}`,
           {
             method: "GET", // Explicit GET method
             headers: {
@@ -256,7 +256,7 @@ const UserDetails: React.FC<UserDetailsProps> = ({ userId }) => {
         id: "update-user", // ID para poder actualizar este toast específico
       })
 
-      const url = `https://aparcoyo-back.onrender.com/apa/usuarios/${usuario.uid}`
+      const url = `https://kns.aparcoyo.com/apa/usuarios/${usuario.uid}`
 
       const response = await fetch(url, {
         method: "PATCH",
@@ -473,7 +473,7 @@ const UserDetails: React.FC<UserDetailsProps> = ({ userId }) => {
               {/* Avatar Section */}
               <div className="flex flex-col items-center space-y-2">
                 <Avatar className="h-16 w-16">
-                  <AvatarImage src="" />
+                  <AvatarImage src={(usuario as any).foto || ""} />
                   <AvatarFallback className="bg-gray-700 text-white">
                     {usuario.nombre?.charAt(0)?.toUpperCase() || "U"}
                   </AvatarFallback>

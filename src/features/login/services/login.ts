@@ -1,6 +1,6 @@
 import axios from "axios"
 
-const BASE_URL = "https://aparcoyo-back.onrender.com/apa/auth"
+const BASE_URL = "https://kns.aparcoyo.com/apa/auth"
 
 export const googleLoginService = () => {
   return axios.get(`${BASE_URL}/google`)

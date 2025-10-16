@@ -69,7 +69,7 @@ const UserReservas: React.FC<UserReservasProps> = ({ userId }) => {
         console.log(`📅 Obteniendo reservas del usuario ${userId}...`)
 
         const response = await fetch(
-          `https://aparcoyo-back.onrender.com/apa/reservas/usuario/${userId}`,
+          `https://kns.aparcoyo.com/apa/reservas/usuario/${userId}`,
           {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -217,7 +217,7 @@ const UserReservas: React.FC<UserReservasProps> = ({ userId }) => {
       console.log(`🗑️ Eliminando reserva: ${reserva.id}`)
 
       const response = await fetch(
-        `https://aparcoyo-back.onrender.com/apa/reservas/${reserva.id}`,
+        `https://kns.aparcoyo.com/apa/reservas/${reserva.id}`,
         {
           method: "DELETE",
           headers: {

@@ -2,7 +2,7 @@
 import axios from "axios"
 import { PlazasResponse } from "../types"
 
-const BASE_URL = "https://aparcoyo-back.onrender.com/apa/plazas"
+const BASE_URL = "https://kns.aparcoyo.com/apa/plazas"
 
 // Obtener token - función helper reutilizable
 const getAuthToken = () => {
@@ -33,7 +33,7 @@ export const verificarEliminacionPlazaService = async (id: string) => {
     // Intentar obtener reservas activas de la plaza
     // Basándome en tu documentación, podría ser algo como:
     const response = await axios.get(
-      `https://aparcoyo-back.onrender.com/apa/reservas?plazaId=${id}&estado=activa`,
+      `https://kns.aparcoyo.com/apa/reservas?plazaId=${id}&estado=activa`,
       {
         headers: getAuthHeaders(),
         timeout: 10000,

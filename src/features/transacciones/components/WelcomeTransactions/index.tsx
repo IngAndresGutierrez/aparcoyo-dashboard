@@ -61,26 +61,30 @@ const filtrarTransaccionesPorRango = (
   if (!transacciones || transacciones.length === 0) return []
 
   const hoy = new Date()
-  hoy.setHours(0, 0, 0, 0)
+  hoy.setHours(23, 59, 59, 999) // ✅ Hasta el final del día de hoy
 
   return transacciones.filter((t) => {
     if (!t.fecha) return false
 
     const fechaTransaccion = new Date(t.fecha)
-    fechaTransaccion.setHours(0, 0, 0, 0)
 
     switch (periodo) {
       case "day":
-        return fechaTransaccion.getTime() === hoy.getTime()
+        // ✅ Buscar transacciones de las últimas 24 horas
+        const hace24Horas = new Date(hoy)
+        hace24Horas.setHours(hoy.getHours() - 24)
+        return fechaTransaccion >= hace24Horas && fechaTransaccion <= hoy
 
       case "week":
         const hace7Dias = new Date(hoy)
         hace7Dias.setDate(hoy.getDate() - 7)
+        hace7Dias.setHours(0, 0, 0, 0)
         return fechaTransaccion >= hace7Dias && fechaTransaccion <= hoy
 
       case "month":
         const hace30Dias = new Date(hoy)
         hace30Dias.setDate(hoy.getDate() - 30)
+        hace30Dias.setHours(0, 0, 0, 0)
         return fechaTransaccion >= hace30Dias && fechaTransaccion <= hoy
 
       default:
@@ -88,7 +92,6 @@ const filtrarTransaccionesPorRango = (
     }
   })
 }
-
 const generateTransactionsCSV = (transactions: Transaction[]): string => {
   if (!transactions || transactions.length === 0) {
     throw new Error("No hay transacciones para exportar")
@@ -208,20 +211,69 @@ const WelcomeTransactions = ({
 
   const handleDownloadReport = async () => {
     try {
-      if (!transaccionesFiltradas || transaccionesFiltradas.length === 0) {
-        toast.error("No hay datos", {
-          description: "No se encontraron transacciones para este período",
-        })
-        return
-      }
+      // ✅ Permitir generar reportes incluso sin datos
+      const hayDatos =
+        transaccionesFiltradas && transaccionesFiltradas.length > 0
 
       const generatingToast = toast.loading(
         "Generando reporte de transacciones...",
         {
-          description: "Preparando archivo CSV",
+          description: hayDatos
+            ? "Preparando archivo CSV"
+            : "Generando reporte sin datos para este período",
         }
       )
 
+      if (!hayDatos) {
+        // Generar reporte vacío con información del período
+        const resumenData = [
+          { Métrica: "Período del reporte", Valor: currentPeriodLabel },
+          {
+            Métrica: "Fecha de generación",
+            Valor: new Date().toLocaleDateString("es-ES", {
+              year: "numeric",
+              month: "long",
+              day: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
+            }),
+          },
+          {
+            Métrica: "Total de transacciones",
+            Valor: "0",
+          },
+          {
+            Métrica: "Importe total",
+            Valor: "$0.00",
+          },
+          { Métrica: "", Valor: "" },
+          {
+            Métrica: "NOTA",
+            Valor: "No se encontraron transacciones en este período",
+          },
+        ]
+
+        const timestamp = new Date()
+          .toISOString()
+          .slice(0, 19)
+          .replace(/[:-]/g, "")
+        const filename = `reporte_transacciones_${selectedPeriod}_${timestamp}.csv`
+
+        const resumenCSV = resumenData
+          .map((row) => `${row.Métrica},${row.Valor}`)
+          .join("\n")
+
+        downloadFile(resumenCSV, filename, "text/csv")
+        toast.dismiss(generatingToast)
+
+        toast.success("Reporte generado", {
+          description: `No hay transacciones para ${currentPeriodLabel.toLowerCase()}, pero se generó el reporte`,
+          duration: 5000,
+        })
+        return
+      }
+
+      // Resto del código original para cuando SÍ hay datos
       const totalTransacciones = transaccionesFiltradas.length
       const importesNumericos = transaccionesFiltradas.map((t) => {
         return parseFloat(String(t.importe || "0").replace(/[^\d.-]/g, "")) || 0

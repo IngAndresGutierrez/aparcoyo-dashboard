@@ -378,7 +378,7 @@ const UsersTableReports: React.FC<UsersTableReportsProps> = ({
       for (const reporte of reportesToDelete) {
         try {
           const response = await fetch(
-            `https://aparcoyo-back.onrender.com/apa/reportes/${reporte.id}`,
+            `https://kns.aparcoyo.com/apa/reportes/${reporte.id}`,
             {
               method: "DELETE",
               headers: {
@@ -593,7 +593,7 @@ const UsersTableReports: React.FC<UsersTableReportsProps> = ({
       }
 
       const response = await fetch(
-        `https://aparcoyo-back.onrender.com/apa/reportes/${reporteId}`,
+        `https://kns.aparcoyo.com/apa/reportes/${reporteId}`,
         {
           method: "DELETE",
           headers: {
