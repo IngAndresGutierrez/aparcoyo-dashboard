@@ -4,6 +4,7 @@
 import { ColumnDef, RowData } from "@tanstack/react-table"
 import { MoreHorizontal, Loader2, Edit, Trash2 } from "lucide-react"
 import Image from "next/image"
+import { useState } from "react"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -31,6 +32,76 @@ interface ColumnProps {
   onEditarPlaza?: (id: string) => void
 }
 
+// Componente para la imagen de la plaza
+const PlazaImage = ({ url, alt }: { url?: string; alt: string }) => {
+  const [error, setError] = useState(false)
+
+  if (!url || error) {
+    return (
+      <Image
+        src="/home/home-03.svg"
+        alt="plaza"
+        width={20}
+        height={20}
+        className="w-5 h-5"
+      />
+    )
+  }
+
+  return (
+    <img
+      src={url}
+      alt={alt}
+      className="w-full h-full object-cover"
+      onError={() => {
+        console.log("❌ Error al cargar imagen de plaza:", url)
+        setError(true)
+      }}
+      onLoad={() => {
+        console.log("✅ Imagen de plaza cargada:", url)
+      }}
+    />
+  )
+}
+
+// Componente para el avatar del propietario
+const PropietarioAvatar = ({
+  foto,
+  nombre,
+}: {
+  foto?: string
+  nombre: string
+}) => {
+  const [error, setError] = useState(false)
+
+  if (!foto || error) {
+    return (
+      <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+        <span className="text-sm font-medium text-blue-600">
+          {getInitial(nombre)}
+        </span>
+      </div>
+    )
+  }
+
+  return (
+    <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0">
+      <img
+        src={foto}
+        alt={nombre}
+        className="w-full h-full object-cover"
+        onError={() => {
+          console.log("❌ Error al cargar foto de propietario:", foto)
+          setError(true)
+        }}
+        onLoad={() => {
+          console.log("✅ Foto de propietario cargada:", foto)
+        }}
+      />
+    </div>
+  )
+}
+
 export const createColumns = ({
   onEliminarPlaza,
   deletingId,
@@ -46,7 +117,6 @@ export const createColumns = ({
     header: "Plaza",
     cell: ({ row }) => {
       const plaza = row.original
-      // Obtener primera imagen del array archivos
       const primeraImagen = plaza.archivos?.[0]?.url
 
       console.log("🏠 Plaza:", {
@@ -58,41 +128,10 @@ export const createColumns = ({
       return (
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 bg-gray-200 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden">
-            {primeraImagen ? (
-              <img
-                src={primeraImagen}
-                alt={plaza.direccion}
-                className="w-full h-full object-cover"
-                onError={(e) => {
-                  console.log(
-                    "❌ Error al cargar imagen de plaza:",
-                    primeraImagen
-                  )
-                  // Fallback al ícono si la imagen falla
-                  e.currentTarget.style.display = "none"
-                  const parent = e.currentTarget.parentElement
-                  if (parent) {
-                    parent.innerHTML = `
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M3 9L12 2L21 9V20C21 20.5304 20.7893 21.0391 20.4142 21.4142C20.0391 21.7893 19.5304 22 19 22H5C4.46957 22 3.96086 21.7893 3.58579 21.4142C3.21071 21.0391 3 20.5304 3 20V9Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                        <path d="M9 22V12H15V22" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                      </svg>
-                    `
-                  }
-                }}
-                onLoad={() => {
-                  console.log("✅ Imagen de plaza cargada:", primeraImagen)
-                }}
-              />
-            ) : (
-              <Image
-                src="/home/home-03.svg"
-                alt="plaza"
-                width={20}
-                height={20}
-                className="w-5 h-5"
-              />
-            )}
+            <PlazaImage
+              url={primeraImagen}
+              alt={plaza.direccion}
+            />
           </div>
           <div className="flex flex-col">
             <span className="font-medium text-sm text-gray-900">
@@ -128,16 +167,7 @@ export const createColumns = ({
     header: "Fecha de publicación",
     cell: ({ row }) => {
       const fecha = row.original.disponibilidadDesde
-      console.log("🔍 Debug fecha:", {
-        fechaRaw: fecha,
-        fechaParsed: new Date(fecha),
-        fechaFormateada: new Date(fecha).toLocaleDateString("es-ES", {
-          day: "2-digit",
-          month: "short",
-          year: "numeric",
-        }),
-        zonaHoraria: Intl.DateTimeFormat().resolvedOptions().timeZone,
-      })
+
       if (!fecha) {
         return <span className="text-sm text-gray-400">Sin fecha</span>
       }
@@ -177,45 +207,10 @@ export const createColumns = ({
 
       return (
         <div className="flex items-center gap-2">
-          {propietario.foto ? (
-            <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0">
-              <img
-                src={propietario.foto}
-                alt={propietario.nombre}
-                className="w-full h-full object-cover"
-                onError={(e) => {
-                  console.log(
-                    "❌ Error al cargar foto de propietario:",
-                    propietario.foto
-                  )
-                  // Fallback a inicial si falla la foto
-                  e.currentTarget.style.display = "none"
-                  const parent = e.currentTarget.parentElement
-                  if (parent) {
-                    parent.className =
-                      "w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center"
-                    parent.innerHTML = `
-                      <span class="text-sm font-medium text-blue-600">
-                        ${getInitial(propietario.nombre)}
-                      </span>
-                    `
-                  }
-                }}
-                onLoad={() => {
-                  console.log(
-                    "✅ Foto de propietario cargada:",
-                    propietario.foto
-                  )
-                }}
-              />
-            </div>
-          ) : (
-            <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-              <span className="text-sm font-medium text-blue-600">
-                {getInitial(propietario.nombre)}
-              </span>
-            </div>
-          )}
+          <PropietarioAvatar
+            foto={propietario.foto}
+            nombre={propietario.nombre}
+          />
           <div className="flex flex-col">
             <span className="text-sm font-medium text-gray-900">
               {propietario.nombre}
