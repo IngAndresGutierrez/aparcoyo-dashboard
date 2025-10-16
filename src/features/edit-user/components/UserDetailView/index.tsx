@@ -1,10 +1,10 @@
+/* eslint-disable @next/next/no-img-element */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client"
 
 import * as React from "react"
 import { Skeleton } from "@/components/ui/skeleton"
 import { User } from "lucide-react"
-import Image from "next/image"
 
 interface UserHeaderProps {
   userId: string
@@ -23,7 +23,8 @@ const UserHeader: React.FC<UserHeaderProps> = ({ userId }) => {
 
         console.log(`🔍 INICIANDO fetch para usuario: ${userId}`)
 
-        const response = await fetch(
+        // Primero intentar GET individual
+        const responseIndividual = await fetch(
           `https://kns.aparcoyo.com/apa/usuarios/${userId}`,
           {
             headers: {
@@ -33,19 +34,62 @@ const UserHeader: React.FC<UserHeaderProps> = ({ userId }) => {
           }
         )
 
-        console.log(`📨 Response status: ${response.status}`)
+        console.log(`📨 Response status: ${responseIndividual.status}`)
 
-        if (!response.ok) {
-          const errorText = await response.text()
+        if (!responseIndividual.ok) {
+          const errorText = await responseIndividual.text()
           console.error(`❌ Response error: ${errorText}`)
-          throw new Error(`Error ${response.status}: ${response.statusText}`)
+          throw new Error(
+            `Error ${responseIndividual.status}: ${responseIndividual.statusText}`
+          )
         }
 
-        const data = await response.json()
-        console.log(`✅ Usuario obtenido:`, data)
-        console.log(`🖼️ Foto del usuario:`, data.data?.foto || data?.foto)
+        const dataIndividual = await responseIndividual.json()
+        const usuarioIndividual = dataIndividual.data || dataIndividual
 
-        setUsuario(data.data || data)
+        console.log(`✅ Usuario obtenido (individual):`, usuarioIndividual)
+        console.log(
+          `🖼️ Foto del usuario (individual):`,
+          usuarioIndividual?.foto
+        )
+
+        // Si no tiene foto, intentar obtenerla desde la lista
+        if (!usuarioIndividual.foto) {
+          console.log(`🔄 No hay foto en GET individual, consultando lista...`)
+
+          try {
+            const responseLista = await fetch(
+              `https://kns.aparcoyo.com/apa/usuarios`,
+              {
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                  "Content-Type": "application/json",
+                },
+              }
+            )
+
+            if (responseLista.ok) {
+              const dataLista = await responseLista.json()
+              const usuarios = dataLista.data || dataLista
+
+              // Buscar el usuario en la lista
+              const usuarioConFoto = Array.isArray(usuarios)
+                ? usuarios.find((u: any) => u.uid === userId)
+                : null
+
+              if (usuarioConFoto?.foto) {
+                console.log(`✅ Foto encontrada en lista:`, usuarioConFoto.foto)
+                usuarioIndividual.foto = usuarioConFoto.foto
+              } else {
+                console.log(`⚠️ Usuario no encontrado en lista o sin foto`)
+              }
+            }
+          } catch (err) {
+            console.warn(`⚠️ Error al obtener lista (no crítico):`, err)
+          }
+        }
+
+        setUsuario(usuarioIndividual)
       } catch (err) {
         console.error("❌ Error completo:", err)
         setError(err instanceof Error ? err.message : "Error desconocido")
@@ -95,33 +139,48 @@ const UserHeader: React.FC<UserHeaderProps> = ({ userId }) => {
     )
   }
 
-  // Avatar con foto del campo 'foto'
+  // Avatar con foto - construir URL ya que el GET individual no trae el campo foto
   const Avatar = () => {
-    if (usuario.foto) {
+    // Construir URL de foto basada en el patrón que usa el backend
+    const fotoUrl =
+      usuario.foto ||
+      `https://kns.aparcoyo.com/apa/archivos/perfil/foto/${usuario.uid}`
+
+    console.log("🖼️ Intentando cargar foto desde:", fotoUrl)
+    console.log("📋 Usuario completo:", usuario)
+    console.log("🆔 UID del usuario:", usuario.uid)
+    console.log("📸 Campo foto del usuario:", usuario.foto)
+
+    if (usuario.uid) {
       return (
-        <Image
-          width={64}
-          height={64}
-          src={usuario.foto}
-          alt={`Foto de ${usuario.nombre || usuario.email}`}
-          className="h-16 w-16 rounded-full object-cover border-2 border-gray-200"
-          onError={(e) => {
-            console.log("❌ Error al cargar la imagen")
-            e.currentTarget.style.display = "none"
-            const parent = e.currentTarget.parentElement
-            if (parent) {
-              const initial =
-                usuario.nombre?.charAt(0)?.toUpperCase() ||
-                usuario.email?.charAt(0)?.toUpperCase() ||
-                "U"
-              parent.innerHTML = `
-                <div class="h-16 w-16 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-xl font-bold">
-                  ${initial}
-                </div>
-              `
-            }
-          }}
-        />
+        <div className="h-16 w-16 rounded-full overflow-hidden border-2 border-gray-200 flex-shrink-0">
+          <img
+            src={fotoUrl}
+            alt={`Foto de ${usuario.nombre || usuario.email}`}
+            className="w-full h-full object-cover"
+            onError={(e) => {
+              console.log("❌ Error al cargar la imagen desde:", fotoUrl)
+              console.log("❌ Status de la imagen:", e.currentTarget.complete)
+              const target = e.currentTarget
+              target.style.display = "none"
+              const parent = target.parentElement
+              if (parent) {
+                const initial =
+                  usuario.nombre?.charAt(0)?.toUpperCase() ||
+                  usuario.email?.charAt(0)?.toUpperCase() ||
+                  "U"
+                parent.innerHTML = `
+                  <div class="h-16 w-16 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-xl font-bold">
+                    ${initial}
+                  </div>
+                `
+              }
+            }}
+            onLoad={() => {
+              console.log("✅ Imagen cargada exitosamente desde:", fotoUrl)
+            }}
+          />
+        </div>
       )
     }
 

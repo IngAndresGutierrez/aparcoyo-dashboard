@@ -1,7 +1,8 @@
+/* eslint-disable @next/next/no-img-element */
 "use client"
 
 import { ColumnDef, RowData } from "@tanstack/react-table"
-import { MoreHorizontal, Loader2, Edit, Trash2 } from "lucide-react" // ✨ AGREGADOS Edit y Trash2
+import { MoreHorizontal, Loader2, Edit, Trash2 } from "lucide-react"
 import Image from "next/image"
 
 import { Button } from "@/components/ui/button"
@@ -27,7 +28,6 @@ declare module "@tanstack/react-table" {
 interface ColumnProps {
   onEliminarPlaza: (id: string, nombre: string) => Promise<void>
   deletingId: string | null
-  // Agregar función de navegación opcional
   onEditarPlaza?: (id: string) => void
 }
 
@@ -40,41 +40,78 @@ export const createColumns = ({
     id: "select",
     header: () => <input type="checkbox" />,
     cell: () => <input type="checkbox" />,
-    // Sin meta.responsive para que siempre sea visible
   },
   {
     accessorKey: "direccion",
     header: "Plaza",
-    cell: ({ row }) => (
-      <div className="flex items-center gap-3">
-        <div className="w-10 h-10 bg-gray-200 rounded-lg flex items-center justify-center flex-shrink-0">
-          <Image
-            src="/home/home-03.svg"
-            alt="plaza"
-            width={20}
-            height={20}
-            className="w-5 h-5"
-          />
-        </div>
-        <div className="flex flex-col">
-          <span className="font-medium text-sm text-gray-900">
-            {row.original.direccion}
-          </span>
-          <div className="flex items-center gap-1">
-            <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
-            <span className="text-xs text-gray-500 capitalize">
-              {formatPlazaType(row.original.tipo)}
+    cell: ({ row }) => {
+      const plaza = row.original
+      // Obtener primera imagen del array archivos
+      const primeraImagen = plaza.archivos?.[0]?.url
+
+      console.log("🏠 Plaza:", {
+        direccion: plaza.direccion,
+        archivos: plaza.archivos,
+        primeraImagen: primeraImagen,
+      })
+
+      return (
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-gray-200 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden">
+            {primeraImagen ? (
+              <img
+                src={primeraImagen}
+                alt={plaza.direccion}
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  console.log(
+                    "❌ Error al cargar imagen de plaza:",
+                    primeraImagen
+                  )
+                  // Fallback al ícono si la imagen falla
+                  e.currentTarget.style.display = "none"
+                  const parent = e.currentTarget.parentElement
+                  if (parent) {
+                    parent.innerHTML = `
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M3 9L12 2L21 9V20C21 20.5304 20.7893 21.0391 20.4142 21.4142C20.0391 21.7893 19.5304 22 19 22H5C4.46957 22 3.96086 21.7893 3.58579 21.4142C3.21071 21.0391 3 20.5304 3 20V9Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M9 22V12H15V22" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                      </svg>
+                    `
+                  }
+                }}
+                onLoad={() => {
+                  console.log("✅ Imagen de plaza cargada:", primeraImagen)
+                }}
+              />
+            ) : (
+              <Image
+                src="/home/home-03.svg"
+                alt="plaza"
+                width={20}
+                height={20}
+                className="w-5 h-5"
+              />
+            )}
+          </div>
+          <div className="flex flex-col">
+            <span className="font-medium text-sm text-gray-900">
+              {plaza.direccion}
             </span>
+            <div className="flex items-center gap-1">
+              <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+              <span className="text-xs text-gray-500 capitalize">
+                {formatPlazaType(plaza.tipo)}
+              </span>
+            </div>
           </div>
         </div>
-      </div>
-    ),
-    // Sin meta.responsive para que siempre sea visible
+      )
+    },
   },
   {
     header: "Reservas",
     cell: () => <span className="text-sm font-medium">0</span>,
-    // Sin meta.responsive para que siempre sea visible
   },
   {
     accessorKey: "precio",
@@ -84,7 +121,7 @@ export const createColumns = ({
         {formatPrice(row.original.precio)}
       </span>
     ),
-    meta: { responsive: true }, // Ocultar en responsive
+    meta: { responsive: true },
   },
   {
     accessorKey: "disponibilidadDesde",
@@ -125,29 +162,72 @@ export const createColumns = ({
         return <span className="text-sm text-red-400">Error en fecha</span>
       }
     },
-    meta: { responsive: true }, // Ocultar en responsive
+    meta: { responsive: true },
   },
   {
     accessorKey: "propietario",
     header: "Propietario",
-    cell: ({ row }) => (
-      <div className="flex items-center gap-2">
-        <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-          <span className="text-sm font-medium text-blue-600">
-            {getInitial(row.original.propietario.nombre)}
-          </span>
+    cell: ({ row }) => {
+      const propietario = row.original.propietario
+
+      console.log("👤 Propietario:", {
+        nombre: propietario.nombre,
+        foto: propietario.foto,
+      })
+
+      return (
+        <div className="flex items-center gap-2">
+          {propietario.foto ? (
+            <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0">
+              <img
+                src={propietario.foto}
+                alt={propietario.nombre}
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  console.log(
+                    "❌ Error al cargar foto de propietario:",
+                    propietario.foto
+                  )
+                  // Fallback a inicial si falla la foto
+                  e.currentTarget.style.display = "none"
+                  const parent = e.currentTarget.parentElement
+                  if (parent) {
+                    parent.className =
+                      "w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center"
+                    parent.innerHTML = `
+                      <span class="text-sm font-medium text-blue-600">
+                        ${getInitial(propietario.nombre)}
+                      </span>
+                    `
+                  }
+                }}
+                onLoad={() => {
+                  console.log(
+                    "✅ Foto de propietario cargada:",
+                    propietario.foto
+                  )
+                }}
+              />
+            </div>
+          ) : (
+            <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+              <span className="text-sm font-medium text-blue-600">
+                {getInitial(propietario.nombre)}
+              </span>
+            </div>
+          )}
+          <div className="flex flex-col">
+            <span className="text-sm font-medium text-gray-900">
+              {propietario.nombre}
+            </span>
+            <span className="text-xs text-gray-500 truncate max-w-[120px]">
+              {propietario.email}
+            </span>
+          </div>
         </div>
-        <div className="flex flex-col">
-          <span className="text-sm font-medium text-gray-900">
-            {row.original.propietario.nombre}
-          </span>
-          <span className="text-xs text-gray-500 truncate max-w-[120px]">
-            {row.original.propietario.email}
-          </span>
-        </div>
-      </div>
-    ),
-    meta: { responsive: true }, // Ocultar en responsive
+      )
+    },
+    meta: { responsive: true },
   },
   {
     id: "actions",
@@ -155,7 +235,6 @@ export const createColumns = ({
       const plaza = row.original
       const isDeleting = deletingId === plaza.id
 
-      // Función para manejar la navegación a editar
       const handleEditClick = () => {
         if (onEditarPlaza) {
           onEditarPlaza(plaza.id)
@@ -178,7 +257,6 @@ export const createColumns = ({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            {/* ✨ ITEM EDITAR CON ICONO */}
             <DropdownMenuItem
               disabled={isDeleting}
               onClick={handleEditClick}
@@ -188,7 +266,6 @@ export const createColumns = ({
               <span className="text-gray-700">Editar plaza</span>
             </DropdownMenuItem>
 
-            {/* ✨ ITEM ELIMINAR CON ICONO */}
             <DropdownMenuItem
               className="flex items-center gap-2 text-red-600 focus:text-red-600"
               onClick={() => onEliminarPlaza(plaza.id, plaza.direccion)}
@@ -210,12 +287,11 @@ export const createColumns = ({
         </DropdownMenu>
       )
     },
-    meta: { responsive: true }, // Ocultar en responsive
+    meta: { responsive: true },
   },
 ]
 
-// VERSIÓN DE COMPATIBILIDAD (si no quieres cambiar mucho código)
-// Exporta las columnas por defecto sin funcionalidad de eliminar
+// VERSIÓN DE COMPATIBILIDAD
 export const columns: ColumnDef<Plaza>[] = createColumns({
   onEliminarPlaza: async (id: string, nombre: string) => {
     console.log(
@@ -225,5 +301,4 @@ export const columns: ColumnDef<Plaza>[] = createColumns({
   deletingId: null,
 })
 
-// EXPORTAR TAMBIÉN LA FUNCIÓN PARA BACKWARD COMPATIBILITY
 export default createColumns
