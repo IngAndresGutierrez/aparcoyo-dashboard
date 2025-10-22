@@ -14,15 +14,20 @@ interface ApiResponse {
 }
 
 // ✅ Servicio para obtener todas las reservas (TABLA)
-export const getAllReservasService = () => {
+export const getAllReservasService = (timestamp?: number) => {
   const token = localStorage.getItem("token")
 
   console.log("🔄 Llamando al servicio de reservas para tabla:", BASE_URL)
 
   return axios.get<ReservasTableResponse>(`${BASE_URL}`, {
+    params: timestamp ? { _t: timestamp } : {}, // 👈 Agregar timestamp como query param
     headers: {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
+      // 👇 Headers para evitar caché
+      "Cache-Control": "no-cache, no-store, must-revalidate",
+      Pragma: "no-cache",
+      Expires: "0",
     },
   })
 }
