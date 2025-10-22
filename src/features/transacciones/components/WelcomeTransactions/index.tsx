@@ -9,7 +9,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import Image from "next/image"
-import React, { useEffect, useState, useMemo } from "react"
+import React, { useEffect, useState } from "react"
 import { toast } from "sonner"
 import { Transaction } from "../../types/transaction"
 import { usePlatformStats } from "../../hooks/useTransaction"
@@ -54,44 +54,6 @@ const periodOptions = [
   },
 ]
 
-const filtrarTransaccionesPorRango = (
-  transacciones: Transaction[],
-  periodo: PeriodType
-): Transaction[] => {
-  if (!transacciones || transacciones.length === 0) return []
-
-  const hoy = new Date()
-  hoy.setHours(23, 59, 59, 999) // ✅ Hasta el final del día de hoy
-
-  return transacciones.filter((t) => {
-    if (!t.fecha) return false
-
-    const fechaTransaccion = new Date(t.fecha)
-
-    switch (periodo) {
-      case "day":
-        // ✅ Buscar transacciones de las últimas 24 horas
-        const hace24Horas = new Date(hoy)
-        hace24Horas.setHours(hoy.getHours() - 24)
-        return fechaTransaccion >= hace24Horas && fechaTransaccion <= hoy
-
-      case "week":
-        const hace7Dias = new Date(hoy)
-        hace7Dias.setDate(hoy.getDate() - 7)
-        hace7Dias.setHours(0, 0, 0, 0)
-        return fechaTransaccion >= hace7Dias && fechaTransaccion <= hoy
-
-      case "month":
-        const hace30Dias = new Date(hoy)
-        hace30Dias.setDate(hoy.getDate() - 30)
-        hace30Dias.setHours(0, 0, 0, 0)
-        return fechaTransaccion >= hace30Dias && fechaTransaccion <= hoy
-
-      default:
-        return true
-    }
-  })
-}
 const generateTransactionsCSV = (transactions: Transaction[]): string => {
   if (!transactions || transactions.length === 0) {
     throw new Error("No hay transacciones para exportar")
@@ -183,16 +145,23 @@ const WelcomeTransactions = ({
       rango: selectedPeriod,
     })
 
-  const transaccionesFiltradas = useMemo(() => {
-    return filtrarTransaccionesPorRango(transactions || [], selectedPeriod)
-  }, [transactions, selectedPeriod])
+  // 🔍 DEBUG TEMPORAL - Justo después del hook
+  console.log("📊 WelcomeTransactions Estado:", {
+    selectedPeriod,
+    loading,
+    transactionsLength: transactions?.length || 0,
+    transactions: transactions,
+    firstTransaction: transactions?.[0],
+    statistics,
+  })
 
+  // ✅ Ya no necesitamos filtrar aquí, el hook lo hace
   useEffect(() => {
-    if (transaccionesFiltradas.length > 0 && onTransaccionesChange) {
-      onTransaccionesChange(transaccionesFiltradas)
+    if (transactions && transactions.length > 0 && onTransaccionesChange) {
+      onTransaccionesChange(transactions)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [transaccionesFiltradas.length])
+  }, [transactions?.length])
 
   const handlePeriodChange = (period: string) => {
     const newPeriod = period as PeriodType
@@ -211,9 +180,8 @@ const WelcomeTransactions = ({
 
   const handleDownloadReport = async () => {
     try {
-      // ✅ Permitir generar reportes incluso sin datos
-      const hayDatos =
-        transaccionesFiltradas && transaccionesFiltradas.length > 0
+      // ✅ Usar directamente transactions del hook
+      const hayDatos = transactions && transactions.length > 0
 
       const generatingToast = toast.loading(
         "Generando reporte de transacciones...",
@@ -273,9 +241,9 @@ const WelcomeTransactions = ({
         return
       }
 
-      // Resto del código original para cuando SÍ hay datos
-      const totalTransacciones = transaccionesFiltradas.length
-      const importesNumericos = transaccionesFiltradas.map((t) => {
+      // ✅ Usar transactions directamente
+      const totalTransacciones = transactions.length
+      const importesNumericos = transactions.map((t) => {
         return parseFloat(String(t.importe || "0").replace(/[^\d.-]/g, "")) || 0
       })
 
@@ -287,21 +255,19 @@ const WelcomeTransactions = ({
       const importeMaximo = Math.max(...importesNumericos)
       const importeMinimo = Math.min(...importesNumericos)
 
-      const estadosCounts = transaccionesFiltradas.reduce((acc, t) => {
+      const estadosCounts = transactions.reduce((acc, t) => {
         const estado = t.estado || "Sin estado"
         acc[estado] = (acc[estado] || 0) + 1
         return acc
       }, {} as Record<string, number>)
 
-      const tiposCounts = transaccionesFiltradas.reduce((acc, t) => {
+      const tiposCounts = transactions.reduce((acc, t) => {
         const tipo = t.tipo || "Sin tipo"
         acc[tipo] = (acc[tipo] || 0) + 1
         return acc
       }, {} as Record<string, number>)
 
-      const clientesUnicos = new Set(
-        transaccionesFiltradas.map((t) => t.cliente)
-      ).size
+      const clientesUnicos = new Set(transactions.map((t) => t.cliente)).size
 
       const resumenData = [
         { Métrica: "Período del reporte", Valor: currentPeriodLabel },
@@ -412,7 +378,7 @@ const WelcomeTransactions = ({
         .map((row) => `${row.Métrica},${row.Valor}`)
         .join("\n")
 
-      const transaccionesCSV = generateTransactionsCSV(transaccionesFiltradas)
+      const transaccionesCSV = generateTransactionsCSV(transactions)
       const finalCSV = resumenCSV + "\n" + transaccionesCSV
 
       downloadFile(finalCSV, filename, "text/csv")
@@ -491,14 +457,11 @@ const WelcomeTransactions = ({
         </Button>
       </div>
 
-      {transaccionesFiltradas &&
-        transaccionesFiltradas.length > 0 &&
-        !loading && (
-          <div className="mt-4 text-xs text-muted-foreground">
-            {transaccionesFiltradas.length} transacciones disponibles para
-            reporte
-          </div>
-        )}
+      {transactions && transactions.length > 0 && !loading && (
+        <div className="mt-4 text-xs text-muted-foreground">
+          {transactions.length} transacciones disponibles para reporte
+        </div>
+      )}
 
       {statistics && !loading && (
         <div className="mt-4 text-xs text-muted-foreground">

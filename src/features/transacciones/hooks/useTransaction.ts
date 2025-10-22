@@ -41,7 +41,12 @@ export const usePlatformStats = (options: UsePlatformStatsOptions = {}) => {
       const data = await platformStatsService.getPlatformStatisticsByPeriod(
         period
       )
-
+      console.log("✅ Datos COMPLETOS recibidos del backend:", data)
+      console.log("✅ Transacciones del backend:", data?.data?.transactions)
+      console.log(
+        "✅ Total transacciones backend:",
+        data?.data?.transactions?.length || 0
+      )
       console.log("✅ Datos recibidos en hook:", data)
 
       if (!data) {
@@ -149,65 +154,141 @@ export const usePlatformStats = (options: UsePlatformStatsOptions = {}) => {
 
   // ✅ Memorizar chartData filtrado
   const chartData = useMemo(() => {
-    if (!state.data?.data.graphData) return []
+    if (!state.data?.data.graphData?.current) {
+      console.log("❌ No hay graphData")
+      return []
+    }
 
     const hoy = new Date()
     hoy.setHours(0, 0, 0, 0)
 
-    return state.data.data.graphData.current
-      .filter((item) => {
-        const fechaItem = new Date(item.date)
-        fechaItem.setHours(0, 0, 0, 0)
+    console.log("🔍 Procesando chartData:", {
+      rango,
+      hoy: hoy.toISOString(),
+      totalItemsBackend: state.data.data.graphData.current.length,
+    })
 
-        switch (rango) {
-          case "day":
-            return fechaItem.getTime() === hoy.getTime()
-          case "week":
-            const hace7Dias = new Date(hoy)
-            hace7Dias.setDate(hoy.getDate() - 7)
-            return fechaItem >= hace7Dias && fechaItem <= hoy
-          case "month":
-          default:
-            const hace30Dias = new Date(hoy)
-            hace30Dias.setDate(hoy.getDate() - 30)
-            return fechaItem >= hace30Dias && fechaItem <= hoy
-        }
+    // Para "day", buscar específicamente la fecha de hoy
+    if (rango === "day") {
+      const itemHoy = state.data.data.graphData.current.find((item) => {
+        // El backend devuelve fechas en formato "YYYY-MM-DD"
+        const fechaItem = item.date // "2025-10-21"
+        const fechaHoy = hoy.toISOString().split("T")[0] // "2025-10-21"
+
+        console.log("🔍 Buscando hoy:", {
+          itemDate: fechaItem,
+          fechaHoy: fechaHoy,
+          match: fechaItem === fechaHoy,
+        })
+
+        return fechaItem === fechaHoy
       })
-      .map((item) => ({
-        date: new Date(item.date).toLocaleDateString("es-ES", {
-          day: "2-digit",
-          month: "short",
-        }),
-        current: item.amount,
-        previous: 0,
-      }))
-  }, [state.data, rango])
 
-  // ✅ Memorizar transactions filtradas
-  const transactions = useMemo(() => {
-    if (!state.data?.data.transactions) return []
+      if (itemHoy) {
+        console.log("✅ Encontrado dato para hoy:", itemHoy)
+        return [
+          {
+            date: "Hoy",
+            current: itemHoy.amount,
+            previous: 0,
+          },
+        ]
+      }
 
-    const hoy = new Date()
-    hoy.setHours(0, 0, 0, 0)
+      // Si no hay dato en graphData, calcular desde transactions
+      console.log("⚠️ No hay graphData para hoy, calculando desde transactions")
+      const transaccionesHoy = (state.data.data.transactions || []).filter(
+        (t) => {
+          if (!t.fecha) return false
+          return t.fecha === hoy.toISOString().split("T")[0]
+        }
+      )
 
-    return state.data.data.transactions.filter((t) => {
-      if (!t.fecha) return false
+      const totalHoy = transaccionesHoy.reduce((sum, t) => {
+        const importe =
+          parseFloat(String(t.importe || "0").replace(/[^\d.-]/g, "")) || 0
+        return sum + Math.abs(importe)
+      }, 0)
 
-      const fechaTransaccion = new Date(t.fecha)
-      fechaTransaccion.setHours(0, 0, 0, 0)
+      return [
+        {
+          date: "Hoy",
+          current: totalHoy,
+          previous: 0,
+        },
+      ]
+    }
+
+    // Para "week" y "month", filtrar normalmente
+    const filtered = state.data.data.graphData.current.filter((item) => {
+      const fechaItem = new Date(item.date)
+      fechaItem.setHours(0, 0, 0, 0)
 
       switch (rango) {
-        case "day":
-          return fechaTransaccion.getTime() === hoy.getTime()
         case "week":
           const hace7Dias = new Date(hoy)
           hace7Dias.setDate(hoy.getDate() - 7)
-          return fechaTransaccion >= hace7Dias && fechaTransaccion <= hoy
+          return fechaItem >= hace7Dias && fechaItem <= hoy
         case "month":
         default:
           const hace30Dias = new Date(hoy)
           hace30Dias.setDate(hoy.getDate() - 30)
-          return fechaTransaccion >= hace30Dias && fechaTransaccion <= hoy
+          return fechaItem >= hace30Dias && fechaItem <= hoy
+      }
+    })
+
+    console.log("✅ Datos filtrados para", rango, ":", filtered.length)
+
+    return filtered.map((item) => ({
+      date: new Date(item.date).toLocaleDateString("es-ES", {
+        day: "2-digit",
+        month: "short",
+      }),
+      current: item.amount,
+      previous: 0,
+    }))
+  }, [state.data, rango])
+
+  // ✅ Memorizar transactions filtradas
+  // En usePlatformStats.ts, reemplaza el useMemo de transactions por esto:
+  const transactions = useMemo(() => {
+    if (!state.data?.data.transactions) return []
+
+    const ahora = new Date()
+    // Normalizar "ahora" para que solo compare fecha, sin hora
+    ahora.setHours(0, 0, 0, 0)
+
+    return state.data.data.transactions.filter((t) => {
+      if (!t.fecha) return false
+
+      // ✅ Parsear como fecha local, no UTC
+      const [año, mes, dia] = t.fecha.split("-").map(Number)
+      const fechaTransaccion = new Date(año, mes - 1, dia)
+      fechaTransaccion.setHours(0, 0, 0, 0) // 👈 IMPORTANTE: normalizar hora
+
+      switch (rango) {
+        case "day": {
+          console.log("🔍 Comparando fechas:", {
+            fechaTransaccion: fechaTransaccion.toISOString(),
+            ahora: ahora.toISOString(),
+            sonIguales: fechaTransaccion.getTime() === ahora.getTime(),
+            transaccion: t.factura,
+          })
+          return fechaTransaccion.getTime() === ahora.getTime()
+        }
+
+        case "week": {
+          const hace7Dias = new Date(ahora)
+          hace7Dias.setDate(ahora.getDate() - 7)
+          return fechaTransaccion >= hace7Dias && fechaTransaccion <= ahora
+        }
+
+        case "month":
+        default: {
+          const hace30Dias = new Date(ahora)
+          hace30Dias.setDate(ahora.getDate() - 30)
+          return fechaTransaccion >= hace30Dias && fechaTransaccion <= ahora
+        }
       }
     })
   }, [state.data, rango])
