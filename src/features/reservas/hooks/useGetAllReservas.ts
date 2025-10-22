@@ -1,15 +1,22 @@
 // hooks/useGetAllReservas.ts
-import { useState } from "react"
+import { useState, useEffect, useCallback } from "react"
 
 import { getAllReservasService } from "../services/reservas"
 import { ReservaTable } from "../types"
 
-export const useGetAllReservas = () => {
+interface UseGetAllReservasOptions {
+  autoFetch?: boolean
+  refetchInterval?: number // en milisegundos
+}
+
+export const useGetAllReservas = (options: UseGetAllReservasOptions = {}) => {
+  const { autoFetch = false, refetchInterval = 0 } = options
+
   const [reservas, setReservas] = useState<ReservaTable[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const getAllReservas = async () => {
+  const getAllReservas = useCallback(async (skipCache = false) => {
     try {
       setIsLoading(true)
       setError(null)
@@ -25,7 +32,10 @@ export const useGetAllReservas = () => {
 
       console.log("🔄 Obteniendo todas las reservas para tabla...")
 
-      const response = await getAllReservasService()
+      // Agregar timestamp para evitar caché del navegador/backend
+      const response = await getAllReservasService(
+        skipCache ? Date.now() : undefined
+      )
 
       console.log("✅ Respuesta completa:", response)
       console.log("✅ Datos recibidos:", response.data)
@@ -33,12 +43,23 @@ export const useGetAllReservas = () => {
       // Ajustar según la estructura real de la respuesta
       const reservasData = response.data.data || response.data || []
 
-      console.log("📋 Reservas procesadas:", {
-        total: reservasData.length,
-        primera: reservasData[0],
+      // 👇 Ordenar por fechaInicio descendente (más recientes primero)
+      const reservasOrdenadas = [...reservasData].sort((a, b) => {
+        const fechaA = new Date(a.fechaInicio).getTime()
+        const fechaB = new Date(b.fechaInicio).getTime()
+        return fechaB - fechaA // Más recientes primero
       })
 
-      setReservas(reservasData)
+      console.log("📋 Reservas procesadas y ordenadas:", {
+        total: reservasOrdenadas.length,
+        primera: reservasOrdenadas[0],
+        primeraFecha: reservasOrdenadas[0]?.fechaInicio,
+        ultima: reservasOrdenadas[reservasOrdenadas.length - 1],
+        ultimaFecha:
+          reservasOrdenadas[reservasOrdenadas.length - 1]?.fechaInicio,
+      })
+
+      setReservas(reservasOrdenadas)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       console.error("❌ Error obteniendo reservas:", error)
@@ -65,7 +86,31 @@ export const useGetAllReservas = () => {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [])
+
+  // Auto-fetch al montar si está habilitado
+  useEffect(() => {
+    if (autoFetch) {
+      getAllReservas(true) // Skipear caché en la carga inicial
+    }
+  }, [autoFetch, getAllReservas])
+
+  // Auto-refresh si está configurado
+  useEffect(() => {
+    if (refetchInterval > 0) {
+      console.log(`🔄 Auto-refresh configurado cada ${refetchInterval / 1000}s`)
+
+      const interval = setInterval(() => {
+        console.log("🔄 Auto-refresh ejecutándose...")
+        getAllReservas(true) // Skipear caché en auto-refresh
+      }, refetchInterval)
+
+      return () => {
+        console.log("🛑 Limpiando auto-refresh")
+        clearInterval(interval)
+      }
+    }
+  }, [refetchInterval, getAllReservas])
 
   return {
     getAllReservas,

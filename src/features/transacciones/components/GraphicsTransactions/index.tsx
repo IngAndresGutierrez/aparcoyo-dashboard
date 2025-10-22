@@ -120,6 +120,16 @@ export function GraphTransactions({
 
   const getDateRange = () => {
     if (chartData.length === 0) return `Sin datos para ${rango}`
+
+    if (rango === "day") {
+      return new Date().toLocaleDateString("es-ES", {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      })
+    }
+
     const firstDate = chartData[0]?.date
     const lastDate = chartData[chartData.length - 1]?.date
     return `${firstDate} - ${lastDate}`
@@ -207,7 +217,8 @@ export function GraphTransactions({
           <div className="grid gap-2">
             <div className="flex items-center gap-2 leading-none font-medium">
               {isPositiveGrowth ? "Creciendo" : "Decreciendo"}{" "}
-              {formatPercentage(Math.abs(percentageChange))} este {rango}
+              {formatPercentage(Math.abs(percentageChange))}{" "}
+              {rango === "day" ? "hoy" : `este ${rango}`}
               <TrendingUp className="h-4 w-4" />
             </div>
             <div className="text-muted-foreground flex items-center gap-2 leading-none">
