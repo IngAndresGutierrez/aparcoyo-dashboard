@@ -69,7 +69,7 @@ const generatePlazasCSV = (plazas: Plaza[]): string => {
       : "N/A",
     Latitud: plaza.lat || "N/A",
     Longitud: plaza.lng || "N/A",
-    Archivos: plaza.archivos?.length || 0,
+    Archivos: plaza.img?.length || 0,
   }))
 
   // Generar CSV
@@ -181,7 +181,7 @@ const WelcomePlazas = ({
         .filter((p) => p.precio)
         .reduce((sum, p, _, arr) => sum + p.precio / arr.length, 0)
       const totalArchivos = plazas.reduce(
-        (sum, p) => sum + (p.archivos?.length || 0),
+        (sum, p) => sum + (p.img?.length || 0),
         0
       )
 

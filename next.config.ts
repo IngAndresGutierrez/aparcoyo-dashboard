@@ -10,10 +10,22 @@ const nextConfig: NextConfig = {
         port: "",
         pathname: "/**",
       },
-      // Agregar tu backend cuando lo tengas
       {
         protocol: "https",
         hostname: "aparcoyo-back.onrender.com",
+        port: "",
+        pathname: "/**",
+      },
+      // ✅ AGREGAR ESTOS DOS NUEVOS DOMINIOS
+      {
+        protocol: "http",
+        hostname: "kns.aparcoyo.com",
+        port: "",
+        pathname: "/**",
+      },
+      {
+        protocol: "http",
+        hostname: "aparcoyo.com",
         port: "",
         pathname: "/**",
       },

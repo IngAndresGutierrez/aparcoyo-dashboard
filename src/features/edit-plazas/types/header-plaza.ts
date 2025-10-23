@@ -2,12 +2,11 @@
 // types/header-plaza.ts
 
 // Interfaz que coincide EXACTAMENTE con lo que devuelve tu backend
-// En types/header-plaza.ts
 export interface PlazaDetailResponse {
   id: string
   nombre: string
   descripcion: string
-  direccion: string // ← Cambiar de "ubicacion" a "direccion"
+  direccion: string
   precio: string
   tipo: "Privada" | "Inmediata" | "Publica"
   disponible: boolean
@@ -17,6 +16,17 @@ export interface PlazaDetailResponse {
   createdAt: string
   updatedAt: string
 
+  // ✅ Campo de imágenes del backend
+  img?: Array<{
+    id: string
+    url: string
+    tipo: string
+    nombre: string
+    tamaño: number
+    createdAt: string
+  }>
+
+  // Mantener compatibilidad con código anterior
   imagen?: string
   activa?: boolean
 }
@@ -37,6 +47,14 @@ export interface PlazaHeaderData {
   nombre: string
   tipo: "privada" | "publica" | "inmediata"
   imagen?: string
+  img?: Array<{
+    id: string
+    url: string
+    tipo: string
+    nombre: string
+    tamaño: number
+    createdAt: string
+  }>
   precio?: number
   ciudad?: string
   ubicacion?: string
@@ -49,14 +67,18 @@ export interface PlazaHeaderData {
 export const adaptPlazaForHeader = (
   plaza: PlazaDetailResponse
 ): PlazaHeaderData => {
+  // ✅ Obtener la primera imagen del array img
+  const primeraImagen = plaza.img?.[0]?.url || plaza.imagen
+
   return {
     id: plaza.id,
     nombre: plaza.nombre,
     tipo: plaza.tipo.toLowerCase() as "privada" | "publica" | "inmediata",
-    imagen: plaza.imagen,
+    imagen: primeraImagen, // ✅ Usar la primera imagen del backend
+    img: plaza.img, // ✅ Mantener el array completo
     precio: plaza.precio ? parseFloat(plaza.precio) : undefined,
-    ciudad: plaza.direccion, // ← Usar plaza.direccion
-    ubicacion: plaza.direccion, // ← Usar plaza.direccion
+    ciudad: plaza.direccion,
+    ubicacion: plaza.direccion,
     disponible: plaza.disponible,
     descripcion: plaza.descripcion,
     reservas: plaza.reservas?.length || 0,

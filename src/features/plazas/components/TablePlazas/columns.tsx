@@ -117,11 +117,11 @@ export const createColumns = ({
     header: "Plaza",
     cell: ({ row }) => {
       const plaza = row.original
-      const primeraImagen = plaza.archivos?.[0]?.url
+      const primeraImagen = plaza.img?.[0]?.url
 
       console.log("🏠 Plaza:", {
         direccion: plaza.direccion,
-        archivos: plaza.archivos,
+        img: plaza.img,
         primeraImagen: primeraImagen,
       })
 
