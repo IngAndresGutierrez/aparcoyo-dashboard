@@ -1,13 +1,12 @@
 // features/edit-plazas/components/PlazaHeader.tsx
 "use client"
 
-import Image from "next/image"
 import { Button } from "@/components/ui/button"
-
 import { Building2, Loader2, Trash2 } from "lucide-react"
 import { usePlazaById } from "../../hooks/useHeader"
 import { deletePlazaService } from "../../services/header-service"
-import { toast } from "sonner" // Importar toast de Sonner
+import { toast } from "sonner"
+import { useState } from "react"
 
 // Tipo para los datos de la plaza (manteniendo compatibilidad)
 interface PlazaData {
@@ -21,6 +20,14 @@ interface PlazaData {
     | "descubierta"
     | "techada"
   imagen?: string
+  img?: Array<{
+    id: string
+    url: string
+    tipo: string
+    nombre: string
+    tamaño: number
+    createdAt: string
+  }>
   precio?: number
   ciudad?: string
   ubicacion?: string
@@ -31,10 +38,50 @@ interface PlazaData {
 
 interface PlazaHeaderProps {
   plazaId: string
-  // Props opcionales para override
   plazaData?: PlazaData
   onEliminar?: (id: string) => void
   showEliminar?: boolean
+}
+
+// Componente para manejar la imagen con fallback
+const PlazaImageWithFallback = ({
+  imageUrl,
+  nombre,
+}: {
+  imageUrl?: string
+  nombre: string
+}) => {
+  const [imageError, setImageError] = useState(false)
+
+  console.log("🖼️ PlazaHeader - Imagen:", {
+    url: imageUrl,
+    hasError: imageError,
+    nombre,
+  })
+
+  if (!imageUrl || imageError) {
+    return (
+      <div className="w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
+        <Building2 className="w-8 h-8 text-gray-400" />
+      </div>
+    )
+  }
+
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={imageUrl}
+      alt={nombre}
+      className="w-full h-full object-cover"
+      onError={() => {
+        console.log("❌ Error al cargar imagen en PlazaHeader:", imageUrl)
+        setImageError(true)
+      }}
+      onLoad={() => {
+        console.log("✅ Imagen cargada en PlazaHeader:", imageUrl)
+      }}
+    />
+  )
 }
 
 function PlazaHeader({
@@ -43,7 +90,6 @@ function PlazaHeader({
   onEliminar,
   showEliminar = true,
 }: PlazaHeaderProps) {
-  // Hook para obtener la plaza específica por ID
   const {
     data: plazaFromBackend,
     loading,
@@ -54,10 +100,19 @@ function PlazaHeader({
     autoFetch: true,
   })
 
-  // Obtener la plaza adaptada para el header
   const plazaForHeader = getPlazaForHeader()
 
-  // Determinar qué datos usar
+  // ✅ Obtener la primera imagen desde el campo 'img' del backend
+  const primeraImagen =
+    plazaForHeader?.imagen || plazaData?.imagen || plazaFromBackend?.imagen
+
+  console.log("🏠 PlazaHeader - Datos:", {
+    plazaId,
+    backendImg: plazaFromBackend?.img,
+    primeraImagen,
+    plazaData: plazaData?.img,
+  })
+
   const plaza: PlazaData =
     plazaData ||
     (plazaForHeader
@@ -65,7 +120,8 @@ function PlazaHeader({
           id: plazaForHeader.id,
           nombre: plazaForHeader.nombre,
           tipo: plazaForHeader.tipo,
-          imagen: plazaForHeader.imagen,
+          imagen: primeraImagen, // ✅ Usar la imagen obtenida
+          img: plazaFromBackend?.img, // ✅ Mantener el array completo
           precio: plazaForHeader.precio,
           ciudad: plazaForHeader.ciudad,
           ubicacion: plazaForHeader.ubicacion,
@@ -84,77 +140,60 @@ function PlazaHeader({
           imagen: undefined,
         })
 
-  // Función para manejar la eliminación
   const handleEliminar = () => {
-    // Toast de confirmación con Sonner
     toast(`¿Eliminar "${plaza.nombre}"?`, {
       description: "Esta acción no se puede deshacer.",
       action: {
         label: "Eliminar",
         onClick: async () => {
-          // Mostrar toast de loading inmediatamente
           const loadingToastId = toast.loading("Eliminando plaza...")
 
           try {
-            // Llamar al servicio mejorado
             const result = await deletePlazaService(plaza.id)
-
-            // Dismiss el toast de loading
             toast.dismiss(loadingToastId)
 
             if (result.success) {
-              // Éxito
               toast.success(`Plaza "${plaza.nombre}" eliminada exitosamente`, {
                 description: "La plaza ha sido eliminada correctamente",
               })
 
-              // Ejecutar callback si existe
               if (onEliminar) {
                 onEliminar(plaza.id)
               } else {
-                // Comportamiento por defecto: regresar a la página anterior
                 setTimeout(() => window.history.back(), 1000)
               }
             } else {
-              // Manejar diferentes tipos de errores SIN LANZAR EXCEPCIONES
               let errorDescription = ""
 
               if (result.error === "HAS_ACTIVE_RESERVATIONS") {
-                // Error específico: plaza con reservas activas
                 errorDescription =
                   "Cancela las reservas activas primero o contacta soporte para más ayuda."
                 toast.warning("Plaza con reservas activas", {
                   description: errorDescription,
                 })
               } else if (result.error === "UNAUTHORIZED") {
-                // Token expirado
                 toast.error("Sesión expirada", {
                   description:
                     "Tu sesión ha expirado. Redirigiendo al login...",
                 })
-                // Redirigir al login después del toast
                 setTimeout(() => {
                   window.location.href = "/login"
                 }, 2000)
               } else if (result.error === "FORBIDDEN") {
-                // Sin permisos
                 toast.error("Sin permisos", {
                   description:
                     "No tienes permisos suficientes para eliminar esta plaza.",
                 })
               } else if (result.error === "NOT_FOUND") {
-                // Plaza no existe
                 toast.error("Plaza no encontrada", {
                   description: "La plaza que intentas eliminar no existe.",
                 })
               } else if (result.error === "CONNECTION_ERROR") {
-                // Error de conexión
                 toast.error("Error de conexión", {
                   description:
                     "Verifica tu conexión a internet e intenta nuevamente.",
                 })
               } else {
-                // Error genérico
                 toast.error("Error al eliminar", {
                   description:
                     result.message || "Error inesperado al eliminar la plaza.",
@@ -162,8 +201,6 @@ function PlazaHeader({
               }
             }
           } catch (unexpectedError) {
-            // Este catch solo se ejecutará en casos muy excepcionales
-            // porque nuestro servicio nunca lanza errores
             console.error(
               "Error inesperado en handleEliminar:",
               unexpectedError
@@ -182,7 +219,6 @@ function PlazaHeader({
     })
   }
 
-  // Función para formatear el tipo
   const formatTipo = (tipo: string) => {
     const tipos = {
       privada: "Plaza Privada",
@@ -205,22 +241,11 @@ function PlazaHeader({
             <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden flex-shrink-0">
               {loading ? (
                 <Loader2 className="w-6 h-6 text-gray-400 animate-spin" />
-              ) : plaza.imagen ? (
-                <Image
-                  src={plaza.imagen}
-                  alt={plaza.nombre}
-                  width={64}
-                  height={64}
-                  className="w-full h-full object-cover"
-                  onError={(e) => {
-                    const target = e.target as HTMLImageElement
-                    target.style.display = "none"
-                  }}
-                />
               ) : (
-                <div className="w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
-                  <Building2 className="w-8 h-8 text-gray-400" />
-                </div>
+                <PlazaImageWithFallback
+                  imageUrl={primeraImagen}
+                  nombre={plaza.nombre}
+                />
               )}
             </div>
 
