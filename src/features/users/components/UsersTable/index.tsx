@@ -51,29 +51,21 @@ const UserAvatar: React.FC<{
   userEmail: string
   photoUrl?: string
 }> = ({ userName, userEmail, photoUrl }) => {
-  if (photoUrl) {
+  const [imageError, setImageError] = React.useState(false)
+
+  const initial =
+    userName?.charAt(0)?.toUpperCase() ||
+    userEmail?.charAt(0)?.toUpperCase() ||
+    "U"
+
+  if (photoUrl && !imageError) {
     return (
       <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0 border border-gray-200">
         <img
           src={photoUrl}
           alt={userName || userEmail}
           className="w-full h-full object-cover"
-          onError={(e) => {
-            const target = e.currentTarget
-            target.style.display = "none"
-            const parent = target.parentElement
-            if (parent) {
-              const initial =
-                userName?.charAt(0)?.toUpperCase() ||
-                userEmail?.charAt(0)?.toUpperCase() ||
-                "U"
-              parent.innerHTML = `
-                <div class="w-full h-full bg-blue-100 flex items-center justify-center">
-                  <span class="text-blue-600 text-sm font-medium">${initial}</span>
-                </div>
-              `
-            }
-          }}
+          onError={() => setImageError(true)}
         />
       </div>
     )
@@ -81,11 +73,7 @@ const UserAvatar: React.FC<{
 
   return (
     <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
-      <span className="text-blue-600 text-sm font-medium">
-        {userName?.charAt(0)?.toUpperCase() ||
-          userEmail?.charAt(0)?.toUpperCase() ||
-          "U"}
-      </span>
+      <span className="text-blue-600 text-sm font-medium">{initial}</span>
     </div>
   )
 }
@@ -151,6 +139,7 @@ const UsersTable = ({
   } = useUserActions()
 
   // ✅ Función para manejar cambio de foto
+  // ✅ Función para manejar cambio de foto CON toast.promise
   const handlePhotoChange = async (
     event: React.ChangeEvent<HTMLInputElement>,
     userId: string | number,
@@ -181,55 +170,44 @@ const UsersTable = ({
       return
     }
 
-    const loadingToast = toast.loading("Subiendo foto...", {
-      description: "Actualizando foto de perfil",
-    })
+    // ✅ Usar toast.promise en lugar de toast.loading/dismiss
+    toast.promise(
+      updatePhoto(userId, file).then((response) => {
+        if (response) {
+          const photoUrl =
+            response.data?.foto ||
+            response.data?.fotoPerfil ||
+            response.data?.photoUrl ||
+            response.data?.url
 
-    try {
-      const response = await updatePhoto(userId, file)
+          console.log("🖼️ URL de foto extraída:", photoUrl)
 
-      toast.dismiss(loadingToast)
-
-      if (response) {
-        toast.success("Foto actualizada", {
-          description: `La foto de ${userName} se actualizó correctamente`,
-          duration: 4000,
-        })
-
-        // ✅ Extraer la URL correcta - el backend devuelve en data.foto
-        const photoUrl =
-          response.data?.foto ||
-          response.data?.fotoPerfil ||
-          response.data?.photoUrl ||
-          response.data?.url
-
-        console.log("🖼️ URL de foto extraída:", photoUrl)
-
-        if (photoUrl) {
-          setFilteredUsuarios((prev) =>
-            prev.map(
-              (user) =>
-                user.uid === userId ? { ...user, foto: photoUrl } : user // ✅ BIEN
+          if (photoUrl) {
+            setFilteredUsuarios((prev) =>
+              prev.map((user) =>
+                user.uid === userId ? { ...user, foto: photoUrl } : user
+              )
             )
-          )
-          console.log("✅ Estado actualizado con foto para usuario:", userId)
-        } else {
-          console.warn("⚠️ No se pudo extraer la URL de la foto")
+            console.log("✅ Estado actualizado con foto para usuario:", userId)
+          } else {
+            console.warn("⚠️ No se pudo extraer la URL de la foto")
+          }
         }
+        return response
+      }),
+      {
+        loading: "Subiendo foto...",
+        success: `La foto de ${userName} se actualizó correctamente`,
+        error: (err) =>
+          err instanceof Error ? err.message : "Error al subir foto",
       }
-    } catch (error) {
-      toast.dismiss(loadingToast)
-      toast.error("Error al subir foto", {
-        description:
-          error instanceof Error ? error.message : "Error desconocido",
-      })
-    }
+    )
 
+    // Limpiar input
     if (event.target) {
       event.target.value = ""
     }
   }
-
   // ✅ Función para abrir el selector de archivo
   const openFileSelector = (userId: string | number) => {
     setSelectedUserId(userId)
@@ -295,6 +273,7 @@ const UsersTable = ({
   }
 
   // Cambiar estado usuario
+  // Cambiar estado usuario - SIN toasts
   const handleToggleUserStatus = async (
     userId: string | number,
     isCurrentlyActive: boolean
@@ -310,9 +289,9 @@ const UsersTable = ({
       setFilteredUsuarios((prev) => updateUserInList(prev))
     } catch (error) {
       console.error("Error actualizando usuario:", error)
+      throw error // ⬅️ Re-lanza el error para que lo capture el onClick
     }
   }
-
   // Cleanup
   React.useEffect(() => {
     return () => {
@@ -481,37 +460,21 @@ const UsersTable = ({
 
               <DropdownMenuItem
                 onClick={async () => {
-                  const loadingToast = toast.loading(
-                    row.original.isActive
-                      ? "Desactivando usuario..."
-                      : "Activando usuario...",
-                    { description: "Por favor espera..." }
-                  )
-                  try {
-                    await handleToggleUserStatus(
+                  toast.promise(
+                    handleToggleUserStatus(
                       row.original.uid,
                       row.original.isActive
-                    )
-                    toast.dismiss(loadingToast)
-                    toast.success(
-                      row.original.isActive
-                        ? "Usuario desactivado"
-                        : "Usuario activado",
-                      {
-                        description: `${row.original.nombre} ha sido ${
-                          row.original.isActive ? "desactivado" : "activado"
-                        } correctamente`,
-                        duration: 4000,
-                      }
-                    )
-                  } catch (error) {
-                    console.error("Error:", error)
-                    toast.dismiss(loadingToast)
-                    toast.error("Error al cambiar estado", {
-                      description: "Hubo un problema. Inténtalo de nuevo.",
-                      duration: 5000,
-                    })
-                  }
+                    ),
+                    {
+                      loading: row.original.isActive
+                        ? "Desactivando usuario..."
+                        : "Activando usuario...",
+                      success: `${row.original.nombre} ha sido ${
+                        row.original.isActive ? "desactivado" : "activado"
+                      } correctamente`,
+                      error: "Hubo un problema. Inténtalo de nuevo.",
+                    }
+                  )
                 }}
                 disabled={isProcessing}
               >

@@ -4,7 +4,6 @@
 import { useState } from "react"
 import {
   MoreHorizontal,
-  Edit,
   Trash2,
   ArrowUpDown,
   AlertCircle,
@@ -29,7 +28,7 @@ import {
 import { Card, CardContent } from "@/components/ui/card"
 import Image from "next/image"
 import { usePlaza } from "../../hooks/useTableReservas"
-import { toast } from "sonner" // 🔥 Importar toast
+import { toast } from "sonner"
 
 interface PlazaReservationsTableProps {
   plazaId: string
@@ -39,19 +38,15 @@ interface PlazaReservationsTableProps {
 
 function PlazaReservationsTable({
   plazaId,
-  onEditarReserva,
   onEliminarReserva,
 }: PlazaReservationsTableProps) {
-  // Estados para ordenamiento local
   const [sortColumn, setSortColumn] = useState<string | null>(null)
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc")
 
-  // Hook para obtener datos de la plaza y reservas
   const {
     reservas,
     loading,
     error,
-    editReserva,
     deleteReserva,
     sortReservas,
     refresh,
@@ -61,57 +56,13 @@ function PlazaReservationsTable({
     reservasCanceladas,
   } = usePlaza(plazaId)
 
-  // Función para manejar ordenamiento
   const handleSort = (column: string) => {
     const newDirection =
       sortColumn === column && sortDirection === "asc" ? "desc" : "asc"
     setSortColumn(column)
     setSortDirection(newDirection)
-
-    // Usar el ordenamiento del hook
     sortReservas({ column, direction: newDirection })
   }
-
-  // 🔥 Función para manejar editar reserva con toast
-  const handleEditarReserva = async (reservaId: string) => {
-    try {
-      // Si hay un callback personalizado, usarlo
-      if (onEditarReserva) {
-        onEditarReserva(reservaId)
-        return
-      }
-
-      // Toast de carga
-      toast.loading("Editando reserva...", { id: `edit-${reservaId}` })
-
-      // Ejemplo de actualización - puedes personalizar según tus necesidades
-      await editReserva(reservaId, {
-        // estado: "cancelada" // ejemplo
-      })
-
-      // Toast de éxito
-      toast.success("Reserva editada exitosamente", {
-        id: `edit-${reservaId}`,
-        description: "Los cambios se han guardado correctamente",
-      })
-    } catch (error) {
-      console.error("Error editando reserva:", error)
-
-      // Toast de error
-      toast.error("Error al editar la reserva", {
-        id: `edit-${reservaId}`,
-        description:
-          error instanceof Error
-            ? error.message
-            : "Por favor, intenta nuevamente",
-      })
-    }
-  }
-
-  // 🔥 Función para manejar eliminar reserva con toast promise
-  // En PlazaReservationsTable.tsx, en la función handleEliminarReserva:
-
-  // En PlazaReservationsTable.tsx, en la función handleEliminarReserva:
 
   const handleEliminarReserva = async (reservaId: string) => {
     if (onEliminarReserva) {
@@ -121,17 +72,12 @@ function PlazaReservationsTable({
 
     toast.promise(deleteReserva(reservaId), {
       loading: "Eliminando reserva...",
-      success: () => {
-        return "Reserva eliminada exitosamente"
-      },
+      success: "Reserva eliminada exitosamente",
       error: (err) => {
         console.error("Error eliminando reserva:", err)
-
-        // 🔥 Mejorar el mensaje de error
         if (err?.statusCode === 400) {
           return "No se puede eliminar esta reserva. Verifica que tengas los permisos necesarios."
         }
-
         return err instanceof Error
           ? `Error: ${err.message}`
           : "No se pudo eliminar la reserva. Intenta nuevamente."
@@ -139,7 +85,6 @@ function PlazaReservationsTable({
     })
   }
 
-  // 🔥 Función para confirmar eliminación con toast personalizado
   const confirmarEliminarReserva = (
     reservaId: string,
     nombreUsuario: string
@@ -183,13 +128,12 @@ function PlazaReservationsTable({
         </div>
       ),
       {
-        duration: Infinity, // No desaparece automáticamente
+        duration: Infinity,
         position: "top-center",
       }
     )
   }
 
-  // Función para obtener las iniciales del usuario
   const getIniciales = (nombre: string) => {
     return nombre
       .split(" ")
@@ -199,7 +143,6 @@ function PlazaReservationsTable({
       .substring(0, 2)
   }
 
-  // Función para obtener el color del badge según el estado
   const getEstadoBadge = (estado: string) => {
     switch (estado) {
       case "programado":
@@ -227,12 +170,10 @@ function PlazaReservationsTable({
     }
   }
 
-  // Función para formatear precio
   const formatearPrecio = (precio: number) => {
     return `€${precio.toFixed(2)}`
   }
 
-  // Estado de carga
   if (loading) {
     return (
       <Card className="w-full">
@@ -246,7 +187,6 @@ function PlazaReservationsTable({
     )
   }
 
-  // Estado de error
   if (error) {
     return (
       <Card className="w-full">
@@ -274,7 +214,6 @@ function PlazaReservationsTable({
     )
   }
 
-  // Sin reservas
   if (!reservas || reservas.length === 0) {
     return (
       <Card className="w-full">
@@ -298,13 +237,13 @@ function PlazaReservationsTable({
   return (
     <Card className="w-full">
       <CardContent className="p-0">
-        {/* Header con estadísticas */}
-        <div className="p-6 border-b">
-          <div className="flex items-center justify-between">
+        {/* Header con estadísticas - Responsive */}
+        <div className="p-4 md:p-6 border-b">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <h3 className="text-lg font-semibold text-gray-900">
               Reservas ({totalReservas || reservas.length})
             </h3>
-            <div className="flex items-center gap-4 text-sm text-gray-600">
+            <div className="flex flex-wrap items-center gap-2 md:gap-4 text-xs md:text-sm text-gray-600">
               <span>Programadas: {reservasProgramadas || 0}</span>
               <span>Concluidas: {reservasConcluidas || 0}</span>
               <span>Canceladas: {reservasCanceladas || 0}</span>
@@ -318,7 +257,7 @@ function PlazaReservationsTable({
                     error: "Error al actualizar",
                   })
                 }}
-                className="ml-2"
+                className="ml-auto md:ml-2"
               >
                 Actualizar
               </Button>
@@ -330,7 +269,8 @@ function PlazaReservationsTable({
           <Table>
             <TableHeader>
               <TableRow className="border-b">
-                <TableHead className="text-left font-medium text-gray-600 py-3 px-6">
+                {/* ✅ Columna 1: Reservado por - SIEMPRE VISIBLE */}
+                <TableHead className="text-left font-medium text-gray-600 py-3 px-4 md:px-6">
                   <button
                     onClick={() => handleSort("usuario")}
                     className="flex items-center gap-2 hover:text-gray-900"
@@ -339,15 +279,8 @@ function PlazaReservationsTable({
                     <ArrowUpDown className="w-4 h-4" />
                   </button>
                 </TableHead>
-                <TableHead className="text-left font-medium text-gray-600 py-3 px-4">
-                  <button
-                    onClick={() => handleSort("fechaConfirmacion")}
-                    className="flex items-center gap-2 hover:text-gray-900"
-                  >
-                    Fecha de confirmación
-                    <ArrowUpDown className="w-4 h-4" />
-                  </button>
-                </TableHead>
+
+                {/* ✅ Columna 2: Estado - SIEMPRE VISIBLE */}
                 <TableHead className="text-left font-medium text-gray-600 py-3 px-4">
                   <button
                     onClick={() => handleSort("estado")}
@@ -357,7 +290,19 @@ function PlazaReservationsTable({
                     <ArrowUpDown className="w-4 h-4" />
                   </button>
                 </TableHead>
-                <TableHead className="text-left font-medium text-gray-600 py-3 px-4">
+
+                {/* 🔒 Resto de columnas - SOLO DESKTOP (md:table-cell) */}
+                <TableHead className="hidden md:table-cell text-left font-medium text-gray-600 py-3 px-4">
+                  <button
+                    onClick={() => handleSort("fechaConfirmacion")}
+                    className="flex items-center gap-2 hover:text-gray-900"
+                  >
+                    Fecha de confirmación
+                    <ArrowUpDown className="w-4 h-4" />
+                  </button>
+                </TableHead>
+
+                <TableHead className="hidden md:table-cell text-left font-medium text-gray-600 py-3 px-4">
                   <button
                     onClick={() => handleSort("fechaReserva")}
                     className="flex items-center gap-2 hover:text-gray-900"
@@ -366,7 +311,8 @@ function PlazaReservationsTable({
                     <ArrowUpDown className="w-4 h-4" />
                   </button>
                 </TableHead>
-                <TableHead className="text-left font-medium text-gray-600 py-3 px-4">
+
+                <TableHead className="hidden lg:table-cell text-left font-medium text-gray-600 py-3 px-4">
                   <button
                     onClick={() => handleSort("precio")}
                     className="flex items-center gap-2 hover:text-gray-900"
@@ -375,7 +321,8 @@ function PlazaReservationsTable({
                     <ArrowUpDown className="w-4 h-4" />
                   </button>
                 </TableHead>
-                <TableHead className="text-left font-medium text-gray-600 py-3 px-4">
+
+                <TableHead className="hidden lg:table-cell text-left font-medium text-gray-600 py-3 px-4">
                   <button
                     onClick={() => handleSort("comision")}
                     className="flex items-center gap-2 hover:text-gray-900"
@@ -384,6 +331,8 @@ function PlazaReservationsTable({
                     <ArrowUpDown className="w-4 h-4" />
                   </button>
                 </TableHead>
+
+                {/* Menú de acciones - SIEMPRE VISIBLE */}
                 <TableHead className="w-12 py-3 px-4"></TableHead>
               </TableRow>
             </TableHeader>
@@ -393,10 +342,10 @@ function PlazaReservationsTable({
                   key={reserva.id}
                   className="border-b hover:bg-gray-50"
                 >
-                  {/* Reservado por */}
-                  <TableCell className="py-4 px-6">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center flex-shrink-0">
+                  {/* ✅ Columna 1: Reservado por - SIEMPRE VISIBLE */}
+                  <TableCell className="py-4 px-4 md:px-6">
+                    <div className="flex items-center gap-2 md:gap-3">
+                      <div className="w-8 h-8 md:w-10 md:h-10 bg-gray-200 rounded-full flex items-center justify-center flex-shrink-0">
                         {reserva.usuario?.avatar ? (
                           <Image
                             src={reserva.usuario.avatar}
@@ -406,14 +355,14 @@ function PlazaReservationsTable({
                             className="w-full h-full rounded-full object-cover"
                           />
                         ) : (
-                          <span className="text-gray-600 text-sm font-medium">
+                          <span className="text-gray-600 text-xs md:text-sm font-medium">
                             {reserva.usuario?.iniciales ||
                               getIniciales(reserva.usuario?.nombre || "NN")}
                           </span>
                         )}
                       </div>
                       <div className="min-w-0">
-                        <p className="font-medium text-gray-900 text-sm truncate">
+                        <p className="font-medium text-gray-900 text-xs md:text-sm truncate">
                           {reserva.usuario?.nombre || "Sin nombre"}
                         </p>
                         <p className="text-gray-500 text-xs truncate">
@@ -423,20 +372,19 @@ function PlazaReservationsTable({
                     </div>
                   </TableCell>
 
-                  {/* Fecha de confirmación */}
+                  {/* ✅ Columna 2: Estado - SIEMPRE VISIBLE */}
                   <TableCell className="py-4 px-4">
+                    {getEstadoBadge(reserva.estado)}
+                  </TableCell>
+
+                  {/* 🔒 Resto de columnas - SOLO DESKTOP */}
+                  <TableCell className="hidden md:table-cell py-4 px-4">
                     <span className="text-gray-900 text-sm">
                       {reserva.fechaConfirmacion || "N/A"}
                     </span>
                   </TableCell>
 
-                  {/* Estado */}
-                  <TableCell className="py-4 px-4">
-                    {getEstadoBadge(reserva.estado)}
-                  </TableCell>
-
-                  {/* Fecha de reserva */}
-                  <TableCell className="py-4 px-4">
+                  <TableCell className="hidden md:table-cell py-4 px-4">
                     <div className="text-gray-900 text-sm">
                       <p>{reserva.fechaReserva || "N/A"}</p>
                       <p className="text-gray-500 text-xs">
@@ -446,21 +394,19 @@ function PlazaReservationsTable({
                     </div>
                   </TableCell>
 
-                  {/* Pagado */}
-                  <TableCell className="py-4 px-4">
+                  <TableCell className="hidden lg:table-cell py-4 px-4">
                     <span className="text-gray-900 text-sm font-medium">
                       {formatearPrecio(reserva.precio || 0)}
                     </span>
                   </TableCell>
 
-                  {/* Comisión */}
-                  <TableCell className="py-4 px-4">
+                  <TableCell className="hidden lg:table-cell py-4 px-4">
                     <span className="text-gray-900 text-sm font-medium">
                       {formatearPrecio(reserva.comision || 0)}
                     </span>
                   </TableCell>
 
-                  {/* Menú de opciones */}
+                  {/* Menú de opciones - SIEMPRE VISIBLE */}
                   <TableCell className="py-4 px-4">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -473,13 +419,6 @@ function PlazaReservationsTable({
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem
-                          onClick={() => handleEditarReserva(reserva.id)}
-                          className="text-gray-700 cursor-pointer"
-                        >
-                          <Edit className="w-4 h-4 mr-2" />
-                          Editar reserva
-                        </DropdownMenuItem>
                         <DropdownMenuItem
                           onClick={() =>
                             confirmarEliminarReserva(
