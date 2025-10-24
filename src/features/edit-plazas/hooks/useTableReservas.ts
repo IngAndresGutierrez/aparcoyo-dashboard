@@ -5,12 +5,13 @@
 
 import { useState, useEffect, useCallback } from "react"
 import { Reserva, SortParams, UsePlazaState } from "../types/table-reservas"
+
+import { ApiError } from "../types/table-reservas"
 import { plazaApi } from "../services/service-table"
-import { ApiError } from "next/dist/server/api-utils"
 
 interface UsePlazaOptions {
-  autoFetch?: boolean // Si debe hacer fetch automáticamente al montar
-  refetchInterval?: number // Intervalo para refetch automático (ms)
+  autoFetch?: boolean
+  refetchInterval?: number
 }
 
 export function usePlaza(plazaId: string, options: UsePlazaOptions = {}) {
@@ -25,21 +26,25 @@ export function usePlaza(plazaId: string, options: UsePlazaOptions = {}) {
 
   // Función para obtener la plaza
   const fetchPlaza = useCallback(async () => {
-    if (!plazaId) return
+    if (!plazaId) {
+      console.warn("⚠️ No se proporcionó plazaId")
+      return
+    }
 
     setState((prev) => ({ ...prev, loading: true, error: null }))
 
     try {
+      console.log(`🔄 Cargando datos para plaza: ${plazaId}`)
+
       const plaza = await plazaApi.getById(plazaId)
 
-      // ✨ LOGS DE DEBUG PARA VER QUÉ DATOS LLEGAN
-      console.log("🔍 Plaza completa recibida:", plaza)
-      console.log("🔍 Campo reservas:", plaza.reservas)
-      console.log("🔍 Campo reseñas:", plaza.reseñas) // ← Buscar si viene este campo
-      console.log("🔍 Todos los campos de plaza:", Object.keys(plaza))
+      // ✨ LOGS DE DEBUG
+      console.log("✅ Plaza completa recibida:", plaza)
+      console.log("📊 Reservas encontradas:", plaza.reservas?.length || 0)
+      console.log("📋 Primera reserva:", plaza.reservas?.[0])
 
-      // Extraer reservas si vienen incluidas en la respuesta
-      const reservas = plaza.reservas || []
+      // Extraer reservas - SIEMPRE devolver un array
+      const reservas = plaza.reservas || [] // 🔥 Garantiza que siempre sea Reserva[]
 
       setState({
         plaza,
@@ -49,12 +54,12 @@ export function usePlaza(plazaId: string, options: UsePlazaOptions = {}) {
       })
     } catch (error) {
       const apiError = error as ApiError
+      console.error("❌ Error fetching plaza:", apiError)
       setState((prev) => ({
         ...prev,
         loading: false,
         error: apiError,
       }))
-      console.error("Error fetching plaza:", apiError)
     }
   }, [plazaId])
 
@@ -123,8 +128,8 @@ export function usePlaza(plazaId: string, options: UsePlazaOptions = {}) {
         // Manejar diferentes tipos de columnas
         switch (column) {
           case "usuario":
-            aValue = a.usuario.nombre.toLowerCase()
-            bValue = b.usuario.nombre.toLowerCase()
+            aValue = a.usuario?.nombre?.toLowerCase() || ""
+            bValue = b.usuario?.nombre?.toLowerCase() || ""
             break
           case "fechaConfirmacion":
           case "fechaReserva":
@@ -133,8 +138,8 @@ export function usePlaza(plazaId: string, options: UsePlazaOptions = {}) {
             break
           case "precio":
           case "comision":
-            aValue = a[column]
-            bValue = b[column]
+            aValue = a[column] || 0
+            bValue = b[column] || 0
             break
           case "estado":
             aValue = a.estado
@@ -180,7 +185,7 @@ export function usePlaza(plazaId: string, options: UsePlazaOptions = {}) {
     isLoading: state.loading,
     hasError: !!state.error,
     hasData: !!state.plaza,
-    totalReservas: state.reservas.length,
+    totalReservas: state.reservas.length, // 🔥 Ya no necesita optional chaining
     reservasProgramadas: state.reservas.filter((r) => r.estado === "programado")
       .length,
     reservasConcluidas: state.reservas.filter((r) => r.estado === "concluida")
