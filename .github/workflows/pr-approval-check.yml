@@ -1,0 +1,32 @@
+name: "Check PR approvals"
+
+on:
+  pull_request:
+    branches: [ "develop", "release", "main" ]
+    types: [opened, synchronize, reopened, ready_for_review]
+
+jobs:
+  require-approvals:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: "Check if PR has at least one approval from someone else"
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const prAuthor = context.payload.pull_request.user.login;
+
+            const { data: reviews } = await github.rest.pulls.listReviews({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.payload.pull_request.number,
+            });
+
+            const validApprovals = reviews.filter(r => r.state === "APPROVED" && r.user.login !== prAuthor);
+
+            if (validApprovals.length < 1) {
+              core.setFailed(`❌ This PR needs at least 1 approval from someone other than the author (${prAuthor}).`);
+            } else {
+              console.log(`✅ PR has ${validApprovals.length} valid approval(s).`);
+            }
