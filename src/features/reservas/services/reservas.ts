@@ -13,23 +13,90 @@ interface ApiResponse {
   msg: string
 }
 
-// ✅ Servicio para obtener todas las reservas (TABLA)
-export const getAllReservasService = (timestamp?: number) => {
+// ✅ Servicio para obtener todas las reservas (TABLA) - Opción original
+export const getAllReservasService = async (timestamp?: number) => {
   const token = localStorage.getItem("token")
+
+  if (!token) {
+    throw new Error("No hay token de autenticación")
+  }
 
   console.log("🔄 Llamando al servicio de reservas para tabla:", BASE_URL)
 
-  return axios.get<ReservasTableResponse>(`${BASE_URL}`, {
-    params: timestamp ? { _t: timestamp } : {}, // 👈 Agregar timestamp como query param
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-      // 👇 Headers para evitar caché
-      "Cache-Control": "no-cache, no-store, must-revalidate",
-      Pragma: "no-cache",
-      Expires: "0",
-    },
-  })
+  try {
+    const response = await axios.get<ReservasTableResponse>(`${BASE_URL}`, {
+      params: timestamp ? { _t: timestamp } : {},
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        Pragma: "no-cache",
+        Expires: "0",
+      },
+    })
+
+    console.log("✅ Reservas recibidas:", {
+      total: response.data.data?.length || 0,
+      estructura: response.data,
+    })
+
+    return response
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      console.error("❌ Error obteniendo reservas:", {
+        status: error.response?.status,
+        data: error.response?.data,
+        message: error.message,
+        url: BASE_URL,
+      })
+    }
+    throw error
+  }
+}
+
+// ✅ NUEVO: Servicio para obtener reservas de una plaza específica
+export const getReservasByPlazaService = async (
+  plazaId: string,
+  timestamp?: number
+) => {
+  const token = localStorage.getItem("token")
+
+  if (!token) {
+    throw new Error("No hay token de autenticación")
+  }
+
+  const url = `${BASE_URL}/plaza/${plazaId}`
+  console.log(`🔄 Llamando al servicio de reservas para plaza ${plazaId}:`, url)
+
+  try {
+    const response = await axios.get<ReservasTableResponse>(url, {
+      params: timestamp ? { _t: timestamp } : {},
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        Pragma: "no-cache",
+        Expires: "0",
+      },
+    })
+
+    console.log(`✅ Reservas recibidas para plaza ${plazaId}:`, {
+      total: response.data.data?.length || 0,
+      estructura: response.data,
+    })
+
+    return response
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      console.error(`❌ Error obteniendo reservas de plaza ${plazaId}:`, {
+        status: error.response?.status,
+        data: error.response?.data,
+        message: error.message,
+        url,
+      })
+    }
+    throw error
+  }
 }
 
 // ✅ Servicio para estadísticas (GRÁFICAS)
@@ -37,29 +104,31 @@ export const getReservasStatsByRangeService = async (
   rango: "dia" | "semana" | "mes",
   signal?: AbortSignal
 ) => {
+  const token = localStorage.getItem("token")
+
+  if (!token) {
+    throw new Error("No hay token de autenticación")
+  }
+
+  const url = `${BASE_URL}/estadisticas`
+  console.log(
+    `🔄 Llamando al servicio de reservas estadísticas: ${url}?rango=${rango}`
+  )
+
   try {
-    console.log(
-      `🔄 Llamando al servicio de reservas estadísticas: ${BASE_URL}/estadisticas?rango=${rango}`
-    )
-
-    // Obtener token de autenticación
-    const token = localStorage.getItem("token")
-    if (!token) {
-      throw new Error("No hay token de autenticación")
-    }
-
-    const response = await axios.get<ApiResponse>(`${BASE_URL}/estadisticas`, {
-      params: { rango }, // axios maneja los query params automáticamente
+    const response = await axios.get<ApiResponse>(url, {
+      params: { rango },
       headers: {
         Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
       },
-      signal, // Para cancelar peticiones
+      signal,
     })
 
     console.log(`✅ Datos recibidos del servicio de reservas estadísticas:`, {
       rango,
       totalReservas: response.data.data.reservasTotal || 0,
+      estructura: response.data,
     })
 
     return response
@@ -72,10 +141,15 @@ export const getReservasStatsByRangeService = async (
       throw error
     }
 
-    console.error(`❌ Error en getReservasStatsByRangeService:`, {
-      rango,
-      error: error instanceof Error ? error.message : error,
-    })
+    if (axios.isAxiosError(error)) {
+      console.error(`❌ Error en getReservasStatsByRangeService:`, {
+        rango,
+        status: error.response?.status,
+        data: error.response?.data,
+        message: error.message,
+        url,
+      })
+    }
 
     throw error
   }

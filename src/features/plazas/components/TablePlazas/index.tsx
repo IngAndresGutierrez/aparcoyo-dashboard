@@ -25,10 +25,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 
 import { useGetAllPlazas } from "../../hooks/useGetAllPlazas"
 import { createColumns } from "./columns"
-import {
-  eliminarPlazaService,
-  verificarEliminacionPlazaService,
-} from "../../services/plazas"
+import { eliminarPlazaService } from "../../services/plazas"
 
 const UsersTablePlazas = () => {
   const router = useRouter()
@@ -129,60 +126,21 @@ const UsersTablePlazas = () => {
       return
     }
 
-    try {
-      const verificacionToast = toast.loading("Verificando plaza...", {
-        description: "Comprobando si la plaza puede ser eliminada",
-      })
-
-      const verificacion = await verificarEliminacionPlazaService(id)
-      toast.dismiss(verificacionToast)
-
-      if (!verificacion.puedeEliminar && verificacion.motivo) {
-        toast.error("No se puede eliminar", {
-          description: verificacion.motivo,
-          duration: 8000,
-          action: {
-            label: "Ver detalles",
-            onClick: () => {
-              router.push(`/plazas/${id}`)
-            },
-          },
-        })
-        return
-      }
-
-      toast("¿Eliminar plaza?", {
-        description: `¿Estás seguro de que quieres eliminar "${direccion}"? Esta acción no se puede deshacer.`,
-        action: {
-          label: "Eliminar",
-          onClick: async () => {
-            await executeDelete(id, direccion)
-          },
+    // Confirmación directa sin verificación previa
+    toast("¿Eliminar plaza?", {
+      description: `¿Estás seguro de que quieres eliminar "${direccion}"? Esta acción no se puede deshacer.`,
+      action: {
+        label: "Eliminar",
+        onClick: async () => {
+          await executeDelete(id, direccion)
         },
-        cancel: {
-          label: "Cancelar",
-          onClick: () => {},
-        },
-        duration: 10000,
-      })
-    } catch (error: any) {
-      console.error("Error al verificar plaza:", error)
-
-      toast("¿Eliminar plaza?", {
-        description: `No se pudo verificar el estado de "${direccion}". ¿Continuar con la eliminación?`,
-        action: {
-          label: "Eliminar",
-          onClick: async () => {
-            await executeDelete(id, direccion)
-          },
-        },
-        cancel: {
-          label: "Cancelar",
-          onClick: () => {},
-        },
-        duration: 10000,
-      })
-    }
+      },
+      cancel: {
+        label: "Cancelar",
+        onClick: () => {},
+      },
+      duration: 10000,
+    })
   }
 
   // FUNCIÓN PARA EJECUTAR LA ELIMINACIÓN - ACTUALIZADA para estado local

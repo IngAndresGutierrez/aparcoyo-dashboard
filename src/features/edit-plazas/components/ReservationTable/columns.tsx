@@ -29,6 +29,7 @@ import {
 import { Card, CardContent } from "@/components/ui/card"
 import Image from "next/image"
 import { usePlaza } from "../../hooks/useTableReservas"
+import { toast } from "sonner" // 🔥 Importar toast
 
 interface PlazaReservationsTableProps {
   plazaId: string
@@ -71,7 +72,7 @@ function PlazaReservationsTable({
     sortReservas({ column, direction: newDirection })
   }
 
-  // Función para manejar editar reserva
+  // 🔥 Función para manejar editar reserva con toast
   const handleEditarReserva = async (reservaId: string) => {
     try {
       // Si hay un callback personalizado, usarlo
@@ -80,37 +81,112 @@ function PlazaReservationsTable({
         return
       }
 
+      // Toast de carga
+      toast.loading("Editando reserva...", { id: `edit-${reservaId}` })
+
       // Ejemplo de actualización - puedes personalizar según tus necesidades
       await editReserva(reservaId, {
         // estado: "cancelada" // ejemplo
       })
-      console.log("Reserva editada exitosamente")
+
+      // Toast de éxito
+      toast.success("Reserva editada exitosamente", {
+        id: `edit-${reservaId}`,
+        description: "Los cambios se han guardado correctamente",
+      })
     } catch (error) {
       console.error("Error editando reserva:", error)
+
+      // Toast de error
+      toast.error("Error al editar la reserva", {
+        id: `edit-${reservaId}`,
+        description:
+          error instanceof Error
+            ? error.message
+            : "Por favor, intenta nuevamente",
+      })
     }
   }
 
-  // Función para manejar eliminar reserva
+  // 🔥 Función para manejar eliminar reserva con toast promise
+  // En PlazaReservationsTable.tsx, en la función handleEliminarReserva:
+
+  // En PlazaReservationsTable.tsx, en la función handleEliminarReserva:
+
   const handleEliminarReserva = async (reservaId: string) => {
-    try {
-      // Confirmar eliminación
-      const confirmed = window.confirm(
-        "¿Estás seguro de que quieres eliminar esta reserva?"
-      )
-      if (!confirmed) return
-
-      // Si hay un callback personalizado, usarlo
-      if (onEliminarReserva) {
-        onEliminarReserva(reservaId)
-        return
-      }
-
-      // Usar el hook para eliminar
-      await deleteReserva(reservaId)
-      console.log("Reserva eliminada exitosamente")
-    } catch (error) {
-      console.error("Error eliminando reserva:", error)
+    if (onEliminarReserva) {
+      onEliminarReserva(reservaId)
+      return
     }
+
+    toast.promise(deleteReserva(reservaId), {
+      loading: "Eliminando reserva...",
+      success: () => {
+        return "Reserva eliminada exitosamente"
+      },
+      error: (err) => {
+        console.error("Error eliminando reserva:", err)
+
+        // 🔥 Mejorar el mensaje de error
+        if (err?.statusCode === 400) {
+          return "No se puede eliminar esta reserva. Verifica que tengas los permisos necesarios."
+        }
+
+        return err instanceof Error
+          ? `Error: ${err.message}`
+          : "No se pudo eliminar la reserva. Intenta nuevamente."
+      },
+    })
+  }
+
+  // 🔥 Función para confirmar eliminación con toast personalizado
+  const confirmarEliminarReserva = (
+    reservaId: string,
+    nombreUsuario: string
+  ) => {
+    toast.custom(
+      (t) => (
+        <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-4 max-w-md">
+          <div className="flex items-start gap-3">
+            <div className="flex-shrink-0">
+              <AlertCircle className="h-5 w-5 text-red-600" />
+            </div>
+            <div className="flex-1">
+              <h3 className="font-semibold text-gray-900 mb-1">
+                ¿Eliminar reserva?
+              </h3>
+              <p className="text-sm text-gray-600 mb-4">
+                Se eliminará la reserva de <strong>{nombreUsuario}</strong>.
+                Esta acción no se puede deshacer.
+              </p>
+              <div className="flex gap-2 justify-end">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => toast.dismiss(t)}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => {
+                    toast.dismiss(t)
+                    handleEliminarReserva(reservaId)
+                  }}
+                >
+                  Eliminar
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ),
+      {
+        duration: Infinity, // No desaparece automáticamente
+        position: "top-center",
+      }
+    )
   }
 
   // Función para obtener las iniciales del usuario
@@ -153,7 +229,7 @@ function PlazaReservationsTable({
 
   // Función para formatear precio
   const formatearPrecio = (precio: number) => {
-    return `€${precio}`
+    return `€${precio.toFixed(2)}`
   }
 
   // Estado de carga
@@ -170,7 +246,7 @@ function PlazaReservationsTable({
     )
   }
 
-  // Estado de error (sin usar Alert component)
+  // Estado de error
   if (error) {
     return (
       <Card className="w-full">
@@ -235,7 +311,13 @@ function PlazaReservationsTable({
               <Button
                 variant="outline"
                 size="sm"
-                onClick={refresh}
+                onClick={() => {
+                  toast.promise(refresh(), {
+                    loading: "Actualizando...",
+                    success: "Reservas actualizadas",
+                    error: "Error al actualizar",
+                  })
+                }}
                 className="ml-2"
               >
                 Actualizar
@@ -399,7 +481,12 @@ function PlazaReservationsTable({
                           Editar reserva
                         </DropdownMenuItem>
                         <DropdownMenuItem
-                          onClick={() => handleEliminarReserva(reserva.id)}
+                          onClick={() =>
+                            confirmarEliminarReserva(
+                              reserva.id,
+                              reserva.usuario?.nombre || "el usuario"
+                            )
+                          }
                           className="text-red-600 focus:text-red-600 cursor-pointer"
                         >
                           <Trash2 className="w-4 h-4 mr-2" />
@@ -413,8 +500,6 @@ function PlazaReservationsTable({
             </TableBody>
           </Table>
         </div>
-
-        {/* Debug info - remover en producción */}
       </CardContent>
     </Card>
   )
