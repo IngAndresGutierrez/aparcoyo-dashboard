@@ -34,11 +34,11 @@ const UserCredits: React.FC<UserCreditosProps> = ({
     if (!balance) return null
 
     return {
-      disponibles: parseFloat(balance.data.balance),
-      moneda: "€", // Puedes ajustar esto según tu lógica
-      // Opcional: si tienes más datos en el futuro
-      // gastados: balance.data.gastados,
-      // total: balance.data.total,
+      disponibles: balance.data.saldo.saldoTotal,
+      moneda: "€",
+      // Opcional: Ahora tienes más datos disponibles si los necesitas
+      // gastados: balance.data.saldo.saldoGanado,
+      // total: balance.data.saldo.saldoRecargado,
     }
   }, [balance])
 
@@ -86,7 +86,7 @@ const UserCredits: React.FC<UserCreditosProps> = ({
     )
   }
 
-  if (error || !creditos) {
+  if (error || (!loading && !creditos)) {
     const is401Error =
       error?.includes("401") || error?.includes("Sin autorización")
 
@@ -133,6 +133,11 @@ const UserCredits: React.FC<UserCreditosProps> = ({
         </CardContent>
       </Card>
     )
+  }
+
+  // Early return para que TypeScript sepa que creditos NO es null
+  if (!creditos) {
+    return null
   }
 
   return (
@@ -193,9 +198,9 @@ const UserCredits: React.FC<UserCreditosProps> = ({
       <EditCreditosModal
         isOpen={isEditModalOpen}
         onClose={handleModalClose}
-        creditosActuales={creditos?.disponibles || 0}
-        moneda={creditos?.moneda || "€"}
-        userId={userId} // Siempre pasar el userId (el modal ya maneja la lógica)
+        creditosActuales={creditos.disponibles}
+        moneda={creditos.moneda}
+        userId={userId}
         onSuccess={handleSaveSuccess}
       />
     </>

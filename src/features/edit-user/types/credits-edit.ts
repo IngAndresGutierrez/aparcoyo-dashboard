@@ -4,12 +4,27 @@
 export interface ApiResponse<T> {
   ok: boolean
   data: T
-  msg: string
+  msg?: string
 }
 
-// Tipos para el balance de créditos
+// Tipos para el balance de créditos - NUEVO FORMATO
+export interface UsuarioData {
+  uid: string
+  nombre: string
+  email: string
+}
+
+export interface SaldoData {
+  saldoTotal: number
+  saldoGanado: number
+  saldoRecargado: number
+  puedeRetirar: boolean
+  montoMinimoRetiro: number
+}
+
 export interface BalanceData {
-  balance: string
+  usuario: UsuarioData
+  saldo: SaldoData
 }
 
 // Tipos para editar balance
