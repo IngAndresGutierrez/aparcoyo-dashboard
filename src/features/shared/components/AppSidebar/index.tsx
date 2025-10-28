@@ -71,10 +71,26 @@ const data = {
       url: "/reportes",
       icon: "/home/alert-triangle.svg",
     },
+    {
+      name: "Comisiones",
+      url: "/comisiones",
+      icon: "/credits/wallet.svg",
+    },
   ],
 }
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+  const [mounted, setMounted] = React.useState(false)
+
+  React.useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  // Evita renderizar en el servidor
+  if (!mounted) {
+    return null
+  }
+
   return (
     <Sidebar
       collapsible="icon"

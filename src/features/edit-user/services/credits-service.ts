@@ -65,10 +65,10 @@ class CreditosService {
 
   /**
    * Obtener balance de créditos de un usuario por UUID (Admin)
-   * GET /apa/creditos/balance/{uuid}
+   * GET /apa/wallet/admin/saldo/{uuid}
    */
   async obtenerBalance(uuid: string): Promise<BalanceResponse> {
-    const url = `${API_BASE_URL}/apa/creditos/balance/${uuid}`
+    const url = `${API_BASE_URL}/apa/wallet/admin/saldo/${uuid}`
     return this.fetchWithErrorHandling<BalanceResponse>(url, {
       method: "GET",
     })
