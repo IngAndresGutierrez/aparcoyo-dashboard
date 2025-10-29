@@ -48,7 +48,58 @@ interface TotalUsersGraphPlazasProps {
   rango?: "dia" | "semana" | "mes"
 }
 
-// Función transformada para usar datos reales de plazas
+// ✅ NUEVA FUNCIÓN: Filtrar plazas por rango de fecha
+const filterPlazasByRange = (
+  plazas: any[],
+  rango: "dia" | "semana" | "mes"
+): any[] => {
+  if (!plazas || !Array.isArray(plazas)) return []
+
+  const now = new Date()
+  now.setHours(23, 59, 59, 999) // Final del día actual
+
+  let startDate: Date
+
+  switch (rango) {
+    case "dia":
+      // Solo hoy
+      startDate = new Date(now)
+      startDate.setHours(0, 0, 0, 0)
+      break
+    case "semana":
+      // Últimos 7 días
+      startDate = new Date(now)
+      startDate.setDate(now.getDate() - 6) // 6 días atrás + hoy = 7 días
+      startDate.setHours(0, 0, 0, 0)
+      break
+    case "mes":
+    default:
+      // Últimos 30 días
+      startDate = new Date(now)
+      startDate.setDate(now.getDate() - 29) // 29 días atrás + hoy = 30 días
+      startDate.setHours(0, 0, 0, 0)
+      break
+  }
+
+  const filtered = plazas.filter((plaza) => {
+    const fechaPublicacion = plaza.fechaPublicacion
+    if (!fechaPublicacion) return false
+
+    const plazaDate = new Date(fechaPublicacion)
+    return plazaDate >= startDate && plazaDate <= now
+  })
+
+  console.log(`🔍 Filtrado por ${rango}:`, {
+    total: plazas.length,
+    filtradas: filtered.length,
+    rangoInicio: startDate.toLocaleDateString("es-ES"),
+    rangoFin: now.toLocaleDateString("es-ES"),
+  })
+
+  return filtered
+}
+
+// ✅ ACTUALIZADA: Transformar datos con filtrado
 const transformDataForChart = (
   plazasDetalle: any[],
   rango: "dia" | "semana" | "mes"
@@ -57,15 +108,19 @@ const transformDataForChart = (
     return []
   }
 
-  console.log("🔍 Estructura de PlazaDetalle:", plazasDetalle[0])
+  // ✅ Filtrar por rango de fechas PRIMERO
+  const plazasFiltradas = filterPlazasByRange(plazasDetalle, rango)
+
+  if (plazasFiltradas.length === 0) {
+    console.log("⚠️ No hay plazas en el rango seleccionado")
+    return []
+  }
+
+  console.log("🔍 Plazas después de filtrar:", plazasFiltradas.length)
 
   // Agrupar por período basado en el rango seleccionado
-  const groupedByPeriod = plazasDetalle.reduce((acc, plaza) => {
-    console.log("=== DIAGNÓSTICO COMPLETO ===")
-    console.log("🔍 Rango seleccionado:", rango)
-    console.log("🔍 Total de plazas:", plazasDetalle.length)
-
-    const dateField = plaza.fechaPublicacion // Usar fechaPublicacion específicamente
+  const groupedByPeriod = plazasFiltradas.reduce((acc, plaza) => {
+    const dateField = plaza.fechaPublicacion
 
     if (!dateField) {
       console.warn("⚠️ No se encontró fechaPublicacion en:", plaza)
@@ -90,13 +145,6 @@ const transformDataForChart = (
         periodKey = `${date.getFullYear()}-${String(
           date.getMonth() + 1
         ).padStart(2, "0")}` // YYYY-MM
-        console.log("DEBUG MES:", {
-          fechaOriginal: dateField,
-          dateObject: date,
-          año: date.getFullYear(),
-          mesNumber: date.getMonth() + 1,
-          periodKey: periodKey,
-        })
         break
     }
 
@@ -134,11 +182,11 @@ const transformDataForChart = (
     "December",
   ]
 
-  const dayNames = ["Dom", "Lun", "Mar", "Mie", "Jue", "Vie", "Sab"]
+  const dayNames = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"]
 
   // Convertir a formato del gráfico
-  return Object.entries(groupedByPeriod)
-    .sort(([a], [b]) => a.localeCompare(b)) // Ordenar por período
+  const chartData = Object.entries(groupedByPeriod)
+    .sort(([a], [b]) => a.localeCompare(b))
     .map(([key, data]) => {
       const typedData = data as {
         inmediatas: number
@@ -155,7 +203,9 @@ const transformDataForChart = (
           } ${typedData.date.getDate()}`
           break
         case "semana":
-          displayName = `S${Math.ceil(typedData.date.getDate() / 7)}`
+          displayName = `${typedData.date.getDate()}/${
+            typedData.date.getMonth() + 1
+          }`
           break
         case "mes":
         default:
@@ -184,24 +234,39 @@ const transformDataForChart = (
         }),
       }
     })
+
+  console.log("📊 Datos finales para gráfico:", {
+    puntos: chartData.length,
+    primeraFecha: chartData[0]?.date,
+    ultimaFecha: chartData[chartData.length - 1]?.date,
+  })
+
+  return chartData
 }
 
-// Función para calcular total de plazas
-const calculateTotalPlazas = (plazasDetalle: any[]): number => {
-  return plazasDetalle?.length || 0
+// ✅ ACTUALIZADA: Calcular total con filtrado
+const calculateTotalPlazas = (
+  plazasDetalle: any[],
+  rango: "dia" | "semana" | "mes"
+): number => {
+  const filtered = filterPlazasByRange(plazasDetalle, rango)
+  return filtered?.length || 0
 }
 
-// Función para calcular porcentaje de crecimiento
+// ✅ ACTUALIZADA: Calcular crecimiento con filtrado
 const calculateGrowthPercentage = (
   plazasDetalle: any[],
   rango: "dia" | "semana" | "mes"
 ): GrowthData => {
-  if (!plazasDetalle || plazasDetalle.length < 2) {
+  // Filtrar por rango primero
+  const plazasFiltradas = filterPlazasByRange(plazasDetalle, rango)
+
+  if (!plazasFiltradas || plazasFiltradas.length < 2) {
     return { percentage: "0", isPositive: true }
   }
 
   // Agrupar por período para calcular tendencia
-  const groupedData = plazasDetalle.reduce((acc, plaza) => {
+  const groupedData = plazasFiltradas.reduce((acc, plaza) => {
     const dateField = plaza.fechaPublicacion
     if (!dateField) return acc
 
@@ -248,13 +313,19 @@ const calculateGrowthPercentage = (
   }
 }
 
-// Función para obtener rango de fechas
-const getDateRange = (plazasDetalle: any[]): string => {
-  if (!plazasDetalle || plazasDetalle.length === 0) {
-    return "Sin datos"
+// ✅ ACTUALIZADA: Obtener rango de fechas con filtrado
+const getDateRange = (
+  plazasDetalle: any[],
+  rango: "dia" | "semana" | "mes"
+): string => {
+  // Filtrar por rango primero
+  const plazasFiltradas = filterPlazasByRange(plazasDetalle, rango)
+
+  if (!plazasFiltradas || plazasFiltradas.length === 0) {
+    return "Sin datos en este período"
   }
 
-  const dates = plazasDetalle
+  const dates = plazasFiltradas
     .map((plaza) => {
       const dateField = plaza.fechaPublicacion
       return dateField ? new Date(dateField) : null
@@ -295,13 +366,13 @@ export function TotalUsersGraphPlazas({
   console.log("Tipo de plazasDetalle:", Array.isArray(data?.plazasDetalle))
   console.log("==================")
 
-  // Transformar datos para el gráfico usando PlazaDetalle
+  // ✅ Transformar datos pasando rango a TODAS las funciones
   const chartData = data ? transformDataForChart(data.plazasDetalle, rango) : []
-  const totalPlazas = data ? calculateTotalPlazas(data.plazasDetalle) : 0
+  const totalPlazas = data ? calculateTotalPlazas(data.plazasDetalle, rango) : 0
   const growth = data
     ? calculateGrowthPercentage(data.plazasDetalle, rango)
     : { percentage: "0", isPositive: true }
-  const dateRange = data ? getDateRange(data.plazasDetalle) : "Sin datos"
+  const dateRange = data ? getDateRange(data.plazasDetalle, rango) : "Sin datos"
 
   // DEBUG temporal - quita esto cuando funcione
   console.log("🚀 Datos transformados:", {
