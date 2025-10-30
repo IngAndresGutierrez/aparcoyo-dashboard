@@ -9,7 +9,7 @@ const ComisionesPage = () => {
         <div>
           <Comisiones />
         </div>
-        <div>
+        <div className="mt-4">
          <WalletComponent/>
         </div>
       </div>
