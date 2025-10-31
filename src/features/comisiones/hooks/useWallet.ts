@@ -1,3 +1,5 @@
+"use client"
+
 import { useState } from "react"
 import { walletService } from "../services/wallet-service"
 import { DatosBancarios, RetiroRequest } from "../types/wallet"
@@ -32,5 +34,8 @@ export const useWallet = () => {
       ejecutar(() => walletService.retirar(data)),
     getHistorialRetiros: () =>
       ejecutar(() => walletService.getHistorialRetiros()),
+    getSaldo: () => ejecutar(() => walletService.getSaldo()),
+    getComisionesPendientes: () =>
+      ejecutar(() => walletService.getComisionesPendientes()), // 👈 AGREGAR ESTA LÍNEA
   }
 }

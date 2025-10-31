@@ -106,7 +106,7 @@ export default function ComisionesPage() {
       <div className="max-w-4xl mx-auto space-y-6">
         {/* Header */}
         <div className="space-y-2 text-center">
-          <h1 className="text-4xl font-bold tracking-tight bg-gradient-to-r from-blue-600 to-violet-600 bg-clip-text text-transparent">
+          <h1 className="pb-1 text-4xl font-bold tracking-tight bg-gradient-to-r from-blue-600 to-violet-600 bg-clip-text text-transparent">
             Configuración de Comisiones
           </h1>
           <p className="text-muted-foreground">
@@ -193,7 +193,7 @@ export default function ComisionesPage() {
             type="submit"
             disabled={isSaving}
             size="lg"
-            className="w-full bg-gradient-to-r from-blue-600 to-violet-600 hover:from-blue-700 hover:to-violet-700"
+            className="cursor-pointer w-full bg-gradient-to-r from-blue-600 to-violet-600 hover:from-blue-700 hover:to-violet-700"
           >
             {isSaving ? (
               <>
