@@ -100,6 +100,7 @@ const filterPlazasByRange = (
 }
 
 // ✅ ACTUALIZADA: Transformar datos con filtrado
+// ✅ VERSIÓN CORREGIDA de transformDataForChart
 const transformDataForChart = (
   plazasDetalle: any[],
   rango: "dia" | "semana" | "mes"
@@ -108,7 +109,7 @@ const transformDataForChart = (
     return []
   }
 
-  // ✅ Filtrar por rango de fechas PRIMERO
+  // Filtrar por rango de fechas PRIMERO
   const plazasFiltradas = filterPlazasByRange(plazasDetalle, rango)
 
   if (plazasFiltradas.length === 0) {
@@ -130,21 +131,13 @@ const transformDataForChart = (
     const date = new Date(dateField)
     let periodKey: string
 
-    // Generar clave del período según el rango
+    // 🎯 CAMBIO PRINCIPAL: Todos los rangos agrupan por DÍA
     switch (rango) {
       case "dia":
-        periodKey = date.toISOString().split("T")[0] // YYYY-MM-DD
-        break
       case "semana":
-        const startOfWeek = new Date(date)
-        startOfWeek.setDate(date.getDate() - date.getDay())
-        periodKey = startOfWeek.toISOString().split("T")[0]
-        break
       case "mes":
-      default:
-        periodKey = `${date.getFullYear()}-${String(
-          date.getMonth() + 1
-        ).padStart(2, "0")}` // YYYY-MM
+        // ✅ Siempre agrupar por día para tener gráfica detallada
+        periodKey = date.toISOString().split("T")[0] // YYYY-MM-DD
         break
     }
 
@@ -167,21 +160,6 @@ const transformDataForChart = (
     return acc
   }, {} as Record<string, { inmediatas: number; privadas: number; date: Date; period: string }>)
 
-  const monthNames = [
-    "January",
-    "February",
-    "March",
-    "April",
-    "May",
-    "June",
-    "July",
-    "August",
-    "September",
-    "October",
-    "November",
-    "December",
-  ]
-
   const dayNames = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"]
 
   // Convertir a formato del gráfico
@@ -196,21 +174,25 @@ const transformDataForChart = (
       }
       let displayName: string
 
+      // 🎯 CAMBIO: Formato de etiquetas según el rango
       switch (rango) {
         case "dia":
+          // Para el día: mostrar hora si hay datos cada hora, sino día
           displayName = `${
             dayNames[typedData.date.getDay()]
           } ${typedData.date.getDate()}`
           break
         case "semana":
+          // Para 7 días: mostrar día/mes
           displayName = `${typedData.date.getDate()}/${
             typedData.date.getMonth() + 1
           }`
           break
         case "mes":
-        default:
-          displayName =
-            monthNames[typedData.date.getMonth()]?.slice(0, 3) || key
+          // ✅ Para 30 días: mostrar día/mes (no mes completo)
+          displayName = `${typedData.date.getDate()}/${
+            typedData.date.getMonth() + 1
+          }`
           break
       }
 
@@ -220,17 +202,9 @@ const transformDataForChart = (
         privadas: typedData.privadas,
         date: key,
         fullMonth: typedData.date.toLocaleDateString("es-ES", {
-          ...(rango === "dia" && {
-            weekday: "long",
-            day: "numeric",
-            month: "long",
-          }),
-          ...(rango === "semana" && {
-            day: "numeric",
-            month: "long",
-            year: "numeric",
-          }),
-          ...(rango === "mes" && { month: "long", year: "numeric" }),
+          day: "numeric",
+          month: "long",
+          year: "numeric",
         }),
       }
     })
@@ -239,6 +213,7 @@ const transformDataForChart = (
     puntos: chartData.length,
     primeraFecha: chartData[0]?.date,
     ultimaFecha: chartData[chartData.length - 1]?.date,
+    muestraPuntos: chartData.slice(0, 3),
   })
 
   return chartData

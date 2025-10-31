@@ -22,6 +22,7 @@ const PagePlazas = () => {
       <div className="mt-2">
         {/* Header con select que controla todo */}
         <PlazasHeader
+          selectedRange={selectedRange} // 👈 Pasar el valor
           onRangeChange={(newRange) => {
             console.log("📄 Página recibió cambio de rango:", newRange)
             setSelectedRange(newRange)
