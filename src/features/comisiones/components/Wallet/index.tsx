@@ -377,7 +377,7 @@ const WalletComponent = () => {
               <div className="space-y-4">
                 <div>
                   <Label htmlFor="iban">IBAN</Label>
-                  <Input
+                  <Input className="mt-2"
                     id="iban"
                     placeholder="ES9121000418450200051332"
                     value={formData.cuentaBancaria}
@@ -391,7 +391,7 @@ const WalletComponent = () => {
                 </div>
                 <div>
                   <Label htmlFor="titular">Titular de la cuenta</Label>
-                  <Input
+                  <Input className="mt-2"
                     id="titular"
                     placeholder="Juan Pérez"
                     value={formData.titularCuenta}
@@ -404,7 +404,7 @@ const WalletComponent = () => {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="banco">Banco</Label>
+                  <Label className="pb-2" htmlFor="banco">Banco</Label>
                   <Select
                     value={formData.nombreBanco}
                     onValueChange={(value) =>
