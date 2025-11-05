@@ -15,9 +15,7 @@ export const useEmailLogin = (email: string, password: string) => {
       setIsLoading(true)
       const response = await emailLoginService(email, password)
 
-      
-
-      // 💾 GUARDAR EL TOKEN - Ajusta según la estructura de tu respuesta
+      // 💾 BUSCAR EL TOKEN
       const token =
         response.data.token ||
         response.data.accessToken ||
@@ -25,30 +23,39 @@ export const useEmailLogin = (email: string, password: string) => {
         response.data.access_token ||
         response.data.authToken
 
-      if (token) {
-        localStorage.setItem("token", token)
-        console.log(
-          "✅ Token guardado exitosamente:",
-          token.substring(0, 20) + "..."
-        )
-
-        // Verificar que se guardó
-        console.log(
-          "✅ Verificación - Token en localStorage:",
-          localStorage.getItem("token") ? "SÍ" : "NO"
-        )
-
-        // Redirigir después de guardar el token
-        router.push("/home")
-      } else {
-        // Si no encontramos el token, mostrar toda la estructura para debugging
-        console.error("❌ NO SE ENCONTRÓ TOKEN")
-        console.error("Estructura completa de la respuesta:")
-        console.error(JSON.stringify(response.data, null, 2))
+      if (!token) {
+        console.error("❌ No se encontró el token en la respuesta")
         setError(true)
+        return
       }
+
+      // 🔐 VALIDAR EL ROL
+      const userRole = (
+        response.data.user?.rol ||
+        response.data.user?.role ||
+        response.data.rol ||
+        response.data.role ||
+        ""
+      )
+        .toString()
+        .toUpperCase()
+        .trim()
+
+      if (userRole !== "ADMIN") {
+        setError(true)
+        return // 👈 NO navegar si no es admin
+      }
+
+      // ✅ Si llegamos aquí, todo está bien
+      localStorage.setItem("token", token)
+      console.log("✅ Login exitoso. Rol:", userRole)
+
+      router.push("/home")
     } catch (error: any) {
-      console.log("Error en login:", error?.response?.data?.ok)
+      console.error(
+        "❌ Error en login:",
+        error?.response?.data || error?.message
+      )
       setError(true)
     } finally {
       setIsLoading(false)
