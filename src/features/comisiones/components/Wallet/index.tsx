@@ -27,6 +27,8 @@ import {
   ArrowDownToLine,
   CreditCard,
   History,
+  AlertCircle,
+  CheckCircle2,
 } from "lucide-react"
 
 // ✅ IMPORTAR el hook real y los tipos
@@ -63,6 +65,10 @@ const WalletComponent = () => {
   })
   const [montoRetiro, setMontoRetiro] = useState("")
 
+  // ✅ NUEVO: Estado para validación del IBAN
+  const [ibanError, setIbanError] = useState<string>("")
+  const [ibanValido, setIbanValido] = useState<boolean>(false)
+
   useEffect(() => {
     cargarDatos()
   }, [])
@@ -74,7 +80,7 @@ const WalletComponent = () => {
         getDatosBancarios(),
         getHistorialRetiros(),
         getSaldo(),
-        getComisionesPendientes(), // 👈 Agregar aquí
+        getComisionesPendientes(),
       ])
 
     console.log("📊 Datos cargados:")
@@ -88,7 +94,6 @@ const WalletComponent = () => {
     setDatosBancarios(datosData)
     setHistorial(historialData)
 
-    // 🎯 CALCULAR SALDO DISPONIBLE = saldoGanado - comisionesPendientes
     const saldoDisponible =
       (saldoData?.saldoGanado || 0) - (comisionesData?.totalPendiente || 0)
 
@@ -99,14 +104,75 @@ const WalletComponent = () => {
 
     setSaldo({
       saldoTotal: saldoData?.saldoTotal || 0,
-      saldoGanado: saldoDisponible, // 👈 Usar el saldo calculado
+      saldoGanado: saldoDisponible,
       saldoRecargado: saldoData?.saldoRecargado || 0,
       puedeRetirar: saldoData?.puedeRetirar || false,
       montoMinimoRetiro: saldoData?.montoMinimoRetiro || 10,
     })
   }
 
-  // 🎯 FUNCIONES PARA CALCULAR ESTADÍSTICAS AUTOMÁTICAMENTE
+  // ✅ NUEVA FUNCIÓN: Validar IBAN en tiempo real
+  const validarIBAN = (iban: string): void => {
+    if (!iban) {
+      setIbanError("")
+      setIbanValido(false)
+      return
+    }
+
+    const ibanLimpio = iban.replace(/\s/g, "").toUpperCase()
+
+    // Validar formato español
+    if (!ibanLimpio.startsWith("ES")) {
+      setIbanError("El IBAN debe comenzar con ES")
+      setIbanValido(false)
+      return
+    }
+
+    if (ibanLimpio.length > 24) {
+      setIbanError("IBAN demasiado largo (máximo 24 caracteres)")
+      setIbanValido(false)
+      return
+    }
+
+    if (ibanLimpio.length < 24 && ibanLimpio.length > 2) {
+      setIbanError(`Faltan ${24 - ibanLimpio.length} caracteres`)
+      setIbanValido(false)
+      return
+    }
+
+    const ibanRegex = /^ES\d{22}$/
+    if (!ibanRegex.test(ibanLimpio)) {
+      if (ibanLimpio.length === 24) {
+        setIbanError("Formato inválido. Debe ser: ES + 22 dígitos")
+      }
+      setIbanValido(false)
+      return
+    }
+
+    // ✅ IBAN válido
+    setIbanError("")
+    setIbanValido(true)
+  }
+
+  // ✅ MEJORADO: Manejar cambio de IBAN con validación
+  const handleIbanChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const valor = e.target.value
+    setFormData({
+      ...formData,
+      cuentaBancaria: valor,
+    })
+    validarIBAN(valor)
+  }
+
+  // ✅ FUNCIÓN: Formatear IBAN para mostrar (con espacios cada 4 caracteres)
+  const formatearIBAN = (iban: string | null | undefined): string => {
+    if (!iban || typeof iban !== "string") {
+      return "N/A"
+    }
+    const ibanLimpio = iban.replace(/\s/g, "")
+    return ibanLimpio.match(/.{1,4}/g)?.join(" ") || ibanLimpio
+  }
+
   const calcularTotalRetirado = (retiros: Retiro[]): number => {
     if (!retiros || !Array.isArray(retiros)) {
       return 0
@@ -148,13 +214,10 @@ const WalletComponent = () => {
       return
     }
 
-    // 🎯 LIMPIAR Y VALIDAR IBAN
-    const ibanLimpio = formData.cuentaBancaria.replace(/\s/g, "").toUpperCase()
-
-    const ibanRegex = /^ES\d{22}$/
-    if (!ibanRegex.test(ibanLimpio)) {
+    // ✅ Validar que el IBAN sea válido
+    if (!ibanValido) {
       toast.error("IBAN inválido", {
-        description: "El IBAN debe tener formato español (ES + 22 dígitos)",
+        description: ibanError || "Verifica el formato del IBAN",
       })
       return
     }
@@ -162,18 +225,24 @@ const WalletComponent = () => {
     try {
       toast.loading("Guardando datos bancarios...", { id: "banco" })
 
-      const datosLimpios = {
-        ...formData,
-        cuentaBancaria: ibanLimpio,
-      }
-
-      await configurarBanco(datosLimpios)
+      // El servicio wallet-service.ts ya limpia el IBAN automáticamente
+      await configurarBanco(formData)
       await cargarDatos()
+
       toast.success("¡Datos guardados!", {
         id: "banco",
         description: "Tu cuenta bancaria ha sido configurada correctamente",
         duration: 4000,
       })
+
+      // ✅ Limpiar formulario después de guardar
+      setFormData({
+        cuentaBancaria: "",
+        titularCuenta: "",
+        nombreBanco: "",
+      })
+      setIbanError("")
+      setIbanValido(false)
     } catch (error: any) {
       toast.error("Error al guardar", {
         id: "banco",
@@ -201,7 +270,6 @@ const WalletComponent = () => {
       return
     }
 
-    // 🎯 VALIDAR CONTRA SALDO GANADO (el único retirable)
     if (monto > saldo.saldoGanado) {
       toast.error("Saldo insuficiente", {
         description: `Solo puedes retirar €${saldo.saldoGanado.toFixed(
@@ -335,8 +403,8 @@ const WalletComponent = () => {
                 {datosBancarios && (
                   <div className="p-4 bg-muted rounded-lg space-y-1">
                     <p className="text-sm font-medium">Cuenta destino</p>
-                    <p className="text-sm text-muted-foreground">
-                      {datosBancarios.cuentaBancaria}
+                    <p className="text-sm text-muted-foreground font-mono">
+                      {formatearIBAN(datosBancarios.cuentaBancaria)}
                     </p>
                     <p className="text-sm text-muted-foreground">
                       {datosBancarios.titularCuenta} -{" "}
@@ -375,23 +443,58 @@ const WalletComponent = () => {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
+                {/* ✅ INPUT DE IBAN CON VALIDACIÓN VISUAL */}
                 <div>
-                  <Label htmlFor="iban">IBAN</Label>
-                  <Input className="mt-2"
-                    id="iban"
-                    placeholder="ES9121000418450200051332"
-                    value={formData.cuentaBancaria}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        cuentaBancaria: e.target.value,
-                      })
-                    }
-                  />
+                  <Label htmlFor="iban">IBAN español</Label>
+                  <div className="relative mt-2">
+                    <Input
+                      id="iban"
+                      placeholder="ES91 2100 0418 4502 0005 1332"
+                      value={formData.cuentaBancaria}
+                      onChange={handleIbanChange}
+                      className={`pr-10 ${
+                        formData.cuentaBancaria && ibanError
+                          ? "border-red-500 focus-visible:ring-red-500"
+                          : formData.cuentaBancaria && ibanValido
+                          ? "border-green-500 focus-visible:ring-green-500"
+                          : ""
+                      }`}
+                    />
+                    {/* Icono de validación */}
+                    {formData.cuentaBancaria && (
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                        {ibanValido ? (
+                          <CheckCircle2 className="w-5 h-5 text-green-500" />
+                        ) : (
+                          <AlertCircle className="w-5 h-5 text-red-500" />
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  {/* Mensaje de error/ayuda */}
+                  {ibanError && (
+                    <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
+                      <AlertCircle className="w-3 h-3" />
+                      {ibanError}
+                    </p>
+                  )}
+                  {ibanValido && (
+                    <p className="text-xs text-green-600 mt-1 flex items-center gap-1">
+                      <CheckCircle2 className="w-3 h-3" />
+                      IBAN válido
+                    </p>
+                  )}
+                  {!formData.cuentaBancaria && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Formato: ES + 22 dígitos (24 caracteres en total)
+                    </p>
+                  )}
                 </div>
+
                 <div>
                   <Label htmlFor="titular">Titular de la cuenta</Label>
-                  <Input className="mt-2"
+                  <Input
+                    className="mt-2"
                     id="titular"
                     placeholder="Juan Pérez"
                     value={formData.titularCuenta}
@@ -403,8 +506,14 @@ const WalletComponent = () => {
                     }
                   />
                 </div>
+
                 <div>
-                  <Label className="pb-2" htmlFor="banco">Banco</Label>
+                  <Label
+                    className="pb-2"
+                    htmlFor="banco"
+                  >
+                    Banco
+                  </Label>
                   <Select
                     value={formData.nombreBanco}
                     onValueChange={(value) =>
@@ -438,12 +547,15 @@ const WalletComponent = () => {
                     </SelectContent>
                   </Select>
                 </div>
+
                 <Button
                   onClick={handleConfigurar}
-                  disabled={loading}
+                  disabled={loading || !ibanValido}
                   className="w-full cursor-pointer"
                 >
-                  Guardar Datos Bancarios
+                  {!ibanValido && formData.cuentaBancaria
+                    ? "Verifica el IBAN"
+                    : "Guardar Datos Bancarios"}
                 </Button>
               </div>
             </CardContent>
@@ -478,11 +590,17 @@ const WalletComponent = () => {
                           €{retiro.monto.toFixed(2)}
                         </p>
                         <p className="text-sm text-muted-foreground">
-                          {retiro.fecha}
+                          {new Date(retiro.fecha).toLocaleDateString("es-ES", {
+                            year: "numeric",
+                            month: "long",
+                            day: "numeric",
+                          })}
                         </p>
-                        <p className="text-xs text-muted-foreground">
-                          {retiro.cuentaDestino}
-                        </p>
+                        {retiro.cuentaDestino && (
+                          <p className="text-xs text-muted-foreground font-mono">
+                            {formatearIBAN(retiro.cuentaDestino)}
+                          </p>
+                        )}
                       </div>
                       <div>
                         <span

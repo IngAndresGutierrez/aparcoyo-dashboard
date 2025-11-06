@@ -14,6 +14,38 @@ const getAuthToken = (): string | null => {
   return localStorage.getItem("token") || sessionStorage.getItem("token")
 }
 
+// ✅ NUEVA FUNCIÓN: Limpiar y validar IBAN español
+const limpiarIBAN = (iban: string): string => {
+  // Eliminar espacios y convertir a mayúsculas
+  return iban.replace(/\s+/g, "").toUpperCase()
+}
+
+const validarIBANEspanol = (
+  iban: string
+): { valido: boolean; error?: string } => {
+  const ibanLimpio = limpiarIBAN(iban)
+
+  // Debe empezar con ES y tener exactamente 24 caracteres
+  if (!ibanLimpio.startsWith("ES")) {
+    return { valido: false, error: "El IBAN debe comenzar con ES" }
+  }
+
+  if (ibanLimpio.length !== 24) {
+    return {
+      valido: false,
+      error: `IBAN debe tener 24 caracteres (tiene ${ibanLimpio.length})`,
+    }
+  }
+
+  // Verificar que después de ES sean solo dígitos
+  const digitosIBAN = ibanLimpio.substring(2)
+  if (!/^\d{22}$/.test(digitosIBAN)) {
+    return { valido: false, error: "IBAN debe tener ES seguido de 22 dígitos" }
+  }
+
+  return { valido: true }
+}
+
 export const walletService = {
   /**
    * GET - Lista de bancos de España soportados por Stripe
@@ -47,7 +79,6 @@ export const walletService = {
     const data = await response.json()
     console.log("✅ Bancos recibidos:", data)
 
-    // ✅ CORRECCIÓN: Probablemente también están en items
     const bancos = data?.data?.bancos || []
 
     console.log("✅ Bancos extraídos:", bancos, "Total:", bancos.length)
@@ -88,7 +119,6 @@ export const walletService = {
     const data = await response.json()
     console.log("✅ Datos bancarios recibidos:", data)
 
-    // ✅ Si no hay datos bancarios configurados, devolver null
     return data?.data || null
   },
 
@@ -99,10 +129,26 @@ export const walletService = {
   async configurarBanco(datos: DatosBancarios): Promise<any> {
     const token = getAuthToken()
 
+    // ✅ VALIDAR Y LIMPIAR IBAN ANTES DE ENVIAR
+    if (datos.cuentaBancaria) {
+      const validacion = validarIBANEspanol(datos.cuentaBancaria)
+      if (!validacion.valido) {
+        console.error("❌ IBAN inválido:", validacion.error)
+        throw new Error(validacion.error)
+      }
+
+      // Limpiar el IBAN (sin espacios) y crear objeto con IBAN limpio
+      datos = {
+        ...datos,
+        cuentaBancaria: limpiarIBAN(datos.cuentaBancaria),
+      }
+    }
+
     console.log("🔄 POST Configurar Banco")
     console.log("🔑 Token:", token ? "Existe ✅" : "No existe ❌")
     console.log("📍 URL:", `${API_BASE_URL}/apa/wallet/configurar-banco`)
     console.log("📦 Payload enviado:", datos)
+    console.log("📦 IBAN limpio:", datos.cuentaBancaria)
 
     const response = await fetch(
       `${API_BASE_URL}/apa/wallet/configurar-banco`,
@@ -142,8 +188,6 @@ export const walletService = {
     console.log("🔑 Token:", token ? "Existe ✅" : "No existe ❌")
     console.log("📍 URL:", `${API_BASE_URL}/apa/wallet/retirar`)
     console.log("📦 Payload enviado:", retiroData)
-
-    // 🔍 NUEVO: Ver el JSON exacto que se envía
     console.log("📦 JSON.stringify:", JSON.stringify(retiroData))
 
     const response = await fetch(`${API_BASE_URL}/apa/wallet/retirar`, {
@@ -159,11 +203,10 @@ export const walletService = {
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}))
 
-      // 🔍 MOSTRAR TODO EL ERROR
       console.error("❌ Error POST Retiro:", errorData)
       console.error("❌ Status:", response.status)
       console.error("❌ StatusText:", response.statusText)
-      console.table(errorData) // 👈 Esto mostrará el objeto en tabla
+      console.table(errorData)
 
       throw new Error(
         errorData.message || `Error al procesar retiro: ${response.statusText}`
@@ -207,7 +250,6 @@ export const walletService = {
 
     const data = await response.json()
 
-    // 🔍 LOGS DETALLADOS
     console.log("=".repeat(50))
     console.log("✅ RESPUESTA COMPLETA DEL BACKEND:")
     console.log(JSON.stringify(data, null, 2))
@@ -229,10 +271,6 @@ export const walletService = {
     )
   },
 
-  /**
-   * GET - Ver comisiones admin pendientes de acreditar (Admin)
-   */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   /**
    * GET - Ver comisiones admin pendientes de acreditar (Admin)
    */
@@ -294,6 +332,7 @@ export const walletService = {
       }
     )
   },
+
   /**
    * GET - Historial de mis retiros
    */
@@ -334,7 +373,6 @@ export const walletService = {
     const data = await response.json()
     console.log("✅ Historial recibido:", data)
 
-    // ✅ CORRECCIÓN: Los retiros están en data.data.items
     const retiros = data?.data?.items || []
 
     console.log("✅ Retiros extraídos:", retiros, "Total:", retiros.length)
@@ -342,3 +380,6 @@ export const walletService = {
     return Array.isArray(retiros) ? retiros : []
   },
 }
+
+// ✅ EXPORTAR FUNCIONES DE UTILIDAD PARA USO EN COMPONENTES
+export { limpiarIBAN, validarIBANEspanol }
