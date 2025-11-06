@@ -20,17 +20,17 @@ import { useUsuariosTabla } from "../../hooks/useTable"
 interface WelcomeUsersProps {
   rango: RangoEstadisticas
   onRangoChange: (rango: RangoEstadisticas) => void
-  onUsuariosChange: (usuarios: UsuarioTabla[]) => void // ← Agregar esta línea
+  onUsuariosChange: (usuarios: UsuarioTabla[]) => void
 }
 
-// Opciones del select con sus labels
+// ✅ CORREGIDO: Cambiar "Último día" por "Últimas 24 horas"
 const rangoOptions = [
-  { value: "dia" as const, label: "Último día", icon: "" },
+  { value: "dia" as const, label: "Últimas 24 horas", icon: "" },
   { value: "semana" as const, label: "Últimos 7 días", icon: "" },
   { value: "mes" as const, label: "Últimos 30 días", icon: "" },
 ] as const
 
-// 🔥 FUNCIÓN FIJA con logs detallados
+// ✅ FUNCIÓN CORREGIDA con filtro de 24 horas
 const calculateDateFilters = (rango: RangoEstadisticas) => {
   const now = new Date()
   const startDate = new Date()
@@ -39,16 +39,20 @@ const calculateDateFilters = (rango: RangoEstadisticas) => {
 
   switch (rango) {
     case "dia":
-      startDate.setDate(now.getDate() - 7) // 7 días
+      // ✅ CORREGIDO: Últimas 24 horas exactas (no desde las 00:00)
+      startDate.setTime(now.getTime() - 24 * 60 * 60 * 1000)
       break
     case "semana":
-      startDate.setDate(now.getDate() - 21) // 21 días
+      startDate.setDate(now.getDate() - 7)
+      startDate.setHours(0, 0, 0, 0)
       break
     case "mes":
-      startDate.setDate(now.getDate() - 60) // 60 días
+      startDate.setDate(now.getDate() - 30)
+      startDate.setHours(0, 0, 0, 0)
       break
     default:
       startDate.setDate(now.getDate() - 30)
+      startDate.setHours(0, 0, 0, 0)
   }
 
   const result = {
@@ -58,8 +62,8 @@ const calculateDateFilters = (rango: RangoEstadisticas) => {
 
   console.log("📅 calculateDateFilters resultado:", {
     rango,
-    desde: startDate.toLocaleDateString("es-ES"),
-    hasta: now.toLocaleDateString("es-ES"),
+    desde: startDate.toLocaleString("es-ES"),
+    hasta: now.toLocaleString("es-ES"),
     fechaInicio: result.fechaInicio,
     fechaFin: result.fechaFin,
   })
@@ -153,7 +157,6 @@ const WelcomeUsers = ({
 
   const { usuarios, loading, fetchUsuarios } = useUsuariosTabla({}, false)
 
-  // 🔥 Función estable para evitar dependencias cambiantes
   const fetchUsuariosConFiltros = useCallback(
     (rangoParam: RangoEstadisticas) => {
       console.log(
@@ -174,13 +177,11 @@ const WelcomeUsers = ({
     [fetchUsuarios]
   )
 
-  // 🔥 useEffect con dependencias correctas
   useEffect(() => {
     console.log("⚡ useEffect ejecutándose - rango:", rango)
     fetchUsuariosConFiltros(rango)
   }, [rango, fetchUsuariosConFiltros])
 
-  // 🔥 NUEVO: Pasar usuarios al padre cuando cambien
   useEffect(() => {
     if (usuarios && usuarios.length > 0) {
       console.log("📤 Pasando usuarios al padre:", usuarios.length)
