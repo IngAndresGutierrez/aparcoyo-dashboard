@@ -74,15 +74,34 @@ const generateTransactionsCSV = (transactions: Transaction[]): string => {
       parseFloat(String(transaction.importe || "0").replace(/[^\d.-]/g, "")) ||
       0
 
-    const fechaFormateada = transaction.fecha
-      ? new Date(transaction.fecha).toLocaleDateString("es-ES", {
-          year: "numeric",
-          month: "2-digit",
-          day: "2-digit",
-          hour: "2-digit",
-          minute: "2-digit",
-        })
-      : "N/A"
+    // 🔧 SOLUCIÓN: Parsear fecha como hora local
+    let fechaFormateada = "N/A"
+    if (transaction.fecha) {
+      try {
+        const fechaString = String(transaction.fecha)
+
+        // Si la fecha viene como "2025-11-13", parseamos como local
+        // Agregamos "T00:00:00" para que se interprete como medianoche LOCAL
+        const fechaConHora = fechaString.includes("T")
+          ? fechaString
+          : `${fechaString}T00:00:00`
+
+        const fecha = new Date(fechaConHora)
+
+        if (!isNaN(fecha.getTime())) {
+          fechaFormateada = fecha.toLocaleDateString("es-ES", {
+            year: "numeric",
+            month: "2-digit",
+            day: "2-digit",
+            hour: "2-digit",
+            minute: "2-digit",
+          })
+        }
+      } catch (error) {
+        console.error("Error formateando fecha:", error)
+        fechaFormateada = String(transaction.fecha)
+      }
+    }
 
     return {
       "Número de Factura": transaction.factura || "N/A",
