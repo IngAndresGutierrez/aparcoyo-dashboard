@@ -17,7 +17,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Edit, Upload, Eye, EyeOff } from "lucide-react"
+import { Edit, Upload, Eye, EyeOff, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 
 interface UserDetailsProps {
@@ -31,6 +31,7 @@ interface UsuarioDetalle {
   rol: string
   isActive: boolean
   fechaRegistro: string
+  foto?: string
 }
 
 const UserDetails: React.FC<UserDetailsProps> = ({ userId }) => {
@@ -40,6 +41,9 @@ const UserDetails: React.FC<UserDetailsProps> = ({ userId }) => {
   const [isEditOpen, setIsEditOpen] = React.useState(false)
   const [showPassword, setShowPassword] = React.useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = React.useState(false)
+
+  // 📸 Ref para el input file
+  const fileInputRef = React.useRef<HTMLInputElement>(null)
 
   // Estados para el formulario de edición
   const [editForm, setEditForm] = React.useState({
@@ -63,11 +67,10 @@ const UserDetails: React.FC<UserDetailsProps> = ({ userId }) => {
         )
         console.log(`🔑 Token presente:`, !!token)
 
-        // 🔄 Probando con la ruta específica de admin que debería traer fecha
         const response = await fetch(
           `https://kns.aparcoyo.com/apa/usuarios/${userId}`,
           {
-            method: "GET", // Explicit GET method
+            method: "GET",
             headers: {
               Authorization: `Bearer ${token}`,
               "Content-Type": "application/json",
@@ -84,31 +87,42 @@ const UserDetails: React.FC<UserDetailsProps> = ({ userId }) => {
         const data = await response.json()
         console.log(`✅ UserDetails - Usuario obtenido:`, data)
 
-        // 🔍 Debug completo del objeto usuario - buscando campos de fecha
         const userData = data.data || data
         console.log(
-          `🔍 Estructura completa del usuario (ruta mi-perfil):`,
+          `🔍 UserDetails - Estructura completa del usuario:`,
           JSON.stringify(userData, null, 2)
         )
+        console.log(
+          `📸 UserDetails - URL de la foto en userData:`,
+          userData.foto
+        )
 
-        const dateFields = {
-          fechaRegistro: userData.fechaRegistro,
-          fechaCreacion: userData.fechaCreacion,
-          createdAt: userData.createdAt,
-          created_at: userData.created_at,
-          dateCreated: userData.dateCreated,
-          registro: userData.registro,
-          timestamp: userData.timestamp,
-          fecha: userData.fecha,
+        // 💾 Si el backend no devuelve la foto, intentar obtenerla del localStorage
+        if (!userData.foto && userData.uid) {
+          const savedFoto = localStorage.getItem(`foto_${userData.uid}`)
+          console.log(
+            `💾 UserDetails - Buscando foto en localStorage con key: foto_${userData.uid}`
+          )
+          console.log(
+            `💾 UserDetails - Foto encontrada en localStorage:`,
+            savedFoto
+          )
+
+          if (savedFoto) {
+            userData.foto = savedFoto
+            console.log(
+              "✅ UserDetails - Foto recuperada del localStorage:",
+              savedFoto
+            )
+          } else {
+            console.log(
+              "⚠️ UserDetails - No hay foto guardada en localStorage para este usuario"
+            )
+          }
+        } else if (userData.foto) {
+          console.log("✅ UserDetails - Foto viene del backend:", userData.foto)
         }
-        console.log(
-          `📅 Campos de fecha encontrados:`,
-          JSON.stringify(dateFields, null, 2)
-        )
-        console.log(
-          `🗂️ Todas las propiedades del usuario:`,
-          Object.keys(userData).join(", ")
-        )
+
         setUsuario(userData)
 
         // Inicializar el formulario con los datos actuales
@@ -131,90 +145,122 @@ const UserDetails: React.FC<UserDetailsProps> = ({ userId }) => {
     }
   }, [userId])
 
-  // ✅ Función para verificar si existe algún campo de fecha válido
-  const hasValidDate = (usuario: UsuarioDetalle | null) => {
-    if (!usuario) return false
-
-    const possibleDateFields = [
-      usuario.fechaRegistro,
-      (usuario as any).fechaCreacion,
-      (usuario as any).createdAt,
-      (usuario as any).created_at,
-      (usuario as any).dateCreated,
-      (usuario as any).registro,
-      (usuario as any).timestamp,
-      (usuario as any).fecha,
-    ]
-
-    return possibleDateFields.some((field) => {
-      if (!field) return false
-      try {
-        const date = new Date(field)
-        return !isNaN(date.getTime()) && date.getFullYear() > 1900
-      } catch {
-        return false
-      }
-    })
-  }
-
-  // ✅ Función mejorada para formatear fechas con validación robusta
-  const formatDate = (usuario: UsuarioDetalle | null) => {
-    if (!usuario) return "Usuario no disponible"
-
-    // 🔍 Intentar múltiples campos de fecha que el backend podría usar
-    const possibleDateFields = [
-      usuario.fechaRegistro,
-      (usuario as any).fechaCreacion,
-      (usuario as any).createdAt,
-      (usuario as any).created_at,
-      (usuario as any).dateCreated,
-      (usuario as any).registro,
-      (usuario as any).timestamp,
-      (usuario as any).fecha,
-    ]
-
-    console.log(`🔍 Campos de fecha disponibles:`, possibleDateFields)
-
-    for (const dateField of possibleDateFields) {
-      if (dateField) {
-        console.log(`✅ Usando campo de fecha:`, dateField)
-
-        try {
-          // Lista de posibles formatos que puede enviar el backend
-          const possibleFormats = [
-            dateField, // Formato original
-            dateField.replace?.(/\//g, "-"), // Cambiar / por -
-            dateField.split?.("T")[0], // Solo la fecha si viene con hora
-          ]
-
-          for (const format of possibleFormats) {
-            if (!format) continue
-
-            try {
-              const date = new Date(format)
-
-              // Verificar si la fecha es válida
-              if (!isNaN(date.getTime()) && date.getFullYear() > 1900) {
-                return date.toLocaleDateString("es-ES", {
-                  day: "2-digit",
-                  month: "short",
-                  year: "numeric",
-                })
-              }
-            } catch (error) {
-              continue
-            }
-          }
-        } catch (error) {
-          console.log(`❌ Error procesando fecha:`, dateField, error)
-          continue
-        }
-      }
+  // 📸 Función para subir foto de perfil
+  const handleUploadPhoto = async (file: File) => {
+    if (!usuario) {
+      toast.error("Error: Usuario no disponible")
+      return
     }
 
-    // Si ningún campo de fecha funcionó
-    console.log("⚠️ No se encontró ninguna fecha válida en el usuario")
-    return "Fecha no disponible"
+    // Validar tipo de archivo
+    if (!file.type.startsWith("image/")) {
+      toast.error("Solo se permiten imágenes")
+      return
+    }
+
+    // Validar tamaño (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("La imagen no puede superar 5MB")
+      return
+    }
+
+    try {
+      const token =
+        localStorage.getItem("token") || localStorage.getItem("authToken")
+
+      const formData = new FormData()
+      formData.append("foto", file) // ✅ Campo correcto confirmado
+
+      toast.loading("Subiendo foto...", { id: "upload-photo" })
+
+      const response = await fetch(
+        `https://kns.aparcoyo.com/apa/usuarios/foto-perfil/${usuario.uid}`,
+        {
+          method: "PATCH",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          body: formData,
+        }
+      )
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        throw new Error(
+          `Error ${response.status}: ${response.statusText} - ${errorText}`
+        )
+      }
+
+      const data = await response.json()
+      console.log("✅ Foto actualizada - Respuesta completa:", data)
+      console.log("✅ URL de la foto recibida:", data.data?.foto)
+
+      const fotoUrl = data.data?.foto
+
+      // 💾 Guardar la URL de la foto en localStorage como backup
+      if (fotoUrl && usuario.uid) {
+        localStorage.setItem(`foto_${usuario.uid}`, fotoUrl)
+        console.log("💾 Foto guardada en localStorage")
+      }
+
+      // ⚠️ Actualizar el usuario con la URL de la foto que devuelve el backend
+      setUsuario((prev) => {
+        if (!prev) return prev
+
+        return {
+          ...prev,
+          foto: fotoUrl, // ✅ Guardar la URL de la foto
+          uid: prev.uid, // Mantener el uid
+        }
+      })
+
+      toast.success("Foto actualizada correctamente", {
+        id: "upload-photo",
+        description: "Tu foto de perfil se ha actualizado",
+        duration: 4000,
+      })
+    } catch (err: any) {
+      console.error("❌ Error al subir foto:", err)
+
+      let errorDescription = "No se pudo subir la foto"
+
+      if (err.message.includes("401")) {
+        errorDescription = "No tienes autorización"
+      } else if (err.message.includes("413")) {
+        errorDescription = "La imagen es demasiado grande"
+      } else if (err.message.includes("415")) {
+        errorDescription = "Formato de imagen no válido"
+      }
+
+      toast.error("Error al subir foto", {
+        id: "upload-photo",
+        description: errorDescription,
+        duration: 5000,
+      })
+    }
+  }
+
+  // 🗑️ Función para eliminar foto de perfil (opcional)
+  // 🗑️ Función para eliminar foto de perfil (desde el front)
+  const handleDeletePhoto = () => {
+    if (!usuario) return
+
+    // Eliminar del localStorage
+    localStorage.removeItem(`foto_${usuario.uid}`)
+
+    // Actualizar el estado local
+    setUsuario((prev) => {
+      if (!prev) return prev
+      return {
+        ...prev,
+        foto: undefined,
+      }
+    })
+
+    toast.success("Foto eliminada", {
+      description: "La foto de perfil se ha eliminado",
+      duration: 3000,
+    })
   }
 
   const handleEditSubmit = async (e: React.FormEvent) => {
@@ -230,11 +276,9 @@ const UserDetails: React.FC<UserDetailsProps> = ({ userId }) => {
       return
     }
 
-    // ✅ INTERCEPTAR Y SILENCIAR ERRORES DE CONSOLA
     const originalConsoleError = console.error
     const originalConsoleWarn = console.warn
 
-    // Silenciar temporalmente los errores de consola
     console.error = () => {}
     console.warn = () => {}
 
@@ -251,9 +295,8 @@ const UserDetails: React.FC<UserDetailsProps> = ({ userId }) => {
         updateData.password = editForm.password
       }
 
-      // ✅ Toast de loading mientras se procesa
       toast.loading("Actualizando usuario...", {
-        id: "update-user", // ID para poder actualizar este toast específico
+        id: "update-user",
       })
 
       const url = `https://kns.aparcoyo.com/apa/usuarios/${usuario.uid}`
@@ -275,8 +318,13 @@ const UserDetails: React.FC<UserDetailsProps> = ({ userId }) => {
       }
 
       const updatedData = await response.json()
+      const newUserData = updatedData.data || updatedData
 
-      setUsuario(updatedData.data || updatedData)
+      // Preservar la foto actual (manejada desde el front)
+      setUsuario((prev) => ({
+        ...newUserData,
+        foto: prev?.foto,
+      }))
       setIsEditOpen(false)
 
       setEditForm((prev) => ({
@@ -285,25 +333,19 @@ const UserDetails: React.FC<UserDetailsProps> = ({ userId }) => {
         confirmPassword: "",
       }))
 
-      // ✅ Toast de éxito elegante
       toast.success("Usuario actualizado correctamente", {
-        id: "update-user", // Reemplaza el toast de loading
+        id: "update-user",
         description: "Los cambios se han guardado exitosamente",
         duration: 4000,
       })
     } catch (err: any) {
-      // ✅ COMPLETAMENTE SILENCIOSO - NO LOGS EN CONSOLA
-
-      // ✅ EXTRAER INFORMACIÓN DEL ERROR SIN HACER LOGS
       let errorTitle = "Error al actualizar usuario"
       let errorDescription = "Ha ocurrido un error inesperado"
 
       try {
-        // Extraer información del error del backend
         const errorString = String(err?.message || err || "")
         let backendData = null
 
-        // Intentar parsear el JSON del error
         if (errorString.includes("{") && errorString.includes("}")) {
           const jsonMatch = errorString.match(/\{.*\}/)?.[0]
           if (jsonMatch) {
@@ -313,7 +355,6 @@ const UserDetails: React.FC<UserDetailsProps> = ({ userId }) => {
           }
         }
 
-        // Determinar el status code
         const statusCode =
           err?.status ||
           err?.statusCode ||
@@ -329,17 +370,15 @@ const UserDetails: React.FC<UserDetailsProps> = ({ userId }) => {
             ? 500
             : 0)
 
-        // Obtener mensaje específico del backend
         let backendMessage = null
         if (backendData?.message) {
           if (Array.isArray(backendData.message)) {
-            backendMessage = backendData.message[0] // Primer mensaje del array
+            backendMessage = backendData.message[0]
           } else {
             backendMessage = backendData.message
           }
         }
 
-        // Configurar mensajes específicos por tipo de error
         switch (statusCode) {
           case 400:
             errorTitle = "Datos inválidos"
@@ -379,19 +418,16 @@ const UserDetails: React.FC<UserDetailsProps> = ({ userId }) => {
             }
         }
       } catch {
-        // Si hay algún error procesando el error, usar valores por defecto
         errorTitle = "Error al actualizar usuario"
         errorDescription = "Ha ocurrido un error inesperado"
       }
 
-      // ✅ Toast de error elegante y específico
       toast.error(errorTitle, {
-        id: "update-user", // Reemplaza el toast de loading
+        id: "update-user",
         description: errorDescription,
-        duration: 6000, // Más tiempo para leer el mensaje específico
+        duration: 6000,
       })
     } finally {
-      // ✅ RESTAURAR CONSOLE.ERROR Y CONSOLE.WARN
       console.error = originalConsoleError
       console.warn = originalConsoleWarn
     }
@@ -470,27 +506,53 @@ const UserDetails: React.FC<UserDetailsProps> = ({ userId }) => {
               onSubmit={handleEditSubmit}
               className="space-y-4"
             >
-              {/* Avatar Section */}
+              {/* Avatar Section con funcionalidad de upload */}
               <div className="flex flex-col items-center space-y-2">
                 <Avatar className="h-16 w-16">
-                  <AvatarImage src={(usuario as any).foto || ""} />
+                  <AvatarImage
+                    src={(usuario as any).foto || undefined}
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement
+                      target.style.display = "none"
+                      console.log("❌ Error cargando imagen del avatar")
+                    }}
+                    onLoad={() =>
+                      console.log("✅ Imagen del avatar cargada correctamente")
+                    }
+                  />
                   <AvatarFallback className="bg-gray-700 text-white">
                     {usuario.nombre?.charAt(0)?.toUpperCase() || "U"}
                   </AvatarFallback>
                 </Avatar>
+
+                {/* Input file oculto */}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0]
+                    if (file) handleUploadPhoto(file)
+                  }}
+                />
+
                 <div className="flex space-x-2">
                   <Button
                     type="button"
                     variant="ghost"
                     size="sm"
                     className="text-xs"
+                    onClick={handleDeletePhoto}
                   >
+                    <Trash2 className="h-3 w-3 mr-1" />
                     Eliminar foto
                   </Button>
                   <Button
                     type="button"
                     size="sm"
                     className="text-xs"
+                    onClick={() => fileInputRef.current?.click()}
                   >
                     <Upload className="h-3 w-3 mr-1" />
                     Subir foto
@@ -653,16 +715,6 @@ const UserDetails: React.FC<UserDetailsProps> = ({ userId }) => {
               </span>
             </p>
           </div>
-
-          {/* Siempre mostrar fecha, con fallback si no existe */}
-          {/* <div>
-            <label className="text-sm font-medium text-muted-foreground">
-              Fecha de registro
-            </label>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {hasValidDate(usuario) ? formatDate(usuario) : "No registrada"}
-            </p>
-          </div> */}
         </div>
       </CardContent>
     </Card>
