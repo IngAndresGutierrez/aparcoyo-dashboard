@@ -484,11 +484,11 @@ const WelcomeTransactions = ({
 
       {statistics && !loading && (
         <div className="mt-4 text-xs text-muted-foreground">
-          Ingresos netos: $
+          Ingresos netos: €
           {statistics.ingresosNetos?.toLocaleString("es-ES", {
             minimumFractionDigits: 2,
           })}
-          | Comisiones: $
+          | Comisiones: €
           {statistics.comisionesGeneradas?.toLocaleString("es-ES", {
             minimumFractionDigits: 2,
           })}
