@@ -45,7 +45,7 @@ import { useUserActions } from "../../hooks/useChange"
 import { useRouter } from "next/navigation"
 import { useUpdateProfilePhoto } from "../../hooks/usePhoto"
 
-// Avatar con soporte para foto de perfil
+
 const UserAvatar: React.FC<{
   userName?: string
   userEmail: string
@@ -138,8 +138,7 @@ const UsersTable = ({
     success,
   } = useUserActions()
 
-  // ✅ Función para manejar cambio de foto
-  // ✅ Función para manejar cambio de foto CON toast.promise
+
   const handlePhotoChange = async (
     event: React.ChangeEvent<HTMLInputElement>,
     userId: string | number,
@@ -170,7 +169,6 @@ const UsersTable = ({
       return
     }
 
-    // ✅ Usar toast.promise en lugar de toast.loading/dismiss
     toast.promise(
       updatePhoto(userId, file).then((response) => {
         if (response) {
@@ -214,14 +212,14 @@ const UsersTable = ({
     fileInputRef.current?.click()
   }
 
-  // Actualizar cuando llegan usuarios del padre
+  
   React.useEffect(() => {
     console.log("📊 UsersTable - usuarios recibidos:", usuariosFromProps.length)
     setFilteredUsuarios(usuariosFromProps)
     setCurrentPage(1)
   }, [usuariosFromProps])
 
-  // Filtrar usuarios por búsqueda
+  
   const handleFilter = React.useCallback(
     (searchTerm: string) => {
       if (!searchTerm.trim()) {
