@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 // services/range.ts
 import axios from "axios"
@@ -5,28 +6,18 @@ import { EstadisticasBackendResponse } from "../types/range"
 
 const BASE_URL = "https://kns.aparcoyo.com/apa"
 
-export const getPlazasStatsByRangeServiceAlt = async (
-  rango: "dia" | "semana" | "mes",
-  signal?: AbortSignal
-) => {
+// ✅ Servicio para obtener TODAS las plazas
+export const getAllPlazasService = async (signal?: AbortSignal) => {
   try {
-    // Obtener el token del localStorage
     const token = localStorage.getItem("token")
-
     console.log("🔐 Token encontrado:", token ? "Sí" : "No")
 
-    // Nueva estructura: usar query parameters en lugar de path parameters
-    const url = `${BASE_URL}/plazas/estadisticas`
-    console.log("🌐 URL base:", url)
-    console.log("📊 Rango solicitado:", rango)
+    const url = `${BASE_URL}/plazas`
+    console.log("🌐 Obteniendo todas las plazas de:", url)
 
-    const response = await axios.get<EstadisticasBackendResponse>(url, {
+    const response = await axios.get(url, {
       signal,
       timeout: 30000,
-      // Agregar el rango como query parameter
-      params: {
-        rango: rango, // Esto convertirá la URL a: /apa/plazas/estadisticas?rango=mes
-      },
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
@@ -35,28 +26,156 @@ export const getPlazasStatsByRangeServiceAlt = async (
       withCredentials: false,
     })
 
-    console.log("✅ Respuesta exitosa:", {
+    console.log("✅ Plazas obtenidas:", {
       status: response.status,
-      dataStructure: Object.keys(response.data),
-      plazasPublicadas: response.data.plazasPublicadas,
-      plazasPrivadas: response.data.plazasPrivadas,
-      totalDetalles: response.data.plazasDetalle?.length || 0,
+      total: response.data?.data?.length || 0,
     })
 
-    // Validar que la respuesta tenga la estructura esperada
-    if (!response.data || typeof response.data !== "object") {
-      throw new Error("Respuesta del servidor inválida: datos faltantes")
-    }
-
-    if (typeof response.data.plazasPublicadas !== "number") {
-      console.warn("⚠️ Estructura de datos inesperada:", response.data)
-    }
-
     return response
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (error: any) {
-    // ✨ MANEJAR SILENCIOSAMENTE LAS PETICIONES CANCELADAS
+    if (
+      axios.isCancel(error) ||
+      error.name === "AbortError" ||
+      error.name === "CanceledError" ||
+      error.message === "canceled" ||
+      error.code === "ERR_CANCELED"
+    ) {
+      console.log("🚫 Petición de plazas cancelada")
+      throw error
+    }
+
+    console.error("❌ Error al obtener plazas:", {
+      message: error.message,
+      status: error.response?.status,
+    })
+
+    throw error
+  }
+}
+
+// ✅ CORREGIDO: Retorna TODAS las plazas en tabla, pero calcula métricas por rango
+export const getPlazasStatsByRangeServiceAlt = async (
+  rango: "dia" | "semana" | "mes",
+  signal?: AbortSignal
+) => {
+  try {
+    // 1. Obtener TODAS las plazas
+    const response = await getAllPlazasService(signal)
+    const todasLasPlazas = response.data?.data || []
+
+    console.log("📊 Total de plazas recibidas:", todasLasPlazas.length)
+
+    // 2. Calcular fechas del rango (solo para métricas)
+    const now = new Date()
+    let fechaInicio: Date
+
+    switch (rango) {
+      case "dia":
+        fechaInicio = new Date(now.getTime() - 24 * 60 * 60 * 1000)
+        break
+      case "semana":
+        fechaInicio = new Date(now)
+        fechaInicio.setDate(now.getDate() - 7)
+        break
+      case "mes":
+        fechaInicio = new Date(now)
+        fechaInicio.setDate(now.getDate() - 30)
+        break
+      default:
+        fechaInicio = new Date(now)
+        fechaInicio.setDate(now.getDate() - 30)
+    }
+
+    // 3. ✅ Filtrar SOLO para calcular métricas del periodo
+    const plazasEnRango = todasLasPlazas.filter((plaza: any) => {
+      const fecha = new Date(plaza.createAt) // Usar createAt en lugar de disponibilidadDesde
+      return fecha >= fechaInicio && fecha <= now
+    })
+
+    console.log(`🔍 Métricas calculadas para (${rango}):`, {
+      totalPlazas: todasLasPlazas.length,
+      plazasEnRango: plazasEnRango.length,
+      rangoInicio: fechaInicio.toLocaleDateString("es-ES"),
+      rangoFin: now.toLocaleDateString("es-ES"),
+    })
+
+    // 4. Calcular estadísticas DEL RANGO
+    const plazasPublicadas = plazasEnRango.length
+    const plazasInmediatas = plazasEnRango.filter(
+      (p: any) => p.tipo === "Inmediata"
+    ).length
+    const plazasPrivadas = plazasEnRango.filter(
+      (p: any) => p.tipo === "Privada"
+    ).length
+
+    // 5. Calcular promedios por tipo (DEL RANGO)
+    const precioPromedioPorTipo = [
+      {
+        tipo: "Inmediata",
+        precioPromedio:
+          plazasInmediatas > 0
+            ? plazasEnRango
+                .filter((p: any) => p.tipo === "Inmediata")
+                .reduce(
+                  (sum: number, p: any) => sum + parseFloat(p.precio || 0),
+                  0
+                ) / plazasInmediatas
+            : 0,
+      },
+      {
+        tipo: "Privada",
+        precioPromedio:
+          plazasPrivadas > 0
+            ? plazasEnRango
+                .filter((p: any) => p.tipo === "Privada")
+                .reduce(
+                  (sum: number, p: any) => sum + parseFloat(p.precio || 0),
+                  0
+                ) / plazasPrivadas
+            : 0,
+      },
+    ]
+
+    // 6. Calcular promedios por ciudad (DEL RANGO, top 5)
+    const preciosPorCiudad = plazasEnRango.reduce((acc: any, plaza: any) => {
+      const ciudad = plaza.direccion || "Sin ciudad"
+      if (!acc[ciudad]) {
+        acc[ciudad] = { total: 0, count: 0 }
+      }
+      acc[ciudad].total += parseFloat(plaza.precio || 0)
+      acc[ciudad].count++
+      return acc
+    }, {})
+
+    const precioPromedioPorCiudad = Object.entries(preciosPorCiudad)
+      .map(([ciudad, data]: [string, any]) => ({
+        ciudad,
+        precioPromedio: data.total / data.count,
+      }))
+      .sort((a, b) => b.precioPromedio - a.precioPromedio)
+      .slice(0, 5)
+
+    // 7. ✅ CLAVE: Retornar TODAS las plazas para la tabla
+    const estadisticas: EstadisticasBackendResponse = {
+      plazasPublicadas, // Métrica: plazas creadas en el rango
+      plazasInmediatas, // Métrica: inmediatas en el rango
+      plazasPrivadas, // Métrica: privadas en el rango
+      precioPromedioPorTipo, // Métrica: promedios del rango
+      precioPromedioPorCiudad, // Métrica: top ciudades del rango
+      plazasDetalle: todasLasPlazas, // ✅ TODAS las plazas (35) para la tabla
+    }
+
+    console.log("✅ Estadísticas calculadas:", {
+      plazasPublicadasEnPeriodo: plazasPublicadas,
+      totalPlazasParaTabla: todasLasPlazas.length,
+      rango,
+    })
+
+    return {
+      ...response,
+      data: estadisticas,
+    }
+  } catch (error: any) {
     if (
       axios.isCancel(error) ||
       error.name === "AbortError" ||
@@ -65,32 +184,13 @@ export const getPlazasStatsByRangeServiceAlt = async (
       error.code === "ERR_CANCELED"
     ) {
       console.log("🚫 Petición cancelada silenciosamente para rango:", rango)
-      throw error // Re-throw sin loggear como error
+      throw error
     }
 
-    // Solo loggear errores reales (no cancelaciones)
     console.error("❌ Error en servicio:", {
       message: error.message,
       status: error.response?.status,
-      statusText: error.response?.statusText,
-      url: error.config?.url,
-      params: error.config?.params,
     })
-
-    // Manejo específico de errores
-    if (error.response?.status === 401) {
-      console.error("🚫 Token inválido o expirado")
-      // Opcional: redirigir al login o limpiar token
-      // localStorage.removeItem('token')
-    } else if (error.response?.status === 404) {
-      console.error("🔍 Endpoint no encontrado - verificar query parameters")
-    } else if (error.response?.status === 403) {
-      console.error("🚫 Sin permisos para acceder al recurso")
-    } else if (error.response?.status === 400) {
-      console.error(
-        "📝 Parámetros inválidos - verificar que el rango sea correcto"
-      )
-    }
 
     throw error
   }
@@ -122,9 +222,7 @@ export const testEstadisticasEndpoint = async (
     })
 
     return response.data
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (error: any) {
-    // ✨ También manejar cancelaciones aquí
     if (
       axios.isCancel(error) ||
       error.name === "AbortError" ||
@@ -156,7 +254,6 @@ export const validateToken = async () => {
       throw new Error("No token found")
     }
 
-    // Probar con un endpoint que requiera autenticación
     const response = await axios.get(`${BASE_URL}/auth/validate`, {
       headers: {
         Authorization: `Bearer ${token}`,
@@ -166,9 +263,7 @@ export const validateToken = async () => {
 
     console.log("✅ Token válido")
     return true
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (error: any) {
-    // ✨ También aquí si usas AbortController en el futuro
     if (
       axios.isCancel(error) ||
       error.name === "AbortError" ||

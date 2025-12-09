@@ -68,16 +68,43 @@ export class ReportesService {
     }
   }
 
-  // ✨ FUNCIÓN ACTUALIZADA - ahora acepta tipoReporte
+  // ✨ FUNCIÓN ACTUALIZADA - ahora usa fechaDesde y fechaHasta
   static async getSummary(
     filtroFecha?: string,
     tipoReporte?: string
   ): Promise<ReportesResponse> {
     const params = new URLSearchParams()
 
-    if (filtroFecha) params.append("periodo", filtroFecha)
+    // ✅ NUEVO: Calcular fechas según el filtro
+    if (filtroFecha) {
+      const now = new Date()
+      let fechaDesde: Date
 
-    // ✨ NUEVO: Agregar tipoReporte si se proporciona
+      switch (filtroFecha) {
+        case "dia":
+          // Últimas 24 horas
+          fechaDesde = new Date(now.getTime() - 24 * 60 * 60 * 1000)
+          break
+        case "semana":
+          // Últimos 7 días
+          fechaDesde = new Date(now)
+          fechaDesde.setDate(now.getDate() - 7)
+          break
+        case "mes":
+          // Últimos 30 días
+          fechaDesde = new Date(now)
+          fechaDesde.setDate(now.getDate() - 30)
+          break
+        default:
+          fechaDesde = new Date(now)
+          fechaDesde.setDate(now.getDate() - 30)
+      }
+
+      // Formatear a ISO 8601
+      params.append("fechaDesde", fechaDesde.toISOString())
+      params.append("fechaHasta", now.toISOString())
+    }
+
     if (tipoReporte) params.append("tipoReporte", tipoReporte)
 
     const queryString = params.toString()
@@ -85,7 +112,7 @@ export class ReportesService {
       queryString ? `?${queryString}` : ""
     }`
 
-    console.log("🔍 Llamando endpoint:", endpoint) // Para debug
+    console.log("🔍 Llamando endpoint:", endpoint)
 
     return this.makeRequest<ReportesResponse>(endpoint, {
       method: "GET",
