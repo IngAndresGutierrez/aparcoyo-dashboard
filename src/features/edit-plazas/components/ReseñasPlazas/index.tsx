@@ -101,7 +101,7 @@ function PlazaReviews({
     })
   }
 
-  const renderEstrellas = (calificacion: number, baseKey: string = "") => {
+  const renderEstrellas = (calificacion: number, baseKey: string) => {
     return Array.from({ length: 5 }, (_, index) => (
       <Star
         key={`${baseKey}-star-${index}`}
@@ -205,7 +205,7 @@ function PlazaReviews({
           </div>
 
           <div className="p-6 space-y-8">
-            {resenasAMostrar.map((resena) => {
+            {resenasAMostrar.map((resena, index) => {
               const isDropdownOpen = dropdownAbierto === resena.id
 
               return (
@@ -266,7 +266,10 @@ function PlazaReviews({
                   </div>
 
                   <div className="flex items-center gap-1">
-                    {renderEstrellas(resena.estrellas, `resena-${resena.id}`)}
+                    {renderEstrellas(
+                      resena.estrellas,
+                      resena.id || `temp-${index}`
+                    )}
                   </div>
 
                   <p className="text-gray-700 leading-relaxed text-sm">

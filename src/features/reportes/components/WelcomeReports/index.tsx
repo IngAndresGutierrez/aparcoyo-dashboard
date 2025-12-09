@@ -173,31 +173,29 @@ const WelcomeReports: React.FC<WelcomeReportsProps> = ({
   }
 
   // Función de descarga de reportes
+  // Función de descarga de reportes
   const handleDownloadReport = async () => {
     try {
       console.log(
         "Iniciando descarga de reporte de reportes para:",
         selectedFilter
       )
-      console.log("Reportes disponibles:", reportes?.length || 0)
 
-      // Si no hay reportes cargados, cargarlos primero
-      if (!reportes || reportes.length === 0) {
-        const loadingToast = toast.loading("Cargando reportes...", {
-          description: "Obteniendo datos de reportes",
+      // ✅ Siempre cargar datos frescos con el filtro actual
+      const loadingToast = toast.loading("Cargando reportes...", {
+        description: "Obteniendo datos de reportes",
+      })
+
+      const reportesActualizados = await refresh(selectedFilter)
+
+      toast.dismiss(loadingToast)
+
+      // ✅ Usar los datos que retornó refresh()
+      if (!reportesActualizados || reportesActualizados.length === 0) {
+        toast.error("No hay datos", {
+          description: "No se encontraron reportes para generar el archivo",
         })
-
-        await refresh(selectedFilter)
-
-        toast.dismiss(loadingToast)
-
-        // Verificar nuevamente después de cargar
-        if (!reportes || reportes.length === 0) {
-          toast.error("No hay datos", {
-            description: "No se encontraron reportes para generar el archivo",
-          })
-          return
-        }
+        return
       }
 
       // Mostrar loading para generación
@@ -208,34 +206,25 @@ const WelcomeReports: React.FC<WelcomeReportsProps> = ({
         }
       )
 
-      // Verificar que tengamos reportes para procesar
-      if (reportes.length === 0) {
-        toast.dismiss(generatingToast)
-        toast.error("No hay datos", {
-          description: "No se encontraron reportes para generar el archivo",
-        })
-        return
-      }
-
       // Generar estadísticas adicionales
-      const totalReportes = reportes.length
+      const totalReportes = reportesActualizados.length
 
       // Estadísticas por estado
-      const estadosCounts = reportes.reduce((acc, r) => {
+      const estadosCounts = reportesActualizados.reduce((acc, r) => {
         const estado = r.estado || "Sin estado"
         acc[estado] = (acc[estado] || 0) + 1
         return acc
       }, {} as Record<string, number>)
 
       // Estadísticas por categoría
-      const categoriasCounts = reportes.reduce((acc, r) => {
+      const categoriasCounts = reportesActualizados.reduce((acc, r) => {
         const categoria = r.categoriaLabel || r.categoria || "Sin categoría"
         acc[categoria] = (acc[categoria] || 0) + 1
         return acc
       }, {} as Record<string, number>)
 
       // Calcular tiempos de resolución
-      const reportesResueltos = reportes.filter((r) => r.resolvedAt)
+      const reportesResueltos = reportesActualizados.filter((r) => r.resolvedAt)
       const tiemposResolucion = reportesResueltos.map((r) => {
         const fechaCreacion = new Date(r.fecha)
         const fechaResolucion = new Date(r.resolvedAt!)
@@ -252,10 +241,12 @@ const WelcomeReports: React.FC<WelcomeReportsProps> = ({
           : 0
 
       const usuariosUnicos = new Set(
-        reportes.map((r) => r.usuario?.uid).filter(Boolean)
+        reportesActualizados.map((r) => r.usuario?.uid).filter(Boolean)
       ).size
       const adminResolvers = new Set(
-        reportes.filter((r) => r.resolvedBy).map((r) => r.resolvedBy!.uid)
+        reportesActualizados
+          .filter((r) => r.resolvedBy)
+          .map((r) => r.resolvedBy!.uid)
       ).size
 
       // Agregar resumen al inicio del CSV
@@ -347,7 +338,7 @@ const WelcomeReports: React.FC<WelcomeReportsProps> = ({
         .map((row) => `${row.Métrica},${row.Valor}`)
         .join("\n")
 
-      const reportesCSV = generateReportesCSV(reportes)
+      const reportesCSV = generateReportesCSV(reportesActualizados)
       const finalCSV = resumenCSV + "\n" + reportesCSV
 
       // Descargar archivo
@@ -408,7 +399,7 @@ const WelcomeReports: React.FC<WelcomeReportsProps> = ({
                 height={20}
               />
               <span className="font-semibold">{getCurrentLabel()}</span>
-              <ChevronDown className="ml-auto h-4 w-4" />  {/* ← AGREGAR ESTO */}
+              <ChevronDown className="ml-auto h-4 w-4" /> {/* ← AGREGAR ESTO */}
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent

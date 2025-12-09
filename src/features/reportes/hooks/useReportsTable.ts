@@ -79,6 +79,7 @@ export const useReportes = () => {
   }, [])
 
   // ✨ FUNCIÓN ACTUALIZADA - ahora acepta tipoReporte
+  // ✨ FUNCIÓN ACTUALIZADA - ahora RETORNA los datos
   const loadAll = useCallback(
     async (filtroFecha?: string, tipoReporte?: string) => {
       setState((prev) => ({ ...prev, loading: true, error: null }))
@@ -97,12 +98,16 @@ export const useReportes = () => {
             loading: false,
             error: null,
           })
+
+          // ✅ RETORNAR los datos cargados
+          return summaryResponse.data.reportes
         } else {
           setState((prev) => ({
             ...prev,
             loading: false,
             error: summaryResponse.msg || "Error al cargar los datos",
           }))
+          return []
         }
       } catch (error) {
         const errorMessage =
@@ -116,19 +121,20 @@ export const useReportes = () => {
           loading: false,
           error: errorMessage,
         })
+
+        return []
       }
     },
     []
   )
 
-  // ✨ FUNCIÓN ACTUALIZADA - ahora acepta tipoReporte
+  // ✨ FUNCIÓN ACTUALIZADA - ahora RETORNA los datos
   const refresh = useCallback(
-    (filtroFecha?: string, tipoReporte?: string) => {
-      loadAll(filtroFecha, tipoReporte)
+    async (filtroFecha?: string, tipoReporte?: string) => {
+      return await loadAll(filtroFecha, tipoReporte)
     },
     [loadAll]
   )
-
   // Cargar datos iniciales
   useEffect(() => {
     loadAll()
