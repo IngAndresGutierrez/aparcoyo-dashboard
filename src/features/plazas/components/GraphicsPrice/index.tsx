@@ -213,8 +213,7 @@ const ChartBarHorizontalType = ({
         </div>
         <div className="text-muted-foreground leading-none">
           Precio promedio general: ${stats?.averagePrice?.toLocaleString()} •
-          Públicas: {stats?.plazasPublicadas} • Privadas:{" "}
-          {stats?.plazasPrivadas}
+          Públicas: {stats?.plazasPublicas} • Privadas: {stats?.plazasPrivadas}
         </div>
       </CardFooter>
     </Card>

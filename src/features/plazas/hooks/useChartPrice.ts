@@ -20,71 +20,95 @@ export const usePlazasTypeStats = (rango: "dia" | "semana" | "mes") => {
   const [error, setError] = useState<string | null>(null)
   const [typeData, setTypeData] = useState<TypeChartDataPoint[]>([])
 
-  // Ref para cancelar peticiones pendientes
   const abortControllerRef = useRef<AbortController | null>(null)
   const isMountedRef = useRef(true)
 
-  // Función para procesar datos por tipo usando precioPromedioPorTipo
   const processTypeData = useCallback(
     (
       precioPromedioPorTipo: PrecioPromedioPorTipo[],
       plazasDetalle: PlazaDetalle[]
     ): TypeChartDataPoint[] => {
-      console.log("🔍 precioPromedioPorTipo recibido:", precioPromedioPorTipo)
-      console.log("🔍 plazasDetalle para contar:", plazasDetalle)
+      console.log("🔍 === INICIO PROCESAMIENTO ===")
+      console.log("🔍 precioPromedioPorTipo:", precioPromedioPorTipo)
+      console.log("🔍 plazasDetalle:", plazasDetalle)
 
+      // ✅ VALIDACIÓN 1: Verificar que precioPromedioPorTipo existe y es array
       if (!precioPromedioPorTipo || !Array.isArray(precioPromedioPorTipo)) {
-        console.log("❌ precioPromedioPorTipo no es un array válido")
+        console.error("❌ precioPromedioPorTipo no es un array válido")
         return []
       }
 
-      // Contar plazas por tipo para obtener el count
+      // ✅ VALIDACIÓN 2: Si precioPromedioPorTipo está vacío
+      if (precioPromedioPorTipo.length === 0) {
+        console.warn("⚠️ precioPromedioPorTipo está vacío")
+        return []
+      }
+
+      // ✅ MEJORA: Normalizar tipos para comparación (sin espacios, lowercase)
+      const normalizarTipo = (tipo: string) =>
+        tipo?.trim().toLowerCase().replace(/\s+/g, " ") || "sin tipo"
+
+      // Contar plazas por tipo NORMALIZADO
       const plazasPorTipo =
         plazasDetalle?.reduce(
           (acc: Record<string, number>, plaza: PlazaDetalle) => {
-            const tipo = plaza.tipo || "Sin tipo"
-            acc[tipo] = (acc[tipo] || 0) + 1
+            const tipoNormalizado = normalizarTipo(plaza.tipo)
+            acc[tipoNormalizado] = (acc[tipoNormalizado] || 0) + 1
             return acc
           },
           {}
         ) || {}
 
-      console.log("📊 Plazas por tipo:", plazasPorTipo)
+      console.log("📊 Plazas por tipo (normalizado):", plazasPorTipo)
 
-      // Procesar datos ya calculados por el backend
+      // ✅ MEJORA: Procesar sin filtrar por count si no hay plazasDetalle
+      const usarCountDesdePrecioPromedio =
+        !plazasDetalle || plazasDetalle.length === 0
+
       const typeDataArray = precioPromedioPorTipo
-        .map((item) => {
+        .map((item, index) => {
           const tipo = item.tipo || "Sin tipo"
+          const tipoNormalizado = normalizarTipo(tipo)
+
+          // Si no hay plazasDetalle, usar un count de 1 para mostrar al menos el precio promedio
+          const count = usarCountDesdePrecioPromedio
+            ? 1
+            : plazasPorTipo[tipoNormalizado] || 0
+
+          console.log(
+            `   Tipo ${index}: "${tipo}" -> count: ${count}, precio: ${item.precioPromedio}`
+          )
+
           return {
             tipo: tipo,
             averagePrice: Math.round(item.precioPromedio || 0),
-            count: plazasPorTipo[tipo] || 0,
+            count: count,
             displayName: tipo.charAt(0).toUpperCase() + tipo.slice(1),
           }
         })
-        .filter((item) => item.count > 0)
+        // ✅ CAMBIO CRÍTICO: Solo filtrar si NO usamos count desde precio promedio
+        .filter((item) => usarCountDesdePrecioPromedio || item.count > 0)
         .sort((a, b) => b.averagePrice - a.averagePrice)
 
       console.log("📈 Array final de tipos:", typeDataArray)
+      console.log(`✅ Total tipos procesados: ${typeDataArray.length}`)
+      console.log("🔍 === FIN PROCESAMIENTO ===")
 
       return typeDataArray
     },
     []
   )
 
-  // Función para hacer refetch manual
   const refetch = useCallback(async () => {
     if (!isMountedRef.current) return
 
     setError(null)
     setLoading(true)
 
-    // Cancelar petición anterior si existe
     if (abortControllerRef.current) {
       abortControllerRef.current.abort()
     }
 
-    // Crear nuevo AbortController
     abortControllerRef.current = new AbortController()
 
     try {
@@ -95,43 +119,57 @@ export const usePlazasTypeStats = (rango: "dia" | "semana" | "mes") => {
 
       if (!isMountedRef.current) return
 
-      console.log(`✅ Respuesta del backend para tipos (${rango}):`, res.data)
+      console.log(`✅ Respuesta completa del backend (${rango}):`, res.data)
 
-      if (res.data && typeof res.data === "object") {
-        const processedTypeData = processTypeData(
-          res.data.precioPromedioPorTipo,
-          res.data.plazasDetalle
-        )
-
-        console.log(`📊 Datos de tipos procesados:`, {
-          totalTypes: processedTypeData.length,
-          topType: processedTypeData[0]?.tipo,
-          topTypePrice: processedTypeData[0]?.averagePrice,
-        })
-
-        setData(res.data)
-        setTypeData(processedTypeData)
-        setError(null)
-      } else {
+      // ✅ VALIDACIÓN: Verificar estructura de respuesta
+      if (!res.data || typeof res.data !== "object") {
+        console.error("❌ Respuesta inválida del servidor:", res)
         setError("Respuesta inválida del servidor")
         setData(null)
         setTypeData([])
+        return
       }
+
+      // ✅ VALIDACIÓN: Verificar que precioPromedioPorTipo existe
+      if (!res.data.precioPromedioPorTipo) {
+        console.error(
+          "❌ No se encontró 'precioPromedioPorTipo' en la respuesta"
+        )
+        console.log("📦 Keys disponibles:", Object.keys(res.data))
+        setError("Datos de tipos no disponibles en la respuesta")
+        setData(null)
+        setTypeData([])
+        return
+      }
+
+      const processedTypeData = processTypeData(
+        res.data.precioPromedioPorTipo,
+        res.data.plazasDetalle
+      )
+
+      console.log(`📊 Resultado final:`, {
+        totalTypes: processedTypeData.length,
+        topType: processedTypeData[0]?.tipo,
+        topTypePrice: processedTypeData[0]?.averagePrice,
+      })
+
+      setData(res.data)
+      setTypeData(processedTypeData)
+      setError(null)
     } catch (err: any) {
       if (!isMountedRef.current) return
 
-      // ✨ MANEJO SILENCIOSO DE CANCELACIÓN AL INICIO
       if (
         err.name === "AbortError" ||
         err.name === "CanceledError" ||
         err.message === "canceled" ||
         err.code === "ERR_CANCELED"
       ) {
-        console.log(`🚫 Petición de tipos cancelada para rango: ${rango}`)
+        console.log(`🚫 Petición cancelada para rango: ${rango}`)
         return
       }
 
-      console.error(`❌ Error en el hook de tipos (${rango}):`, err)
+      console.error(`❌ Error en el hook (${rango}):`, err)
 
       let errorMessage = "Error al obtener las estadísticas de tipos"
 
@@ -175,6 +213,34 @@ export const usePlazasTypeStats = (rango: "dia" | "semana" | "mes") => {
     }
   }, [])
 
+  // ✅ CÁLCULO CORRECTO: Contar plazas reales por tipo desde plazasDetalle
+  const calcularEstadisticasReales = useCallback(
+    (data: EstadisticasBackendResponse) => {
+      const plazas = data.plazasDetalle || []
+
+      // Contar plazas por tipo (no sumar cantidades)
+      const plazasPorTipo = plazas.reduce(
+        (acc: Record<string, number>, plaza: PlazaDetalle) => {
+          const tipo = plaza.tipo?.toLowerCase() || "sin tipo"
+          acc[tipo] = (acc[tipo] || 0) + 1
+          return acc
+        },
+        {}
+      )
+
+      console.log("📊 Conteo real de plazas por tipo:", plazasPorTipo)
+
+      return {
+        totalPlazas: plazas.length, // ✅ Total real de plazas
+        plazasPublicas:
+          plazasPorTipo["publica"] || plazasPorTipo["pública"] || 0,
+        plazasPrivadas: plazasPorTipo["privada"] || 0,
+        plazasInmediatas: plazasPorTipo["inmediata"] || 0,
+      }
+    },
+    []
+  )
+
   return {
     data,
     loading,
@@ -182,7 +248,6 @@ export const usePlazasTypeStats = (rango: "dia" | "semana" | "mes") => {
     refetch,
     typeData,
 
-    // Stats adicionales
     stats: data
       ? {
           totalTypes: typeData.length,
@@ -195,13 +260,8 @@ export const usePlazasTypeStats = (rango: "dia" | "semana" | "mes") => {
                     typeData.length
                 )
               : 0,
-          totalPlazas:
-            (data.plazasPublicadas || 0) +
-            (data.plazasPrivadas || 0) +
-            (data.plazasInmediatas || 0),
-          plazasPublicadas: data.plazasPublicadas || 0,
-          plazasPrivadas: data.plazasPrivadas || 0,
-          plazasInmediatas: data.plazasInmediatas || 0,
+          // ✅ CORRECCIÓN: Usar conteo real de plazas
+          ...calcularEstadisticasReales(data),
         }
       : null,
   }
