@@ -23,7 +23,16 @@ export const usePlazasCityStats = (rango: "dia" | "semana" | "mes") => {
 
       // Agrupar por ciudad y calcular promedios
       const cityGroups = plazasDetalle.reduce((acc, plaza) => {
-        const city = plaza.ciudad || plaza.city || "Sin ciudad"
+        // ✅ Extraer ciudad de la dirección
+        const direccionCompleta = plaza.direccion || "Sin ciudad"
+        const partesDireccion = direccionCompleta
+          .split(",")
+          .map((s: string) => s.trim())
+        const city =
+          partesDireccion.length >= 2
+            ? partesDireccion[partesDireccion.length - 2]
+            : "Sin ciudad"
+
         const price = parseFloat(plaza.precio) || 0
 
         if (!acc[city]) {

@@ -53,7 +53,7 @@ export const getAllPlazasService = async (signal?: AbortSignal) => {
   }
 }
 
-// ✅ CORREGIDO: Retorna TODAS las plazas en tabla, pero calcula métricas por rango
+// ✅ CORREGIDO: Calcula estadísticas de plazas ACTIVAS (disponibles en el rango)
 export const getPlazasStatsByRangeServiceAlt = async (
   rango: "dia" | "semana" | "mes",
   signal?: AbortSignal
@@ -65,7 +65,7 @@ export const getPlazasStatsByRangeServiceAlt = async (
 
     console.log("📊 Total de plazas recibidas:", todasLasPlazas.length)
 
-    // 2. Calcular fechas del rango (solo para métricas)
+    // 2. Calcular fechas del rango
     const now = new Date()
     let fechaInicio: Date
 
@@ -86,15 +86,23 @@ export const getPlazasStatsByRangeServiceAlt = async (
         fechaInicio.setDate(now.getDate() - 30)
     }
 
-    // 3. ✅ Filtrar SOLO para calcular métricas del periodo
+    // 3. ✅ CORREGIDO: Filtrar por disponibilidad ACTUAL
+    // Una plaza está "en rango" si está disponible durante el período
     const plazasEnRango = todasLasPlazas.filter((plaza: any) => {
-      const fecha = new Date(plaza.createAt) // Usar createAt en lugar de disponibilidadDesde
-      return fecha >= fechaInicio && fecha <= now
+      if (!plaza.disponibilidadDesde) return false
+
+      const disponibleDesde = new Date(plaza.disponibilidadDesde)
+      const disponibleHasta = plaza.disponibilidadHasta
+        ? new Date(plaza.disponibilidadHasta)
+        : new Date("2099-12-31") // Si no tiene fecha límite, asumimos que está disponible
+
+      // La plaza está en rango si su disponibilidad se solapa con nuestro período
+      return disponibleDesde <= now && disponibleHasta >= fechaInicio
     })
 
     console.log(`🔍 Métricas calculadas para (${rango}):`, {
       totalPlazas: todasLasPlazas.length,
-      plazasEnRango: plazasEnRango.length,
+      plazasDisponiblesEnRango: plazasEnRango.length,
       rangoInicio: fechaInicio.toLocaleDateString("es-ES"),
       rangoFin: now.toLocaleDateString("es-ES"),
     })
@@ -108,7 +116,12 @@ export const getPlazasStatsByRangeServiceAlt = async (
       (p: any) => p.tipo === "Privada"
     ).length
 
-    // 5. Calcular promedios por tipo (DEL RANGO)
+    console.log(`📈 Plazas por tipo en rango:`, {
+      inmediatas: plazasInmediatas,
+      privadas: plazasPrivadas,
+    })
+
+    // 5. ✅ Calcular promedios por tipo (DEL RANGO) con parseFloat
     const precioPromedioPorTipo = [
       {
         tipo: "Inmediata",
@@ -117,7 +130,7 @@ export const getPlazasStatsByRangeServiceAlt = async (
             ? plazasEnRango
                 .filter((p: any) => p.tipo === "Inmediata")
                 .reduce(
-                  (sum: number, p: any) => sum + parseFloat(p.precio || 0),
+                  (sum: number, p: any) => sum + parseFloat(p.precio || "0"),
                   0
                 ) / plazasInmediatas
             : 0,
@@ -129,20 +142,31 @@ export const getPlazasStatsByRangeServiceAlt = async (
             ? plazasEnRango
                 .filter((p: any) => p.tipo === "Privada")
                 .reduce(
-                  (sum: number, p: any) => sum + parseFloat(p.precio || 0),
+                  (sum: number, p: any) => sum + parseFloat(p.precio || "0"),
                   0
                 ) / plazasPrivadas
             : 0,
       },
     ]
 
+    console.log(`💰 Precios promedio calculados:`, precioPromedioPorTipo)
+
     // 6. Calcular promedios por ciudad (DEL RANGO, top 5)
     const preciosPorCiudad = plazasEnRango.reduce((acc: any, plaza: any) => {
-      const ciudad = plaza.direccion || "Sin ciudad"
+      // ✅ Extraer ciudad de la dirección completa
+      const direccionCompleta = plaza.direccion || "Sin ciudad"
+      const partesDireccion = direccionCompleta
+        .split(",")
+        .map((s: string) => s.trim())
+      const ciudad =
+        partesDireccion.length >= 2
+          ? partesDireccion[partesDireccion.length - 2] // Penúltimo elemento (Ciudad)
+          : direccionCompleta
+
       if (!acc[ciudad]) {
         acc[ciudad] = { total: 0, count: 0 }
       }
-      acc[ciudad].total += parseFloat(plaza.precio || 0)
+      acc[ciudad].total += parseFloat(plaza.precio || "0")
       acc[ciudad].count++
       return acc
     }, {})
@@ -157,16 +181,16 @@ export const getPlazasStatsByRangeServiceAlt = async (
 
     // 7. ✅ CLAVE: Retornar TODAS las plazas para la tabla
     const estadisticas: EstadisticasBackendResponse = {
-      plazasPublicadas, // Métrica: plazas creadas en el rango
+      plazasPublicadas, // Métrica: plazas disponibles en el rango
       plazasInmediatas, // Métrica: inmediatas en el rango
       plazasPrivadas, // Métrica: privadas en el rango
       precioPromedioPorTipo, // Métrica: promedios del rango
       precioPromedioPorCiudad, // Métrica: top ciudades del rango
-      plazasDetalle: todasLasPlazas, // ✅ TODAS las plazas (35) para la tabla
+      plazasDetalle: plazasEnRango, // ✅ TODAS las plazas (35) para la tabla
     }
 
     console.log("✅ Estadísticas calculadas:", {
-      plazasPublicadasEnPeriodo: plazasPublicadas,
+      plazasDisponiblesEnPeriodo: plazasPublicadas,
       totalPlazasParaTabla: todasLasPlazas.length,
       rango,
     })
