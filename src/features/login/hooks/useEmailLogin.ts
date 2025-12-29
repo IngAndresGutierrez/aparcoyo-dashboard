@@ -31,6 +31,8 @@ export const useEmailLogin = (email: string, password: string) => {
 
       // 🔐 VALIDAR EL ROL
       const userRole = (
+        response.data.data?.user?.rol || // 👈 AGREGA ESTE
+        response.data.data?.user?.role ||
         response.data.user?.rol ||
         response.data.user?.role ||
         response.data.rol ||
@@ -40,6 +42,8 @@ export const useEmailLogin = (email: string, password: string) => {
         .toString()
         .toUpperCase()
         .trim()
+
+      console.log("🔍 ROL DETECTADO:", userRole, "- Tipo:", typeof userRole)
 
       if (userRole !== "ADMIN") {
         setError(true)
