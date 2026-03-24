@@ -45,6 +45,11 @@ const chartConfig = {
     label: "Canceladas",
     color: "#9A75E5", // Púrpura
   },
+  finalizada: {
+    // ← AGREGA ESTO
+    label: "Finalizadas",
+    color: "#F59E0B",
+  },
 } satisfies ChartConfig
 
 interface TotalUsersGraphReservasProps {
@@ -54,16 +59,19 @@ interface TotalUsersGraphReservasProps {
 // Función para transformar datos para el gráfico de área temporal
 const transformDataForAreaChart = (
   estadoData: any[],
-  rango: "dia" | "semana" | "mes"
+  rango: "dia" | "semana" | "mes",
 ) => {
   console.log("🔄 Iniciando transformación:", { estadoData, rango })
 
   // Para el gráfico de área, necesitamos datos temporales
   const periods = rango === "dia" ? 7 : rango === "semana" ? 4 : 6
-  const baseData = estadoData.reduce((acc, item) => {
-    acc[item.estado] = item.cantidad
-    return acc
-  }, {} as Record<string, number>)
+  const baseData = estadoData.reduce(
+    (acc, item) => {
+      acc[item.estado] = item.cantidad
+      return acc
+    },
+    {} as Record<string, number>,
+  )
 
   console.log("📊 baseData procesado:", baseData)
 
@@ -80,6 +88,7 @@ const transformDataForAreaChart = (
       confirmado: Math.round((baseData.confirmado || 0) * factor),
       pendiente: Math.round((baseData.pendiente || 0) * factor),
       cancelado: Math.round((baseData.cancelado || 0) * factor),
+      finalizada: Math.round((baseData.finalizada || 0) * factor),
     }
   })
 
@@ -269,6 +278,14 @@ export function TotalUsersGraphReservas({
                   fill="var(--color-confirmado)"
                   fillOpacity={0.4}
                   stroke="var(--color-confirmado)"
+                  stackId="a"
+                />
+                <Area
+                  dataKey="finalizada"
+                  type="natural"
+                  fill="var(--color-finalizada)"
+                  fillOpacity={0.4}
+                  stroke="var(--color-finalizada)"
                   stackId="a"
                 />
                 <ChartLegend content={<ChartLegendContent />} />
